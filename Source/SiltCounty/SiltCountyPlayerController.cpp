@@ -187,10 +187,6 @@ void ASiltCountyPlayerController::PlayerTick(float DeltaTime)
 	{
 		Truck->SetTruckInput(CurrentInput);
 	}
-	// Edge-triggered buttons clear after one consume in the truck.
-	CurrentInput.bWinchToggle = false;
-	CurrentInput.bInteract = false;
-	CurrentInput.bSkipIntro = false;
 }
 
 void ASiltCountyPlayerController::OnThrottle(const FInputActionValue& Value)
@@ -215,7 +211,10 @@ void ASiltCountyPlayerController::OnHandbrake(const FInputActionValue& Value)
 
 void ASiltCountyPlayerController::OnWinchToggle(const FInputActionValue& Value)
 {
-	CurrentInput.bWinchToggle = true;
+	if (ASiltTruck* Truck = Cast<ASiltTruck>(GetPawn()))
+	{
+		Truck->TryToggleWinch();
+	}
 }
 
 void ASiltCountyPlayerController::OnWinchIn(const FInputActionValue& Value)
@@ -240,7 +239,10 @@ void ASiltCountyPlayerController::OnAirUp(const FInputActionValue& Value)
 
 void ASiltCountyPlayerController::OnInteract(const FInputActionValue& Value)
 {
-	CurrentInput.bInteract = true;
+	if (ASiltTruck* Truck = Cast<ASiltTruck>(GetPawn()))
+	{
+		Truck->TryInteract();
+	}
 }
 
 void ASiltCountyPlayerController::OnReset(const FInputActionValue& Value)
