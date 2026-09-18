@@ -1,0 +1,23 @@
+# Unreal Engine
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+FileOpenOrder/
+*.VC.db
+*.opensdf
+*.opendb
+*.sdf
+*.sln
+*.suo
+*.xcodeproj
+*.xcworkspace
+*.VC.opendb
+.vs/
+.idea/
+*.log
+Build/
+Releases/
+Tests/test_valley_sim
+.DS_Store
+Thumbs.db
