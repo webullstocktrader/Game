@@ -57,6 +57,11 @@ void AValleyWorld::BuildValley()
 	SpawnTreesAndRocks(Assets);
 	SpawnSheltersAndFire();
 	SpawnPeople();
+	bMaraMetaHuman = false;
+	if (AValleyVillager* Mara = FindVillager(vg::kMetaHumanMilestoneSlot))
+	{
+		bMaraMetaHuman = Mara->IsUsingMetaHuman();
+	}
 	SpawnRain();
 	SpawnTornado();
 	UE_LOG(LogTemp, Display, TEXT("Valley God: %s"), *GraphicsStatusLine());
@@ -157,9 +162,8 @@ UStaticMeshComponent* AValleyWorld::PlaceSized(UStaticMesh* Mesh, const FVector&
 
 FString AValleyWorld::GraphicsStatusLine() const
 {
-	const bool bMaraMH = MaraMetaHumanClass.Get() != nullptr;
 	return FString::Printf(TEXT("Look  Mara %s  ·  ground %s  ·  foliage %s"),
-		bMaraMH ? TEXT("MetaHuman") : TEXT("procedural"),
+		bMaraMetaHuman ? TEXT("MetaHuman") : TEXT("procedural"),
 		bQuixelGround ? TEXT("Quixel") : TEXT("procedural"),
 		bQuixelFoliage ? TEXT("Quixel") : TEXT("procedural"));
 }
@@ -253,10 +257,12 @@ void AValleyWorld::SpawnTreesAndRocks(const Valley::FOptionalAssets& Assets)
 			}
 			UStaticMesh* Mesh = Assets.Trees[I % Assets.Trees.Num()];
 			const FVector G = Terrain->GroundAt(FVector(X, Y, 0.f));
-			if (UStaticMeshComponent* Placed = PlaceSized(Mesh, G, FRotator(0.f, Rng.FRandRange(0.f, 360.f), 0.f),
+			const float Yaw = Rng.FRandRange(0.f, 360.f);
+			if (UStaticMeshComponent* Placed = PlaceSized(Mesh, G, FRotator(0.f, Yaw, 0.f),
 					Rng.FRandRange(380.f, 720.f), FName(*FString::Printf(TEXT("QTree%d"), TreeN))))
 			{
 				Trees.Add(Placed);
+				TreeBaseYaw.Add(Yaw);
 			}
 			++TreeN;
 		}
@@ -277,6 +283,7 @@ void AValleyWorld::SpawnTreesAndRocks(const Valley::FOptionalAssets& Assets)
 			UStaticMeshComponent* Trunk = Place(Cyl, G + FVector(0.f, 0.f, H * 48.f), FRotator::ZeroRotator, FVector(TrunkR, TrunkR, H), Bark,
 				FName(*FString::Printf(TEXT("Trunk%d"), TreeN)));
 			Trees.Add(Trunk);
+			TreeBaseYaw.Add(18.f);
 
 			auto LeafOn = [&](const FName& Name, const FVector& Rel, const FVector& Scale, UMaterialInterface* Mat)
 			{
@@ -580,11 +587,13 @@ void AValleyWorld::UpdateWeatherVisuals(float DeltaSeconds)
 	}
 
 	const float Lean = FMath::Clamp(Brain.WindX * 12.f + (Brain.Sky == vg::Weather::Hurricane ? 14.f : 0.f), 0.f, 22.f);
-	for (UStaticMeshComponent* Trunk : Trees)
+	for (int32 I = 0; I < Trees.Num(); ++I)
 	{
+		UStaticMeshComponent* Trunk = Trees[I];
 		if (Trunk)
 		{
-			Trunk->SetWorldRotation(FRotator(Lean, 18.f, 0.f));
+			const float Yaw = TreeBaseYaw.IsValidIndex(I) ? TreeBaseYaw[I] : 18.f;
+			Trunk->SetWorldRotation(FRotator(Lean, Yaw, 0.f));
 		}
 	}
 }

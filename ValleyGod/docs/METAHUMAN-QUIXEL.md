@@ -73,7 +73,9 @@ If Fab puts meshes in a differently named folder, either move/copy the pack into
 1. Enable plugins if prompted: **MetaHuman Character**, **MetaHuman SDK**, **HairStrands**.
 2. Create a MetaHuman Character asset. Name the character **Mara** (adult woman, stone-age hide clothing — covered torso, no intimate content).
 3. Use the Creator **Assemble** tab (not DCC-only export). Assemble into **`Content/MetaHumans/Mara`**.
-4. Confirm a Blueprint appears in that folder (`BP_Mara`, `Mara`, or similar).
+4. Confirm a Blueprint appears in that folder (`BP_Mara`, `Mara`, or under a `Blueprints/` subfolder). Play scans `Content/MetaHumans/Mara` recursively for an Actor Blueprint.
+
+If the assembled Blueprint fails to open, enable **Control Rig** (and Live Link / IK Rig if the editor lists them) in Plugins. Those are engine plugins, not extra game-module dependencies.
 
 Hide clothing: use any fully covering hide/leather wardrobe item you have in Fab, or assemble in a closed tunic and ignore fashion polish for this milestone.
 

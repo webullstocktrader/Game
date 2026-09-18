@@ -87,6 +87,8 @@ private:
 	UPROPERTY()
 	TArray<TObjectPtr<UStaticMeshComponent>> Trees;
 
+	TArray<float> TreeBaseYaw;
+
 	UPROPERTY()
 	TObjectPtr<UPointLightComponent> FireLight;
 
@@ -95,6 +97,7 @@ private:
 
 	int32 PinnedId = -1;
 	float RainClock = 0.f;
+	bool bMaraMetaHuman = false;
 	bool bQuixelGround = false;
 	bool bQuixelFoliage = false;
 };

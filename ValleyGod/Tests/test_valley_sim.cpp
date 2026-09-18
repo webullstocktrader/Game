@@ -460,6 +460,10 @@ int main()
 			"Quixel grass surface classifies as grass");
 		CHECK(ClassifyContentPath("/Game/Megascans/3D_Plants/European_Beech/SM_European_Beech_Var1", ScanKind::TreeMesh),
 			"beech plant classifies as a tree");
+		CHECK(ClassifyContentPath("/Game/Fab/ForestPack/SM_European_Beech_Var1", ScanKind::TreeMesh),
+			"Fab beech without 3D_Plants still classifies as a tree");
+		CHECK(ClassifyContentPath("/Game/Fab/Meadow/SM_Wild_Grass_Clump", ScanKind::GrassMesh),
+			"Fab grass clump without 3D_Plants classifies as grass mesh");
 		CHECK(ClassifyContentPath("/Game/Megascans/3D_Plants/Wild_Grass_Clump/SM_Wild_Grass_Clump", ScanKind::GrassMesh),
 			"grass clump plant classifies as grass mesh");
 		CHECK(ClassifyContentPath("/Game/Megascans/3D_Assets/Cliff_Rock/SM_Cliff_Rock", ScanKind::RockMesh),

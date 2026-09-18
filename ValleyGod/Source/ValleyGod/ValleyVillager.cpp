@@ -4,7 +4,7 @@
 #include "Sim/ValleySim.h"
 #include "Sim/ValleyPalette.h"
 #include "Components/CapsuleComponent.h"
-#include "Components/SkeletalMeshComponent.h"
+#include "Components/PrimitiveComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/TextRenderComponent.h"
 #include "Camera/PlayerCameraManager.h"
@@ -76,7 +76,10 @@ void AValleyVillager::SpawnPresentation(UClass* PresentationClass)
 	{
 		SpawnRoot->SetMobility(EComponentMobility::Movable);
 	}
-	if (ACharacter* Character = Cast<ACharacter>(Spawned))
+
+	ACharacter* Character = Cast<ACharacter>(Spawned);
+	float FeetToCenter = 0.f;
+	if (Character)
 	{
 		if (UCharacterMovementComponent* Move = Character->GetCharacterMovement())
 		{
@@ -86,22 +89,31 @@ void AValleyVillager::SpawnPresentation(UClass* PresentationClass)
 		if (UCapsuleComponent* Capsule = Character->GetCapsuleComponent())
 		{
 			Capsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		}
-	}
-	TArray<USkeletalMeshComponent*> Skels;
-	Spawned->GetComponents<USkeletalMeshComponent>(Skels);
-	for (USkeletalMeshComponent* Skel : Skels)
-	{
-		if (Skel)
-		{
-			Skel->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			FeetToCenter = Capsule->GetScaledCapsuleHalfHeight();
 		}
 	}
 
-	Spawned->AttachToComponent(GetRootComponent(), FAttachmentTransformRules::SnapToTargetNotIncludingScale);
-	Spawned->SetActorRelativeLocation(FVector::ZeroVector);
+	TArray<UPrimitiveComponent*> Prims;
+	Spawned->GetComponents<UPrimitiveComponent>(Prims, true);
+	for (UPrimitiveComponent* Prim : Prims)
+	{
+		if (Prim)
+		{
+			Prim->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		}
+	}
+
+	const bool bAttached = Spawned->AttachToComponent(GetRootComponent(), FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+	if (!bAttached)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Valley God: Mara MetaHuman attach failed for %s; using procedural body"), *PresentationClass->GetName());
+		Spawned->Destroy();
+		return;
+	}
+
 	Spawned->SetActorRelativeRotation(FRotator::ZeroRotator);
 	Spawned->SetActorRelativeScale3D(FVector::OneVector);
+	Spawned->SetActorRelativeLocation(FVector(0.f, 0.f, FeetToCenter));
 	Presentation = Spawned;
 	UE_LOG(LogTemp, Display, TEXT("Valley God: %s using MetaHuman %s"), *GetName(), *PresentationClass->GetName());
 }

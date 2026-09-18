@@ -147,11 +147,11 @@ namespace vg
 		case ScanKind::WetDirtMaterial:
 			return (bDirtWord || ContainsFold(Path, "mud")) && bWetWord && !bPlant;
 		case ScanKind::TreeMesh:
-			return bPlant && bTreeWord;
+			return bTreeWord && !ContainsFold(Path, "/Surfaces") && !ContainsFold(Path, "MI_");
 		case ScanKind::GrassMesh:
-			return bPlant && bGrassWord;
+			return bGrassWord && !ContainsFold(Path, "/Surfaces") && !ContainsFold(Path, "MI_");
 		case ScanKind::RockMesh:
-			return bPlant && bRockWord && !bTreeWord && !bGrassWord;
+			return bRockWord && !bTreeWord && !bGrassWord && !ContainsFold(Path, "/Surfaces") && !ContainsFold(Path, "MI_");
 		default:
 			return false;
 		}

@@ -28,6 +28,10 @@ namespace
 		{
 			return false;
 		}
+		if (FPackageName::DoesPackageExist(PackageName))
+		{
+			return true;
+		}
 		FString Filename;
 		if (!FPackageName::TryConvertLongPackageNameToFilename(PackageName, Filename, FPackageName::GetAssetPackageExtension()))
 		{
@@ -110,11 +114,8 @@ namespace
 		}
 	}
 
-	void ScanKindIntoMeshes(vg::ScanKind Kind, TArray<UStaticMesh*>& Out, int32 MaxCount)
+	void ScanKindIntoMeshes(vg::ScanKind Kind, const TArray<FString>& Packages, TArray<UStaticMesh*>& Out, int32 MaxCount)
 	{
-		TArray<FString> Packages;
-		CollectPackages(TEXT("Megascans"), Packages, true);
-		CollectPackages(TEXT("Fab"), Packages, true);
 		for (const FString& PackageName : Packages)
 		{
 			if (Out.Num() >= MaxCount)
@@ -133,11 +134,8 @@ namespace
 		}
 	}
 
-	void ScanKindIntoMaterials(vg::ScanKind Kind, TArray<UMaterialInterface*>& Out, int32 MaxCount)
+	void ScanKindIntoMaterials(vg::ScanKind Kind, const TArray<FString>& Packages, TArray<UMaterialInterface*>& Out, int32 MaxCount)
 	{
-		TArray<FString> Packages;
-		CollectPackages(TEXT("Megascans"), Packages, true);
-		CollectPackages(TEXT("Fab"), Packages, true);
 		for (const FString& PackageName : Packages)
 		{
 			if (Out.Num() >= MaxCount)
@@ -156,6 +154,20 @@ namespace
 		}
 	}
 
+	int32 BlueprintRank(const FString& PackageName)
+	{
+		const FString Short = FPackageName::GetShortName(PackageName);
+		if (Short.StartsWith(TEXT("BP_")))
+		{
+			return 0;
+		}
+		if (Short.Equals(TEXT("Mara"), ESearchCase::IgnoreCase))
+		{
+			return 1;
+		}
+		return 2;
+	}
+
 	UClass* FindMaraClass()
 	{
 		for (int32 I = 0; I < vg::MetaHumanClassPathCount(); ++I)
@@ -167,10 +179,21 @@ namespace
 			}
 		}
 
-		TArray<FString> TopLevel;
-		CollectPackages(TEXT("MetaHumans/Mara"), TopLevel, false);
-		for (const FString& PackageName : TopLevel)
+		TArray<FString> Candidates;
+		CollectPackages(TEXT("MetaHumans/Mara"), Candidates, true);
+		Candidates.Sort([](const FString& A, const FString& B)
 		{
+			const int32 RA = BlueprintRank(A);
+			const int32 RB = BlueprintRank(B);
+			if (RA != RB)
+			{
+				return RA < RB;
+			}
+			return A.Len() < B.Len();
+		});
+		for (const FString& PackageName : Candidates)
+		{
+			UE_LOG(LogValleyGodAssets, Verbose, TEXT("Valley God: considering Mara package %s"), *PackageName);
 			if (UClass* Class = LoadActorClass(PackageName))
 			{
 				UE_LOG(LogValleyGodAssets, Display, TEXT("Valley God: Mara MetaHuman scanned %s"), *Class->GetPathName());
@@ -188,11 +211,16 @@ namespace Valley
 		FOptionalAssets Found;
 		Found.MaraClass = FindMaraClass();
 
+		TArray<FString> Downloaded;
+		CollectPackages(TEXT("Megascans"), Downloaded, true);
+		CollectPackages(TEXT("Fab"), Downloaded, true);
+		CollectPackages(TEXT("ValleySlice"), Downloaded, true);
+
 		TArray<UMaterialInterface*> Dirts;
 		LoadDocumented<UMaterialInterface>(vg::DirtMaterialPathCount(), &vg::DirtMaterialPathAt, Dirts, 1);
 		if (Dirts.Num() == 0)
 		{
-			ScanKindIntoMaterials(vg::ScanKind::DirtMaterial, Dirts, 1);
+			ScanKindIntoMaterials(vg::ScanKind::DirtMaterial, Downloaded, Dirts, 1);
 		}
 		Found.Dirt = Dirts.Num() > 0 ? Dirts[0] : nullptr;
 
@@ -200,7 +228,7 @@ namespace Valley
 		LoadDocumented<UMaterialInterface>(vg::GrassMaterialPathCount(), &vg::GrassMaterialPathAt, Grasses, 1);
 		if (Grasses.Num() == 0)
 		{
-			ScanKindIntoMaterials(vg::ScanKind::GrassMaterial, Grasses, 1);
+			ScanKindIntoMaterials(vg::ScanKind::GrassMaterial, Downloaded, Grasses, 1);
 		}
 		Found.Grass = Grasses.Num() > 0 ? Grasses[0] : nullptr;
 
@@ -208,26 +236,26 @@ namespace Valley
 		LoadDocumented<UMaterialInterface>(vg::WetDirtMaterialPathCount(), &vg::WetDirtMaterialPathAt, Wets, 1);
 		if (Wets.Num() == 0)
 		{
-			ScanKindIntoMaterials(vg::ScanKind::WetDirtMaterial, Wets, 1);
+			ScanKindIntoMaterials(vg::ScanKind::WetDirtMaterial, Downloaded, Wets, 1);
 		}
 		Found.WetDirt = Wets.Num() > 0 ? Wets[0] : nullptr;
 
 		LoadDocumented<UStaticMesh>(vg::TreeMeshPathCount(), &vg::TreeMeshPathAt, Found.Trees, 8);
 		if (Found.Trees.Num() == 0)
 		{
-			ScanKindIntoMeshes(vg::ScanKind::TreeMesh, Found.Trees, 8);
+			ScanKindIntoMeshes(vg::ScanKind::TreeMesh, Downloaded, Found.Trees, 8);
 		}
 
 		LoadDocumented<UStaticMesh>(vg::GrassMeshPathCount(), &vg::GrassMeshPathAt, Found.GrassMeshes, 8);
 		if (Found.GrassMeshes.Num() == 0)
 		{
-			ScanKindIntoMeshes(vg::ScanKind::GrassMesh, Found.GrassMeshes, 8);
+			ScanKindIntoMeshes(vg::ScanKind::GrassMesh, Downloaded, Found.GrassMeshes, 8);
 		}
 
 		LoadDocumented<UStaticMesh>(vg::RockMeshPathCount(), &vg::RockMeshPathAt, Found.Rocks, 6);
 		if (Found.Rocks.Num() == 0)
 		{
-			ScanKindIntoMeshes(vg::ScanKind::RockMesh, Found.Rocks, 6);
+			ScanKindIntoMeshes(vg::ScanKind::RockMesh, Downloaded, Found.Rocks, 6);
 		}
 
 		UE_LOG(LogValleyGodAssets, Display,

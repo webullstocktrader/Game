@@ -19,8 +19,8 @@ MetaHuman Creator + Quixel/FAB. First delivery: one MetaHuman adult + a Quixel f
 
 ## Success criteria (milestone 1)
 - Project has Fab/Bridge/MetaHuman plugins enabled.
-- At least one MetaHuman character asset in the project.
-- Quixel/FAB grass + trees placed in a playable valley map.
+- At least one MetaHuman character asset in the project **when the user has assembled Mara** (this repo does not invent that binary).
+- Quixel/FAB grass + trees placed in a playable valley map **when those downloads are present**; otherwise the procedural valley still plays.
 - Play shows a real-looking patch, not code capsules as the hero look.
 
 ## Milestone-1 lock (implementation)
