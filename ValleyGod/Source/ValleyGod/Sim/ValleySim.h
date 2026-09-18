@@ -18,6 +18,20 @@ namespace vg
 		HighGround
 	};
 
+	enum class Sex
+	{
+		Female,
+		Male
+	};
+
+	enum class Habit
+	{
+		Hunter,
+		Tender,
+		Knaps,
+		Wander
+	};
+
 	enum class Weather
 	{
 		Clear,
@@ -31,7 +45,11 @@ namespace vg
 	{
 		int Id = 0;
 		const char* Name = "";
+		Sex Body = Sex::Female;
+		Habit Role = Habit::Wander;
 		int AgeYears = 21;
+		const char* Trait = "";
+		const char* PersonalLine = "";
 		float X = 0.f;
 		float Y = 0.f;
 		float Z = 0.f;
@@ -73,7 +91,7 @@ namespace vg
 		float TornadoY = 1800.f;
 		float TornadoAngle = 0.f;
 
-		Villager Villagers[16];
+		Villager Villagers[8];
 		int VillagerCount = 0;
 		Animal Animals[6];
 		int AnimalCount = 0;
@@ -105,6 +123,7 @@ namespace vg
 
 	const char* ActivityName(Activity A);
 	const char* WeatherName(Weather Wx);
+	const char* SexName(Sex Body);
 	int LineCount();
 	const char* LineAt(int Index);
 	bool IsNight(float Hours);

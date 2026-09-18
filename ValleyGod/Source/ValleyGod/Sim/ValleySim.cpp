@@ -43,11 +43,42 @@ namespace vg
 		};
 
 		const char* kNames[] = {
-			"Ash", "Reed", "Flint", "Mara", "Thorn", "Bramble", "Kael",
-			"Nima", "Oak", "Sable", "Wren", "Holt", "Lira", "Bram"
+			"Mara", "Nima", "Lira", "Sable", "Flint", "Oak", "Reed", "Bram"
 		};
 
-		const int kAges[] = { 34, 29, 41, 27, 38, 32, 44, 26, 36, 31, 40, 28, 33, 24 };
+		const Sex kBodies[] = {
+			Sex::Female, Sex::Female, Sex::Female, Sex::Female,
+			Sex::Male, Sex::Male, Sex::Male, Sex::Male
+		};
+
+		const int kAges[] = { 27, 32, 41, 24, 38, 44, 29, 34 };
+
+		const Habit kRoles[] = {
+			Habit::Hunter, Habit::Tender, Habit::Knaps, Habit::Wander,
+			Habit::Hunter, Habit::Tender, Habit::Wander, Habit::Tender
+		};
+
+		const char* kTraits[] = {
+			"Watches the tree line. Speaks little.",
+			"Keeps the fire and the talk going.",
+			"Knaps stone by the river. Patient.",
+			"Restless. Walks the ridge for berries.",
+			"First to the hunt. Does not boast.",
+			"Slow. Carries the heavy wood.",
+			"Quiet. Follows the river fish.",
+			"Laughs at the fire. Fixes hides."
+		};
+
+		const char* kPersonal[] = {
+			"Tracks go west.",
+			"Sit. The fat is still hot.",
+			"This edge will cut.",
+			"Berries on the south bank.",
+			"Quiet. Wind is wrong.",
+			"Wood first. Then we eat.",
+			"The fast water has fish.",
+			"Leave the hide to dry."
+		};
 
 		float Dist2(float AX, float AY, float BX, float BY)
 		{
@@ -108,7 +139,7 @@ namespace vg
 				V.TargetY = W.ShelterY[V.ShelterIndex];
 				return;
 			}
-			if (V.Hunger < 62.f && !V.CarryingKill)
+			if (V.Hunger < 62.f && !V.CarryingKill && (V.Role == Habit::Hunter || Rand01(W) < 0.35f))
 			{
 				V.Current = Activity::Hunt;
 				int Best = -1;
@@ -139,19 +170,39 @@ namespace vg
 				}
 				return;
 			}
+			if (V.Role == Habit::Tender && Rand01(W) < 0.55f)
+			{
+				V.Current = Activity::Talk;
+				V.StateTimer = 2.8f + Rand01(W) * 2.f;
+				Speak(V, V.PersonalLine && V.PersonalLine[0] ? V.PersonalLine : PickLine(W, 6, 5), V.StateTimer);
+				return;
+			}
 			if (Rand01(W) < 0.35f)
 			{
 				V.Current = Activity::Talk;
 				V.StateTimer = 2.5f + Rand01(W) * 2.f;
-				Speak(V, PickLine(W, 6, 5), V.StateTimer);
+				Speak(V, (V.PersonalLine && Rand01(W) < 0.6f) ? V.PersonalLine : PickLine(W, 6, 5), V.StateTimer);
 				return;
 			}
 			V.Current = Activity::Walk;
-			V.TargetX = W.CampX + (Rand01(W) * 2.f - 1.f) * 900.f;
-			V.TargetY = W.CampY + (Rand01(W) * 2.f - 1.f) * 700.f;
+			if (V.Role == Habit::Knaps)
+			{
+				V.TargetX = (Rand01(W) * 2.f - 1.f) * 400.f;
+				V.TargetY = (Rand01(W) * 2.f - 1.f) * 200.f;
+			}
+			else if (V.Role == Habit::Wander)
+			{
+				V.TargetX = W.CampX + (Rand01(W) * 2.f - 1.f) * 1400.f;
+				V.TargetY = W.CampY + (Rand01(W) * 2.f - 1.f) * 1200.f;
+			}
+			else
+			{
+				V.TargetX = W.CampX + (Rand01(W) * 2.f - 1.f) * 900.f;
+				V.TargetY = W.CampY + (Rand01(W) * 2.f - 1.f) * 700.f;
+			}
 			if (Rand01(W) < 0.3f)
 			{
-				Speak(V, PickLine(W, 0, 6), 3.2f);
+				Speak(V, V.PersonalLine && V.PersonalLine[0] ? V.PersonalLine : PickLine(W, 0, 6), 3.2f);
 			}
 		}
 
@@ -442,13 +493,17 @@ namespace vg
 		W.ShelterX[4] = 40.f;
 		W.ShelterY[4] = 980.f;
 
-		W.VillagerCount = 14;
+		W.VillagerCount = 8;
 		for (int I = 0; I < W.VillagerCount; ++I)
 		{
 			Villager& V = W.Villagers[I];
 			V.Id = I;
 			V.Name = kNames[I];
+			V.Body = kBodies[I];
+			V.Role = kRoles[I];
 			V.AgeYears = kAges[I];
+			V.Trait = kTraits[I];
+			V.PersonalLine = kPersonal[I];
 			const float Ang = static_cast<float>(I) / static_cast<float>(W.VillagerCount) * 2.f * kPi;
 			V.X = W.CampX + std::cos(Ang) * 280.f;
 			V.Y = W.CampY + std::sin(Ang) * 220.f;
@@ -459,12 +514,12 @@ namespace vg
 			V.TargetX = V.X;
 			V.TargetY = V.Y;
 			V.Current = Activity::Idle;
-			if (I == 0 || I == 3 || I == 7)
+			if (I == 1 || I == 7)
 			{
 				V.Current = Activity::Talk;
 				V.StateTimer = 4.f;
 				V.TalkTimer = 4.f;
-				V.Speech = kLines[6 + (I % 5)];
+				V.Speech = kPersonal[I];
 			}
 		}
 
@@ -598,6 +653,11 @@ namespace vg
 		case Activity::Idle:
 		default: return "Idle";
 		}
+	}
+
+	const char* SexName(Sex Body)
+	{
+		return Body == Sex::Female ? "Woman" : "Man";
 	}
 
 	const char* WeatherName(Weather Wx)

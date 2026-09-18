@@ -66,20 +66,39 @@ int main()
 	{
 		World W;
 		InitWorld(W);
-		CHECK(W.VillagerCount >= 12 && W.VillagerCount <= 16, "12-16 villagers");
+		CHECK(W.VillagerCount == 8, "exactly 8 villagers");
 		CHECK(W.AnimalCount >= 3, "a few hunt animals");
 		CHECK(W.ShelterCount >= 4, "a few shelters");
 		int Adults = 0;
+		int Women = 0;
+		int Men = 0;
 		for (int I = 0; I < W.VillagerCount; ++I)
 		{
 			CHECK(W.Villagers[I].AgeYears >= 21, "adult only");
 			CHECK(W.Villagers[I].Name && W.Villagers[I].Name[0], "named");
+			CHECK(W.Villagers[I].Trait && W.Villagers[I].Trait[0], "personality");
+			CHECK(!SpeechForbidden(W.Villagers[I].Trait), "trait has no cosmos/god");
+			CHECK(!SpeechForbidden(W.Villagers[I].PersonalLine), "personal line has no cosmos/god");
 			if (W.Villagers[I].AgeYears >= 21)
 			{
 				++Adults;
 			}
+			if (W.Villagers[I].Body == Sex::Female)
+			{
+				++Women;
+			}
+			else
+			{
+				CHECK(W.Villagers[I].Body == Sex::Male, "male or female");
+				++Men;
+			}
+			for (int J = 0; J < I; ++J)
+			{
+				CHECK(std::strcmp(W.Villagers[I].Name, W.Villagers[J].Name) != 0, "distinct names");
+			}
 		}
-		CHECK(Adults == W.VillagerCount, "every villager is an adult");
+		CHECK(Adults == 8, "every villager is an adult");
+		CHECK(Women == 4 && Men == 4, "four women and four men");
 		CHECK(W.DayLengthSeconds > 30.f && W.DayLengthSeconds < 240.f, "compressed day");
 	}
 
@@ -234,12 +253,13 @@ int main()
 		{
 			Alive += W.Animals[I].Alive ? 1 : 0;
 		}
-		W.Villagers[2].Hunger = 40.f;
-		W.Villagers[2].Energy = 80.f;
+		W.Villagers[0].Hunger = 40.f;
+		W.Villagers[0].Energy = 80.f;
 		W.Sky = Weather::Clear;
 		W.TimeOfDayHours = 10.f;
-		W.Villagers[2].Current = Activity::Hunt;
-		for (int Step = 0; Step < 400; ++Step)
+		SetDayLength(W, 240.f);
+		W.Villagers[0].Current = Activity::Hunt;
+		for (int Step = 0; Step < 160; ++Step)
 		{
 			TickWorld(W, 0.25f);
 		}
@@ -248,7 +268,7 @@ int main()
 		{
 			AliveAfter += W.Animals[I].Alive ? 1 : 0;
 		}
-		CHECK(AliveAfter < Alive || W.Villagers[2].Hunger > 50.f, "hunt eventually kills or feeds");
+		CHECK(AliveAfter < Alive || W.Villagers[0].Hunger > 50.f, "hunt eventually kills or feeds");
 	}
 
 	{

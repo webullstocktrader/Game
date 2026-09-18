@@ -96,12 +96,15 @@ void AValleyHUD::DrawHUD()
 	if (Pin >= 0 && Pin < Sim.VillagerCount)
 	{
 		const vg::Villager& V = Sim.Villagers[Pin];
-		DrawBar(W - 360.f, H - 150.f, 340.f, 132.f, FLinearColor(0.02f, 0.03f, 0.02f, 0.62f));
-		ShadowText(W - 344.f, H - 140.f, UTF8_TO_TCHAR(V.Name), FLinearColor(0.82f, 0.74f, 0.42f), 1.0f);
-		ShadowText(W - 344.f, H - 112.f, FString::Printf(TEXT("%s   age %d"), UTF8_TO_TCHAR(vg::ActivityName(V.Current)), V.AgeYears), FLinearColor(0.9f, 0.88f, 0.78f), 0.85f);
-		ShadowText(W - 344.f, H - 86.f, FString::Printf(TEXT("Hunger %d    Energy %d"), FMath::RoundToInt(V.Hunger), FMath::RoundToInt(V.Energy)), FLinearColor(0.85f, 0.8f, 0.7f), 0.85f);
-		DrawBar(W - 344.f, H - 56.f, 300.f * (V.Hunger / 100.f), 8.f, FLinearColor(0.72f, 0.45f, 0.18f, 0.9f));
-		DrawBar(W - 344.f, H - 42.f, 300.f * (V.Energy / 100.f), 8.f, FLinearColor(0.3f, 0.55f, 0.75f, 0.9f));
+		DrawBar(W - 360.f, H - 168.f, 340.f, 150.f, FLinearColor(0.02f, 0.03f, 0.02f, 0.62f));
+		ShadowText(W - 344.f, H - 140.f,
+			FString::Printf(TEXT("%s  ·  %s  ·  %d"), UTF8_TO_TCHAR(V.Name), UTF8_TO_TCHAR(vg::SexName(V.Body)), V.AgeYears),
+			FLinearColor(0.82f, 0.74f, 0.42f), 1.0f);
+		ShadowText(W - 344.f, H - 114.f, UTF8_TO_TCHAR(V.Trait), FLinearColor(0.85f, 0.82f, 0.72f), 0.8f);
+		ShadowText(W - 344.f, H - 92.f, FString::Printf(TEXT("%s"), UTF8_TO_TCHAR(vg::ActivityName(V.Current))), FLinearColor(0.9f, 0.88f, 0.78f), 0.85f);
+		ShadowText(W - 344.f, H - 70.f, FString::Printf(TEXT("Hunger %d    Energy %d"), FMath::RoundToInt(V.Hunger), FMath::RoundToInt(V.Energy)), FLinearColor(0.85f, 0.8f, 0.7f), 0.85f);
+		DrawBar(W - 344.f, H - 48.f, 300.f * (V.Hunger / 100.f), 8.f, FLinearColor(0.72f, 0.45f, 0.18f, 0.9f));
+		DrawBar(W - 344.f, H - 34.f, 300.f * (V.Energy / 100.f), 8.f, FLinearColor(0.3f, 0.55f, 0.75f, 0.9f));
 	}
 
 	ShadowText(22.f, H - 36.f, TEXT("WASD fly   Q/E up-down   mouse look   Shift fast   P pause   [ ] day   click pin"), FLinearColor(0.55f, 0.58f, 0.5f), 0.75f);

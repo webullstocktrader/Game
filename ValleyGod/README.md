@@ -2,7 +2,7 @@
 
 Spectator god-mode. Stone-age valley **on Earth** — our sun, our sky, the planet that will later be called Earth. You are invisible. The villagers never know a watcher exists. Weather is weather.
 
-This is the **first watchable slice** — one valley, a compressed day, fourteen adults, four weather commands. No space. No other worlds. See `docs/WORLD-LORE.md`.
+This is the **first watchable slice** — one valley, a compressed day, **eight adults** (four women, four men), four weather commands. No space. No other worlds. See `docs/WORLD-LORE.md`.
 
 You do not need to write any game code.
 
@@ -11,10 +11,12 @@ You do not need to write any game code.
 ## What you can do in this slice
 
 1. Free-fly an invisible camera (WASD, Q/E up/down, mouse look). There is no in-world body for them to see.
-2. Watch 14 adults walk, talk in English, hunt, eat, and sleep. Hunger and energy drive it.
+2. Watch **8 adults** (4 women, 4 men) walk, talk in English, hunt, eat, and sleep. Each has a name, look, and habit. Hunger and energy drive it.
 3. Fire weather: **1 Rain**, **2 Tornado**, **3 Hurricane**, **4 Flood**. They seek shelter, panic, or climb. **0** clears the sky.
 4. Watch the day turn. Default is a **75 second day**. `[` / `]` stretch or compress it.
-5. Pin a villager (left click / Tab) and read the countdown panel (meal / sleep / dawn).
+5. Pin a villager (left click / Tab) and read their name, habit, and the countdown panel (meal / sleep / dawn).
+
+**Cast (all 21+):** Mara, Nima, Lira, Sable · Flint, Oak, Reed, Bram. No children.
 
 No marriage, no children, no later tech, no myths about you.
 
@@ -125,5 +127,6 @@ From this folder: `bash Tests/run_tests.sh`
 | `Source/ValleyGod/Sim/` | Engine-free day/hunger/weather brain |
 | `Source/ValleyGodEditor/` | Writes materials and the empty slice map the first time |
 | `docs/WORLD-LORE.md` | Earth / this solar system. No fantasy planet. No space in this slice |
+| `docs/CAST.md` | Eight named adults: four women, four men |
 
 Unreal 5.8. Latest stable. Watch first.

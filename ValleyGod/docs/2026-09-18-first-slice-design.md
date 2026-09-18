@@ -14,7 +14,7 @@ Simulation (day clock, hunger/energy, weather reactions, English lines) lives in
 
 | Unit | Job |
 |---|---|
-| `vg::World` | 14 adults, 4 animals, 5 shelters, weather, countdowns |
+| `vg::World` | 8 adults (4 women, 4 men), 4 animals, 5 shelters, weather, countdowns |
 | `AValleyTerrain` | Dirt bowl, grass ridges, river, flood offset, wet material swap |
 | `AValleyWorld` | Sky/Lumen lights, trees, lean-tos, fire, rain streaks, tornado column |
 | `AValleyVillager` | Hide-tunic body (cylinders/spheres), speech bubble, walk bob |
@@ -23,4 +23,4 @@ Simulation (day clock, hunger/energy, weather reactions, English lines) lives in
 
 ## Out of scope (enforced)
 
-No child characters (ages 24–44). No marriage/pregnancy. No god/player/camera words in speech. No multiplayer. No invented planet. No space gameplay. Villager talk may notice night lights, not name the cosmos.
+No child characters (ages 24–44). Exactly 8 adults: Mara, Nima, Lira, Sable, Flint, Oak, Reed, Bram. Hide tunics, readable male/female silhouettes. No marriage/pregnancy. No god/player/camera words in speech. No multiplayer. No invented planet. No space gameplay. Villager talk may notice night lights, not name the cosmos.

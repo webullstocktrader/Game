@@ -12,7 +12,7 @@ Must have:
 - One small stone-age valley (trees, river, dirt, a few shelters)
 - Day / night cycle
 - Invisible free-fly god camera (WASD + mouse look, or top-down toggle). Camera is never an in-world object villagers can see or talk about.
-- 12–16 adult villagers with simple AI: walk, talk (English lines / speech bubbles or radio UI), hunt animals, cook/eat, sleep
+- 8 adult villagers (exactly 4 women, 4 men, all 21+). Distinct names, looks, and habits. Walk, talk (English), hunt, cook/eat, sleep. No children.
 - Hunger / energy drives behavior
 - God weather commands UI: Rain, Tornado, Hurricane, Flood (aimed or global). Villagers react (seek shelter, panic, resume).
 - Event countdown panel (even if mostly placeholders): e.g. meal / sleep timers so the compressed calendar is visible

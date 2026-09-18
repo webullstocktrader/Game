@@ -273,23 +273,10 @@ void AValleyWorld::SpawnSheltersAndFire()
 
 void AValleyWorld::SpawnPeople()
 {
-	const FLinearColor Skins[] = {
-		FLinearColor(0.45f, 0.32f, 0.22f), FLinearColor(0.62f, 0.44f, 0.30f), FLinearColor(0.28f, 0.18f, 0.12f),
-		FLinearColor(0.52f, 0.36f, 0.24f), FLinearColor(0.38f, 0.24f, 0.16f), FLinearColor(0.58f, 0.40f, 0.28f),
-		FLinearColor(0.34f, 0.22f, 0.14f)
-	};
-	const FLinearColor Cloths[] = {
-		FLinearColor(0.28f, 0.16f, 0.08f), FLinearColor(0.18f, 0.14f, 0.10f), FLinearColor(0.32f, 0.22f, 0.10f),
-		FLinearColor(0.22f, 0.12f, 0.08f), FLinearColor(0.14f, 0.12f, 0.10f)
-	};
-	const FLinearColor Hairs[] = {
-		FLinearColor(0.04f, 0.03f, 0.02f), FLinearColor(0.12f, 0.07f, 0.03f), FLinearColor(0.08f, 0.06f, 0.04f)
-	};
-
 	for (int32 I = 0; I < Brain.VillagerCount; ++I)
 	{
 		AValleyVillager* V = GetWorld()->SpawnActor<AValleyVillager>();
-		V->Arm(I, Skins[I % 7], Cloths[I % 5], Hairs[I % 3]);
+		V->Arm(Brain.Villagers[I]);
 		V->SyncFromSim(Brain.Villagers[I], Terrain, 0.f);
 		Villagers.Add(V);
 	}
