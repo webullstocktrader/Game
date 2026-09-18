@@ -52,7 +52,11 @@ static bool ContainsFold(const char* Hay, const char* Needle)
 static bool SpeechForbidden(const char* Line)
 {
 	return ContainsFold(Line, "god") || ContainsFold(Line, "player") || ContainsFold(Line, "camera")
-		|| ContainsFold(Line, "watcher") || ContainsFold(Line, "spectator") || ContainsFold(Line, "sky father");
+		|| ContainsFold(Line, "watcher") || ContainsFold(Line, "spectator") || ContainsFold(Line, "sky father")
+		|| ContainsFold(Line, "planet") || ContainsFold(Line, "mars") || ContainsFold(Line, "venus")
+		|| ContainsFold(Line, "jupiter") || ContainsFold(Line, "galaxy") || ContainsFold(Line, "milky")
+		|| ContainsFold(Line, "orbit") || ContainsFold(Line, "spaceship") || ContainsFold(Line, "cosmos")
+		|| ContainsFold(Line, "solar") || ContainsFold(Line, "alien");
 }
 
 int main()
@@ -82,9 +86,18 @@ int main()
 	{
 		for (int I = 0; I < LineCount(); ++I)
 		{
-			CHECK(!SpeechForbidden(LineAt(I)), "speech never names a god or watcher");
+			CHECK(!SpeechForbidden(LineAt(I)), "speech never names a god, watcher, or the cosmos");
 			CHECK(LineAt(I) && LineAt(I)[0] >= 'A' && LineAt(I)[0] <= 'Z', "English sentence case");
 		}
+		bool bNightSky = false;
+		for (int I = 0; I < LineCount(); ++I)
+		{
+			if (ContainsFold(LineAt(I), "night") && ContainsFold(LineAt(I), "lights"))
+			{
+				bNightSky = true;
+			}
+		}
+		CHECK(bNightSky, "optional night-sky flavor exists, without naming planets");
 	}
 
 	{

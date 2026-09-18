@@ -1,7 +1,7 @@
 #pragma once
 
-// Engine-free stone-age valley simulation. Linked into the Unreal module and
-// also compiled by Tests/run_tests.sh without the editor.
+// Engine-free stone-age valley simulation on prehistoric Earth
+// (our solar system — this slice never leaves the valley).
 
 namespace vg
 {

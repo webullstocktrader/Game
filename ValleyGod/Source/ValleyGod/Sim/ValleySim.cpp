@@ -39,6 +39,7 @@ namespace vg
 			"Sky is quieter.",
 			"The valley smells like clay and smoke.",
 			"Walk with me to the river stones.",
+			"The night is thick with lights.",
 		};
 
 		const char* kNames[] = {

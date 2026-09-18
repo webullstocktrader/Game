@@ -1,8 +1,8 @@
 # VALLEY GOD
 
-Spectator god-mode. Stone-age valley. You are invisible. The villagers never know a watcher exists. Weather is weather.
+Spectator god-mode. Stone-age valley **on Earth** — our sun, our sky, the planet that will later be called Earth. You are invisible. The villagers never know a watcher exists. Weather is weather.
 
-This is the **first watchable slice** — one valley, a compressed day, fourteen adults, four weather commands.
+This is the **first watchable slice** — one valley, a compressed day, fourteen adults, four weather commands. No space. No other worlds. See `docs/WORLD-LORE.md`.
 
 You do not need to write any game code.
 
@@ -88,6 +88,7 @@ The valley is built when the game starts. You do not place anything in the level
 - Not marriage, pregnancy, or children.
 - Not bronze, iron, or anything past knapped stone.
 - Not a visible god, a cult, or villager awareness of the camera.
+- Not space, planet travel, or a fantasy planet. Same solar system, later — not here.
 - Characters wear hide tunics. No intimate content.
 
 Meshes are built in-engine (capsules, cylinders, spheres) so the project runs without Marketplace packs. Lighting is Lumen. Dirt goes wet when it rains. Swap in real characters later if you want.
@@ -123,5 +124,6 @@ From this folder: `bash Tests/run_tests.sh`
 | `Source/ValleyGod/` | Valley, villagers, weather, invisible camera |
 | `Source/ValleyGod/Sim/` | Engine-free day/hunger/weather brain |
 | `Source/ValleyGodEditor/` | Writes materials and the empty slice map the first time |
+| `docs/WORLD-LORE.md` | Earth / this solar system. No fantasy planet. No space in this slice |
 
 Unreal 5.8. Latest stable. Watch first.

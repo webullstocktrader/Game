@@ -1,7 +1,9 @@
 # Valley God — First Watchable Slice
 
 ## Pitch
-Spectator god-mode stone-age valley. User is invisible. Villagers never know a watcher exists. No myths about a god pointing at the player. Weather is weather.
+Spectator god-mode stone-age valley **on Earth** (our solar system, Milky Way). User is invisible. Villagers never know a watcher exists. No myths about a god pointing at the player. Weather is weather. This is not a fantasy planet.
+
+See `WORLD-LORE.md`. First slice stays in the valley. No space content.
 
 ## First login (this Cloud Agent deliverable)
 Playable Unreal Engine 5.8 project the user can open and watch.
@@ -20,7 +22,8 @@ Must have:
 - Nudity / sex / bathing intimate scenes (later pass, adults 21+ only)
 - Marriage / pregnancy / children systems (next pass)
 - Tech tree past stone age
-- Space, invented AI, god-awareness
+- Space, planet travel, named cosmos, invented planets
+- Invented AI, god-awareness
 - Online multiplayer
 
 ## Graphics goal

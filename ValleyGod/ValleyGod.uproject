@@ -2,7 +2,7 @@
 	"FileVersion": 3,
 	"EngineAssociation": "5.8",
 	"Category": "Games",
-	"Description": "VALLEY GOD first watchable slice — invisible god camera over a stone-age valley.",
+	"Description": "VALLEY GOD first watchable slice — invisible god camera over a stone-age valley on Earth.",
 	"Modules": [
 		{
 			"Name": "ValleyGod",

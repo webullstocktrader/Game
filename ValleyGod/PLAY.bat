@@ -4,7 +4,7 @@ cd /d "%~dp0"
 
 echo.
 echo   VALLEY GOD
-echo   Invisible. The valley does not know you.
+echo   Earth. One valley. They do not know you.
 echo.
 
 set "UEEDITOR="

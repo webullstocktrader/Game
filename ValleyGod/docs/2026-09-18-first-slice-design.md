@@ -2,6 +2,8 @@
 
 Ships as `ValleyGod/`, a self-contained Unreal Engine 5.8 C++ project. It does not replace or rewrite any other slice in this repo.
 
+**Lore:** prehistoric **Earth**, our sun, our Milky Way. See `WORLD-LORE.md`. This slice is one valley. Do not add space.
+
 ## Approach
 
 The valley is spawned in C++ at BeginPlay (same pattern as a content-free first playable). An editor module writes Lumen-friendly materials and an empty map the first time the project opens. `PLAY.bat` compiles, runs the prep commandlet, and launches.
@@ -21,4 +23,4 @@ Simulation (day clock, hunger/energy, weather reactions, English lines) lives in
 
 ## Out of scope (enforced)
 
-No child characters (ages 24–44). No marriage/pregnancy. No god/player/camera words in speech. No multiplayer.
+No child characters (ages 24–44). No marriage/pregnancy. No god/player/camera words in speech. No multiplayer. No invented planet. No space gameplay. Villager talk may notice night lights, not name the cosmos.
