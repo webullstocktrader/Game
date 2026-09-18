@@ -131,9 +131,9 @@ PLAY.bat now launches `-game` even when prep failed. Runtime materials should st
 Full steps: [`docs/METAHUMAN-QUIXEL.md`](docs/METAHUMAN-QUIXEL.md).
 
 1. Sign into **Fab**, download a Quixel grass/forest/dirt pack (`Content/Megascans/` or `Content/PN_GrassLibrary/`).
-2. Assemble all eight adults as `BP_Mara` … `BP_Bram` under `Content/EditableMetahumans/` (or `Content/MetaHumans/{Name}/`).
-3. PLAY. Bottom-left HUD: `Look  8 MetaHuman  ·  ground Quixel  ·  foliage Quixel` when those assets exist.
-4. Empty folders are OK — HUD stays `people procedural` and `-game` still runs. Missing Blueprints fall back per slot.
+2. In MetaHuman Creator, assemble adult **Mara** into `Content/MetaHumans/Mara`.
+3. PLAY. Bottom-left HUD: `Look  Mara MetaHuman  ·  ground Quixel  ·  foliage Quixel` when those assets exist.
+4. Empty folders are OK — HUD stays `procedural` and `-game` still runs.
 
 **Sim tests (no Unreal required)**  
 From this folder: `bash Tests/run_tests.sh`
@@ -150,11 +150,10 @@ From this folder: `bash Tests/run_tests.sh`
 | `Source/ValleyGod/` | Valley, villagers, weather, invisible camera |
 | `Source/ValleyGod/Sim/` | Engine-free day/hunger/weather brain + MetaHuman/Quixel path table |
 | `Source/ValleyGodEditor/` | Writes materials and the empty slice map the first time |
-| `Content/EditableMetahumans/` | Drop assembled `BP_{Name}` MetaHumans here (not committed) |
-| `Content/MetaHumans/` | Alternate MetaHuman assemble root (not committed) |
+| `Content/MetaHumans/Mara/` | Drop assembled Mara here (not committed) |
 | `Content/PN_GrassLibrary/` | Grass pack meshes/materials (not committed) |
 | `Content/Megascans/` | Fab/Quixel downloads (not committed) |
-| `docs/METAHUMAN-QUIXEL.md` | Fab sign-in, eight-adult assemble, PLAY |
+| `docs/METAHUMAN-QUIXEL.md` | Fab sign-in, Mara assemble, dense valley foliage, PLAY |
 | `docs/WORLD-LORE.md` | Earth / this solar system. No fantasy planet. No space in this slice |
 | `docs/CAST.md` | Eight named adults: four women, four men |
 

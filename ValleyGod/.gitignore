@@ -27,8 +27,6 @@ Content/MetaHumans/**
 !Content/MetaHumans/.gitkeep
 !Content/MetaHumans/Mara/
 !Content/MetaHumans/Mara/.gitkeep
-Content/EditableMetahumans/**
-!Content/EditableMetahumans/.gitkeep
 Content/PN_GrassLibrary/**
 !Content/PN_GrassLibrary/.gitkeep
 Content/Megascans/**

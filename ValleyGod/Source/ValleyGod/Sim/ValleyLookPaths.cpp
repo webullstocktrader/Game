@@ -1,25 +1,17 @@
 #include "ValleyLookPaths.h"
-#include "ValleyPalette.h"
 
 #include <cctype>
-#include <cstdio>
 #include <cstring>
 
 namespace vg
 {
 	namespace
 	{
-		const char* kVillagerPathFmts[] = {
-			"/Game/EditableMetahumans/%s/BP_%s",
-			"/Game/EditableMetahumans/%s/%s",
-			"/Game/MetaHumans/%s/BP_%s",
-			"/Game/MetaHumans/%s/%s",
-			"/Game/MetaHumans/%s/BP_MetaHuman",
-			"/Game/ValleySlice/BP_%s"
-		};
-
-		const char* kMaraExtraPaths[] = {
-			"/Game/EditableMetahumans/MHC_Hannah/Mara/BP_Mara"
+		const char* kMetaHumanClassPaths[] = {
+			"/Game/MetaHumans/Mara/BP_Mara",
+			"/Game/MetaHumans/Mara/Mara",
+			"/Game/MetaHumans/Mara/BP_MetaHuman",
+			"/Game/ValleySlice/BP_Mara"
 		};
 
 		const char* kDirtMaterials[] = {
@@ -104,92 +96,6 @@ namespace vg
 			return false;
 		}
 
-		bool EqualsFold(const char* A, const char* B)
-		{
-			if (!A || !B)
-			{
-				return false;
-			}
-			while (*A && *B)
-			{
-				if (std::tolower(static_cast<unsigned char>(*A)) != std::tolower(static_cast<unsigned char>(*B)))
-				{
-					return false;
-				}
-				++A;
-				++B;
-			}
-			return *A == *B;
-		}
-
-		bool StartsWithFold(const char* Hay, const char* Needle)
-		{
-			if (!Hay || !Needle || !Needle[0])
-			{
-				return false;
-			}
-			while (*Needle)
-			{
-				if (!*Hay
-					|| std::tolower(static_cast<unsigned char>(*Hay)) != std::tolower(static_cast<unsigned char>(*Needle)))
-				{
-					return false;
-				}
-				++Hay;
-				++Needle;
-			}
-			return true;
-		}
-
-		const char* LastComponent(const char* Path)
-		{
-			if (!Path)
-			{
-				return "";
-			}
-			const char* Last = Path;
-			for (const char* P = Path; *P; ++P)
-			{
-				if (*P == '/')
-				{
-					Last = P + 1;
-				}
-			}
-			return Last;
-		}
-
-		bool PathHasSegment(const char* Path, const char* Seg)
-		{
-			if (!Path || !Seg || !Seg[0])
-			{
-				return false;
-			}
-			const size_t N = std::strlen(Seg);
-			for (const char* P = Path; *P; ++P)
-			{
-				if (P != Path && *(P - 1) != '/')
-				{
-					continue;
-				}
-				size_t I = 0;
-				while (I < N)
-				{
-					if (!P[I]
-						|| std::tolower(static_cast<unsigned char>(P[I]))
-							!= std::tolower(static_cast<unsigned char>(Seg[I])))
-					{
-						break;
-					}
-					++I;
-				}
-				if (I == N && (P[N] == 0 || P[N] == '/'))
-				{
-					return true;
-				}
-			}
-			return false;
-		}
-
 		bool ContainsWord(const char* Hay, const char* Needle)
 		{
 			if (!Hay || !Needle || !Needle[0])
@@ -235,25 +141,6 @@ namespace vg
 			return ContainsFold(Path, "/3D_Plants") || ContainsFold(Path, "/Foliage") || ContainsFold(Path, "/3D_Assets");
 		}
 
-		bool RejectPresentationAsset(const char* Path, const char* Short)
-		{
-			if (StartsWithFold(Short, "SK_") || StartsWithFold(Short, "ABP_") || StartsWithFold(Short, "MI_")
-				|| StartsWithFold(Short, "M_") || StartsWithFold(Short, "SM_") || StartsWithFold(Short, "T_"))
-			{
-				return true;
-			}
-			if (ContainsFold(Short, "Groom") || ContainsFold(Path, "/Groom") || ContainsFold(Path, "/Materials")
-				|| ContainsFold(Path, "/Textures") || ContainsFold(Path, "/Maps/"))
-			{
-				return true;
-			}
-			if (ContainsFold(Short, "Hair") && !StartsWithFold(Short, "BP_"))
-			{
-				return true;
-			}
-			return false;
-		}
-
 		template <int N>
 		const char* AtOrEmpty(const char* (&Table)[N], int Index)
 		{
@@ -263,130 +150,27 @@ namespace vg
 			}
 			return Table[Index];
 		}
-
-		constexpr int kFmtCount = static_cast<int>(sizeof(kVillagerPathFmts) / sizeof(kVillagerPathFmts[0]));
-		constexpr int kMaraExtraCount = static_cast<int>(sizeof(kMaraExtraPaths) / sizeof(kMaraExtraPaths[0]));
 	} // namespace
 
 	bool UsesMetaHumanSlot(int Slot)
 	{
-		return Slot >= 0;
+		return Slot == kMetaHumanMilestoneSlot;
 	}
 
-	const char* MetaHumanContentFolder() { return "/Game/MetaHumans"; }
-	const char* EditableMetahumansContentFolder() { return "/Game/EditableMetahumans"; }
+	const char* MetaHumanContentFolder() { return "/Game/MetaHumans/Mara"; }
 	const char* PNGrassLibraryContentFolder() { return "/Game/PN_GrassLibrary"; }
 	const char* MegascansContentFolder() { return "/Game/Megascans"; }
 	const char* FabContentFolder() { return "/Game/Fab"; }
 	const char* ValleySliceContentFolder() { return "/Game/ValleySlice"; }
 	const char* ValleySliceMapPath() { return "/Game/Maps/ValleySlice"; }
 
-	int VillagerMetaHumanPathCount(int Slot)
-	{
-		if (Slot < 0 || Slot >= PersonLookCount())
-		{
-			return 0;
-		}
-		return kFmtCount + (Slot == kMetaHumanMilestoneSlot ? kMaraExtraCount : 0);
-	}
-
-	const char* VillagerMetaHumanPathAt(int Slot, int Index)
-	{
-		static char Cache[16][8][256];
-		const int Count = VillagerMetaHumanPathCount(Slot);
-		if (Slot < 0 || Slot >= PersonLookCount() || Slot >= 16 || Index < 0 || Index >= Count || Index >= 8)
-		{
-			return "";
-		}
-		char* Out = Cache[Slot][Index];
-		const char* Name = PersonLookAt(Slot).Name;
-		if (!Name || !Name[0])
-		{
-			Out[0] = 0;
-			return "";
-		}
-		if (Index < kFmtCount)
-		{
-			std::snprintf(Out, 256, kVillagerPathFmts[Index], Name, Name);
-		}
-		else
-		{
-			std::snprintf(Out, 256, "%s", kMaraExtraPaths[Index - kFmtCount]);
-		}
-		return Out;
-	}
-
-	int MetaHumanClassPathCount() { return VillagerMetaHumanPathCount(kMetaHumanMilestoneSlot); }
-	const char* MetaHumanClassPathAt(int Index) { return VillagerMetaHumanPathAt(kMetaHumanMilestoneSlot, Index); }
-
-	bool PackageMatchesVillager(const char* Path, const char* VillagerName)
-	{
-		if (!Path || !Path[0] || !VillagerName || !VillagerName[0])
-		{
-			return false;
-		}
-		const char* Short = LastComponent(Path);
-		if (RejectPresentationAsset(Path, Short))
-		{
-			return false;
-		}
-		const bool bBP = StartsWithFold(Short, "BP_");
-		const bool bNamedShort = EqualsFold(Short, VillagerName);
-		const bool bBPNamed = bBP && EqualsFold(Short + 3, VillagerName);
-		const bool bGenericInNamedFolder = bBP
-			&& (EqualsFold(Short, "BP_MetaHuman") || EqualsFold(Short, "BP_MH"))
-			&& PathHasSegment(Path, VillagerName);
-		if (!bBP && !bNamedShort)
-		{
-			return false;
-		}
-		return bBPNamed || bNamedShort || bGenericInNamedFolder;
-	}
-
-	bool LooksLikeGenericMetaHumanBlueprint(const char* Path)
-	{
-		if (!Path || !Path[0])
-		{
-			return false;
-		}
-		if (!ContainsFold(Path, "/EditableMetahumans/") && !ContainsFold(Path, "/MetaHumans/")
-			&& !ContainsFold(Path, "/ValleySlice/"))
-		{
-			return false;
-		}
-		const char* Short = LastComponent(Path);
-		if (!StartsWithFold(Short, "BP_"))
-		{
-			return false;
-		}
-		if (RejectPresentationAsset(Path, Short))
-		{
-			return false;
-		}
-		if (ContainsFold(Short, "MHC") || ContainsFold(Short, "Groom") || ContainsFold(Short, "Face")
-			|| ContainsFold(Short, "Body") || ContainsFold(Short, "Hair"))
-		{
-			return false;
-		}
-		if (!EqualsFold(Short, "BP_MetaHuman") && !EqualsFold(Short, "BP_MH")
-			&& !StartsWithFold(Short, "BP_MetaHuman_"))
-		{
-			return false;
-		}
-		for (int I = 0; I < PersonLookCount(); ++I)
-		{
-			if (PackageMatchesVillager(Path, PersonLookAt(I).Name))
-			{
-				return false;
-			}
-		}
-		return true;
-	}
-
 	int PreferredTreeScatterCount() { return 140; }
 	int PreferredGrassScatterCount() { return 1600; }
 	int PreferredRockScatterCount() { return 90; }
 	int ProceduralGrassTuftCount() { return 400; }
+
+	int MetaHumanClassPathCount() { return static_cast<int>(sizeof(kMetaHumanClassPaths) / sizeof(kMetaHumanClassPaths[0])); }
+	const char* MetaHumanClassPathAt(int Index) { return AtOrEmpty(kMetaHumanClassPaths, Index); }
 
 	int DirtMaterialPathCount() { return static_cast<int>(sizeof(kDirtMaterials) / sizeof(kDirtMaterials[0])); }
 	const char* DirtMaterialPathAt(int Index) { return AtOrEmpty(kDirtMaterials, Index); }

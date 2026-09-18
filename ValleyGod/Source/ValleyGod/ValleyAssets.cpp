@@ -1,6 +1,5 @@
 #include "ValleyAssets.h"
 #include "Sim/ValleyLookPaths.h"
-#include "Sim/ValleyPalette.h"
 #include "Engine/StaticMesh.h"
 #include "GameFramework/Actor.h"
 #include "HAL/FileManager.h"
@@ -155,140 +154,53 @@ namespace
 		}
 	}
 
-	int32 BlueprintRank(const FString& PackageName, const FString& VillagerName)
+	int32 BlueprintRank(const FString& PackageName)
 	{
 		const FString Short = FPackageName::GetShortName(PackageName);
-		if (Short.Equals(TEXT("BP_") + VillagerName, ESearchCase::IgnoreCase))
+		if (Short.StartsWith(TEXT("BP_")))
 		{
 			return 0;
 		}
-		if (Short.StartsWith(TEXT("BP_")))
+		if (Short.Equals(TEXT("Mara"), ESearchCase::IgnoreCase))
 		{
 			return 1;
 		}
-		if (Short.Equals(VillagerName, ESearchCase::IgnoreCase))
+		return 2;
+	}
+
+	UClass* FindMaraClass()
+	{
+		for (int32 I = 0; I < vg::MetaHumanClassPathCount(); ++I)
 		{
-			return 2;
-		}
-		return 3;
-	}
-
-	bool PathMatchesVillager(const FString& PackageName, const char* VillagerName)
-	{
-		const auto Converted = StringCast<ANSICHAR>(*PackageName);
-		return vg::PackageMatchesVillager(Converted.Get(), VillagerName);
-	}
-
-	bool PathLooksGeneric(const FString& PackageName)
-	{
-		const auto Converted = StringCast<ANSICHAR>(*PackageName);
-		return vg::LooksLikeGenericMetaHumanBlueprint(Converted.Get());
-	}
-
-	UClass* LoadDocumentedVillagerClass(int Slot)
-	{
-		for (int32 I = 0; I < vg::VillagerMetaHumanPathCount(Slot); ++I)
-		{
-			if (UClass* Class = LoadActorClass(Utf(vg::VillagerMetaHumanPathAt(Slot, I))))
+			if (UClass* Class = LoadActorClass(Utf(vg::MetaHumanClassPathAt(I))))
 			{
+				UE_LOG(LogValleyGodAssets, Display, TEXT("Valley God: Mara MetaHuman class %s"), *Class->GetPathName());
 				return Class;
 			}
 		}
-		return nullptr;
-	}
 
-	UClass* FindNamedClass(const char* VillagerName, const TArray<FString>& Candidates)
-	{
-		if (!VillagerName || !VillagerName[0])
+		TArray<FString> Candidates;
+		CollectPackages(TEXT("MetaHumans/Mara"), Candidates, true);
+		Candidates.Sort([](const FString& A, const FString& B)
 		{
-			return nullptr;
-		}
-		const FString Name = UTF8_TO_TCHAR(VillagerName);
-		TArray<FString> Named;
-		for (const FString& PackageName : Candidates)
-		{
-			if (PathMatchesVillager(PackageName, VillagerName))
-			{
-				Named.Add(PackageName);
-			}
-		}
-		Named.Sort([&Name](const FString& A, const FString& B)
-		{
-			const int32 RA = BlueprintRank(A, Name);
-			const int32 RB = BlueprintRank(B, Name);
+			const int32 RA = BlueprintRank(A);
+			const int32 RB = BlueprintRank(B);
 			if (RA != RB)
 			{
 				return RA < RB;
 			}
 			return A.Len() < B.Len();
 		});
-		for (const FString& PackageName : Named)
+		for (const FString& PackageName : Candidates)
 		{
+			UE_LOG(LogValleyGodAssets, Verbose, TEXT("Valley God: considering Mara package %s"), *PackageName);
 			if (UClass* Class = LoadActorClass(PackageName))
 			{
-				UE_LOG(LogValleyGodAssets, Display, TEXT("Valley God: %s MetaHuman scanned %s"),
-					UTF8_TO_TCHAR(VillagerName), *Class->GetPathName());
+				UE_LOG(LogValleyGodAssets, Display, TEXT("Valley God: Mara MetaHuman scanned %s"), *Class->GetPathName());
 				return Class;
 			}
 		}
 		return nullptr;
-	}
-
-	void DiscoverVillagerClasses(TArray<UClass*>& OutClasses, const TArray<FString>& MetaPackages)
-	{
-		const int32 AdultCount = vg::PersonLookCount();
-		OutClasses.SetNum(AdultCount);
-		TSet<UClass*> Claimed;
-
-		for (int32 Slot = 0; Slot < AdultCount; ++Slot)
-		{
-			const char* Name = vg::PersonLookAt(Slot).Name;
-			UClass* Class = LoadDocumentedVillagerClass(Slot);
-			if (!Class)
-			{
-				Class = FindNamedClass(Name, MetaPackages);
-			}
-			if (Class)
-			{
-				OutClasses[Slot] = Class;
-				Claimed.Add(Class);
-				UE_LOG(LogValleyGodAssets, Display, TEXT("Valley God: slot %d (%s) MetaHuman class %s"),
-					Slot, UTF8_TO_TCHAR(Name ? Name : ""), *Class->GetPathName());
-			}
-		}
-
-		TArray<UClass*> Generics;
-		for (const FString& PackageName : MetaPackages)
-		{
-			if (!PathLooksGeneric(PackageName))
-			{
-				continue;
-			}
-			if (UClass* Class = LoadActorClass(PackageName))
-			{
-				if (!Claimed.Contains(Class))
-				{
-					Generics.AddUnique(Class);
-					Claimed.Add(Class);
-				}
-			}
-		}
-
-		int32 GenericIndex = 0;
-		for (int32 Slot = 0; Slot < OutClasses.Num() && GenericIndex < Generics.Num(); ++Slot)
-		{
-			if (!OutClasses[Slot])
-			{
-				OutClasses[Slot] = Generics[GenericIndex++];
-				UE_LOG(LogValleyGodAssets, Display, TEXT("Valley God: slot %d using generic MetaHuman %s"),
-					Slot, *OutClasses[Slot]->GetPathName());
-			}
-		}
-
-		for (; GenericIndex < Generics.Num(); ++GenericIndex)
-		{
-			OutClasses.Add(Generics[GenericIndex]);
-		}
 	}
 }
 
@@ -297,14 +209,7 @@ namespace Valley
 	FOptionalAssets DiscoverOptionalAssets()
 	{
 		FOptionalAssets Found;
-
-		TArray<FString> MetaPackages;
-		CollectPackages(TEXT("EditableMetahumans"), MetaPackages, true);
-		CollectPackages(TEXT("MetaHumans"), MetaPackages, true);
-		CollectPackages(TEXT("ValleySlice"), MetaPackages, true);
-
-		DiscoverVillagerClasses(Found.VillagerClasses, MetaPackages);
-		Found.MaraClass = Found.VillagerClasses.IsValidIndex(0) ? Found.VillagerClasses[0] : nullptr;
+		Found.MaraClass = FindMaraClass();
 
 		TArray<FString> Downloaded;
 		CollectPackages(TEXT("Megascans"), Downloaded, true);
@@ -338,17 +243,9 @@ namespace Valley
 		LoadDocumented<UStaticMesh>(vg::RockMeshPathCount(), &vg::RockMeshPathAt, Found.Rocks, 24);
 		ScanKindIntoMeshes(vg::ScanKind::RockMesh, Downloaded, Found.Rocks, 24);
 
-		int32 NamedMH = 0;
-		for (UClass* Class : Found.VillagerClasses)
-		{
-			if (Class)
-			{
-				++NamedMH;
-			}
-		}
 		UE_LOG(LogValleyGodAssets, Display,
-			TEXT("Valley God assets: MetaHumans=%d/%d dirt=%s grass=%s trees=%d grassMeshes=%d rocks=%d"),
-			NamedMH, Found.VillagerClasses.Num(),
+			TEXT("Valley God assets: Mara=%s dirt=%s grass=%s trees=%d grassMeshes=%d rocks=%d"),
+			Found.MaraClass ? TEXT("MetaHuman") : TEXT("procedural"),
 			Found.Dirt ? TEXT("Quixel") : TEXT("procedural"),
 			Found.Grass ? TEXT("Quixel") : TEXT("procedural"),
 			Found.Trees.Num(), Found.GrassMeshes.Num(), Found.Rocks.Num());

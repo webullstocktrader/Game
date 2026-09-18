@@ -8,7 +8,6 @@
 #include "Components/StaticMeshComponent.h"
 #include "Components/TextRenderComponent.h"
 #include "Camera/PlayerCameraManager.h"
-#include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
@@ -69,7 +68,7 @@ void AValleyVillager::SpawnPresentation(UClass* PresentationClass)
 	AActor* Spawned = GetWorld()->SpawnActor<AActor>(PresentationClass, GetActorTransform(), Params);
 	if (!Spawned)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Valley God: MetaHuman spawn failed for %s"), *PresentationClass->GetName());
+		UE_LOG(LogTemp, Warning, TEXT("Valley God: Mara MetaHuman spawn failed for %s"), *PresentationClass->GetName());
 		return;
 	}
 
@@ -101,25 +100,13 @@ void AValleyVillager::SpawnPresentation(UClass* PresentationClass)
 		if (Prim)
 		{
 			Prim->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-			Prim->SetCastShadow(true);
-			Prim->bAffectDynamicIndirectLighting = true;
-		}
-	}
-
-	if (Character)
-	{
-		if (USkeletalMeshComponent* Skel = Character->GetMesh())
-		{
-			Skel->SetCastShadow(true);
-			Skel->bCastDynamicShadow = true;
-			Skel->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
 		}
 	}
 
 	const bool bAttached = Spawned->AttachToComponent(GetRootComponent(), FAttachmentTransformRules::SnapToTargetNotIncludingScale);
 	if (!bAttached)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Valley God: MetaHuman attach failed for %s; using procedural body"), *PresentationClass->GetName());
+		UE_LOG(LogTemp, Warning, TEXT("Valley God: Mara MetaHuman attach failed for %s; using procedural body"), *PresentationClass->GetName());
 		Spawned->Destroy();
 		return;
 	}

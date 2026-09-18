@@ -10,8 +10,6 @@ namespace Valley
 {
 	struct FOptionalAssets
 	{
-		// Index matches villager slot. Missing entries stay null (procedural body).
-		TArray<UClass*> VillagerClasses;
 		UClass* MaraClass = nullptr;
 		UMaterialInterface* Dirt = nullptr;
 		UMaterialInterface* Grass = nullptr;
@@ -21,8 +19,8 @@ namespace Valley
 		TArray<UStaticMesh*> Rocks;
 	};
 
-	// Loads documented aliases, then scans Content/EditableMetahumans, MetaHumans,
-	// PN_GrassLibrary, Megascans, Fab, and ValleySlice. Missing downloads yield
-	// empty fields so callers keep procedural art.
+	// Loads documented aliases, then scans Content/PN_GrassLibrary, Megascans,
+	// Fab, MSPresets, Quixel, and ValleySlice. Missing downloads yield empty
+	// fields so callers keep procedural art.
 	FOptionalAssets DiscoverOptionalAssets();
 }

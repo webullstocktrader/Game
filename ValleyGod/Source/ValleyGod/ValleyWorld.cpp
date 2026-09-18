@@ -48,11 +48,7 @@ void AValleyWorld::BuildValley()
 	vg::InitWorld(Brain);
 	StripTemplateActors();
 	const Valley::FOptionalAssets Assets = Valley::DiscoverOptionalAssets();
-	VillagerMetaHumanClasses.Reset();
-	for (UClass* Class : Assets.VillagerClasses)
-	{
-		VillagerMetaHumanClasses.Add(Class);
-	}
+	MaraMetaHumanClass = Assets.MaraClass;
 	bQuixelGround = Assets.Dirt != nullptr || Assets.Grass != nullptr;
 	bQuixelFoliage = Assets.Trees.Num() > 0 || Assets.GrassMeshes.Num() > 0 || Assets.Rocks.Num() > 0;
 	Terrain = GetWorld()->SpawnActor<AValleyTerrain>(FVector::ZeroVector, FRotator::ZeroRotator);
@@ -62,13 +58,10 @@ void AValleyWorld::BuildValley()
 	SpawnTreesAndRocks(Assets);
 	SpawnSheltersAndFire();
 	SpawnPeople();
-	MetaHumanCount = 0;
-	for (AValleyVillager* V : Villagers)
+	bMaraMetaHuman = false;
+	if (AValleyVillager* Mara = FindVillager(vg::kMetaHumanMilestoneSlot))
 	{
-		if (V && V->IsUsingMetaHuman())
-		{
-			++MetaHumanCount;
-		}
+		bMaraMetaHuman = Mara->IsUsingMetaHuman();
 	}
 	SpawnRain();
 	SpawnTornado();
@@ -212,22 +205,8 @@ void AValleyWorld::AddSizedInstance(UHierarchicalInstancedStaticMeshComponent* P
 
 FString AValleyWorld::GraphicsStatusLine() const
 {
-	FString People;
-	const int32 Total = Villagers.Num();
-	if (MetaHumanCount <= 0)
-	{
-		People = TEXT("people procedural");
-	}
-	else if (Total > 0 && MetaHumanCount >= Total)
-	{
-		People = FString::Printf(TEXT("%d MetaHuman"), MetaHumanCount);
-	}
-	else
-	{
-		People = FString::Printf(TEXT("%d MetaHuman / %d procedural"), MetaHumanCount, FMath::Max(0, Total - MetaHumanCount));
-	}
-	return FString::Printf(TEXT("Look  %s  ·  ground %s  ·  foliage %s"),
-		*People,
+	return FString::Printf(TEXT("Look  Mara %s  ·  ground %s  ·  foliage %s"),
+		bMaraMetaHuman ? TEXT("MetaHuman") : TEXT("procedural"),
 		bQuixelGround ? TEXT("Quixel") : TEXT("procedural"),
 		bQuixelFoliage ? TEXT("Quixel") : TEXT("procedural"));
 }
@@ -583,22 +562,13 @@ void AValleyWorld::SpawnSheltersAndFire()
 
 void AValleyWorld::SpawnPeople()
 {
-	// Spawn whoever the sim currently has. Clamp only to the sim array size so a
-	// later larger Villagers[] can grow; do not hard-lock the watchable cast to 8.
-	const int32 MaxHumans = static_cast<int32>(UE_ARRAY_COUNT(Brain.Villagers));
-	const int32 Humans = FMath::Clamp(Brain.VillagerCount, 0, MaxHumans);
+	// These eight adults are the entire human population on Earth this slice.
+	// Do not spawn extra tribes, camps, or background people.
+	const int32 Humans = FMath::Min(Brain.VillagerCount, vg::kEarthHumans);
 	for (int32 I = 0; I < Humans; ++I)
 	{
 		AValleyVillager* V = GetWorld()->SpawnActor<AValleyVillager>();
-		if (!V)
-		{
-			continue;
-		}
-		UClass* Presentation = nullptr;
-		if (vg::UsesMetaHumanSlot(I) && VillagerMetaHumanClasses.IsValidIndex(I))
-		{
-			Presentation = VillagerMetaHumanClasses[I].Get();
-		}
+		UClass* Presentation = vg::UsesMetaHumanSlot(I) ? MaraMetaHumanClass.Get() : nullptr;
 		V->Arm(Brain.Villagers[I], Presentation);
 		V->SyncFromSim(Brain.Villagers[I], Terrain, 0.f);
 		Villagers.Add(V);
