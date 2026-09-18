@@ -10,5 +10,6 @@ class UValleyPrepCommandlet : public UCommandlet
 	GENERATED_BODY()
 
 public:
+	UValleyPrepCommandlet();
 	virtual int32 Main(const FString& Params) override;
 };

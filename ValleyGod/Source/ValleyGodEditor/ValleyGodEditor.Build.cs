@@ -18,5 +18,6 @@ public class ValleyGodEditor : ModuleRules
 			"AssetRegistry",
 			"EditorFramework"
 		});
+		PrivateIncludePathModuleNames.Add("ValleyGod");
 	}
 }

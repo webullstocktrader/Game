@@ -94,7 +94,7 @@ The valley is built when the game starts. You do not place anything in the level
 - Not space, planet travel, or a fantasy planet. Same solar system, later — not here.
 - Characters wear hide tunics. No intimate content.
 
-Meshes are built in-engine (capsules, cylinders, spheres) so the project runs without Marketplace packs. Lighting is Lumen. Dirt goes wet when it rains. Swap in real characters later if you want.
+Meshes are built in-engine (cylinders, spheres, layered canopies) so the project runs without Marketplace packs. Lighting is Lumen with a stronger sun, soft sky, light fog, and histogram exposure. Dirt goes wet when it rains. PLAY.bat bakes `Content/Materials/M_*` when Unreal prep succeeds; if Content is empty, the game module builds the same wet materials at runtime so `-game` does not fall back to WorldGrid or BasicShape.
 
 ---
 
@@ -109,8 +109,14 @@ Install Visual Studio 2022 with **Game development with C++**. Open `ValleyGod.u
 **Black level / missing map**  
 Open the project in the editor once (not `-game`). The editor writes `/Game/Maps/ValleySlice` and the materials on startup. Then press Play.
 
-**Looks dry / gray**  
-You launched before the editor wrote materials. Open the editor once. Wet dirt and hide tunics should show after that.
+**Looks dry / gray / checkerboard**  
+PLAY.bat now launches `-game` even when prep failed. Runtime materials should still show wet dirt, grass, bark, hide, and skin. To bake assets onto disk: run PLAY.bat once (it calls `-run=ValleyPrep`) or open the editor. After a successful prep, `Content/Materials` contains `M_Dirt`, `M_DirtWet`, `M_Grass`, `M_Water`, `M_Bark`, `M_Foliage`, `M_Wood`, `M_Hide`, `M_SkinWarm`, and the rest of the `M_*` set.
+
+**How to verify this graphics pass**
+1. Double-click `PLAY.bat` (quotes handle spaces in the project path).
+2. Confirm the valley is brown dirt + green patches + dark water, not a gray grid.
+3. Fly to camp: hide roofs, wood poles, stone fire ring. Eight named adults in hide tunics. Trees have thick trunks and layered canopies.
+4. Press **1** — dirt darkens (wet). Press **0** to clear.
 
 **Sim tests (no Unreal required)**  
 From this folder: `bash Tests/run_tests.sh`

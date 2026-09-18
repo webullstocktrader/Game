@@ -57,6 +57,15 @@ bool AValleyTerrain::IsGrass(float X, float Y, float Height) const
 	return Height > 70.f && FMath::PerlinNoise2D(FVector2D(X, Y) * 0.00022f) > -0.05f;
 }
 
+bool AValleyTerrain::IsStone(float X, float Y, float Height) const
+{
+	if (IsGrass(X, Y, Height) || RiverDistance(X, Y) < 480.f)
+	{
+		return false;
+	}
+	return FMath::PerlinNoise2D(FVector2D(X + 900.f, Y) * 0.0004f) > 0.38f;
+}
+
 void AValleyTerrain::AddQuad(TArray<FVector>& Verts, TArray<int32>& Tris, TArray<FVector>& Norms, TArray<FVector2D>& UVs, TArray<FColor>& Colors,
 	const FVector& A, const FVector& B, const FVector& C, const FVector& D, const FColor& Color)
 {
@@ -132,10 +141,10 @@ void AValleyTerrain::SetFlood(float ExtraZ)
 
 void AValleyTerrain::Rebuild()
 {
-	TArray<FVector> DirtV, GrassV, WaterV, DirtN, GrassN, WaterN;
-	TArray<int32> DirtT, GrassT, WaterT;
-	TArray<FVector2D> DirtUV, GrassUV, WaterUV;
-	TArray<FColor> DirtC, GrassC, WaterC;
+	TArray<FVector> DirtV, GrassV, StoneV, WaterV, DirtN, GrassN, StoneN, WaterN;
+	TArray<int32> DirtT, GrassT, StoneT, WaterT;
+	TArray<FVector2D> DirtUV, GrassUV, StoneUV, WaterUV;
+	TArray<FColor> DirtC, GrassC, StoneC, WaterC;
 
 	for (int32 IY = 0; IY < GridN - 1; ++IY)
 	{
@@ -151,11 +160,17 @@ void AValleyTerrain::Rebuild()
 			const FVector D(X0, Y1, BaseHeight[IndexOf(IX, IY + 1)]);
 
 			const bool bGrass = IsGrass(X0, Y0, A.Z);
+			const bool bStone = !bGrass && IsStone(X0, Y0, A.Z);
 			const FColor DirtCol(92, 58, 32);
 			const FColor GrassCol(46, 78, 32);
+			const FColor StoneCol(120, 114, 104);
 			if (bGrass)
 			{
 				AddQuad(GrassV, GrassT, GrassN, GrassUV, GrassC, A, B, C, D, GrassCol);
+			}
+			else if (bStone)
+			{
+				AddQuad(StoneV, StoneT, StoneN, StoneUV, StoneC, A, B, C, D, StoneCol);
 			}
 			else
 			{
@@ -184,6 +199,14 @@ void AValleyTerrain::Rebuild()
 		if (UMaterialInterface* Grass = Valley::Material(TEXT("M_Grass")))
 		{
 			GroundMesh->SetMaterial(1, Grass);
+		}
+	}
+	if (StoneV.Num() > 0)
+	{
+		GroundMesh->CreateMeshSection(2, StoneV, StoneT, StoneN, StoneUV, StoneC, TArray<FProcMeshTangent>(), true);
+		if (UMaterialInterface* Stone = Valley::Material(TEXT("M_Stone")))
+		{
+			GroundMesh->SetMaterial(2, Stone);
 		}
 	}
 

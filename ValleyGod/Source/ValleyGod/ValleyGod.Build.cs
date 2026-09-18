@@ -5,6 +5,7 @@ public class ValleyGod : ModuleRules
 	public ValleyGod(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
+		PublicIncludePaths.Add(ModuleDirectory);
 
 		PublicDependencyModuleNames.AddRange(new[]
 		{

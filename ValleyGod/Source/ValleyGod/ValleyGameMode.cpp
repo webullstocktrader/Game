@@ -19,9 +19,9 @@ void AValleyGameMode::BeginPlay()
 	Valley->BuildValley();
 	if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
 	{
-		if (APawn* Pawn = PC->GetPawn())
+		if (APawn* Watcher = PC->GetPawn())
 		{
-			Pawn->SetActorLocation(FVector(40.f, -2100.f, 1280.f));
+			Watcher->SetActorLocation(FVector(40.f, -2100.f, 1280.f));
 		}
 		PC->SetControlRotation(FRotator(-28.f, 90.f, 0.f));
 	}
