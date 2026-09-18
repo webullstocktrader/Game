@@ -31,5 +31,7 @@ Content/Megascans/**
 !Content/Megascans/.gitkeep
 Content/Fab/**
 !Content/Fab/.gitkeep
+Content/PN_GrassLibrary/**
+!Content/PN_GrassLibrary/.gitkeep
 Content/ValleySlice/**
 !Content/ValleySlice/.gitkeep

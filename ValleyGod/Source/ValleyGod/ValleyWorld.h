@@ -46,6 +46,7 @@ private:
 	void StripTemplateActors();
 	void SpawnAtmosphere();
 	void SpawnTreesAndRocks(const Valley::FOptionalAssets& Assets);
+	void SpawnGrassClumps(const Valley::FOptionalAssets& Assets, FRandomStream& Rng);
 	void SpawnSheltersAndFire();
 	void SpawnPeople();
 	void SpawnRain();

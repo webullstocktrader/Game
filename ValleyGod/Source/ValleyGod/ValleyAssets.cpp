@@ -215,6 +215,8 @@ namespace Valley
 		CollectPackages(TEXT("Megascans"), Downloaded, true);
 		CollectPackages(TEXT("Fab"), Downloaded, true);
 		CollectPackages(TEXT("ValleySlice"), Downloaded, true);
+		CollectPackages(TEXT("Materials"), Downloaded, true);
+		CollectPackages(TEXT("PN_GrassLibrary"), Downloaded, true);
 
 		TArray<UMaterialInterface*> Dirts;
 		LoadDocumented<UMaterialInterface>(vg::DirtMaterialPathCount(), &vg::DirtMaterialPathAt, Dirts, 1);
@@ -246,11 +248,8 @@ namespace Valley
 			ScanKindIntoMeshes(vg::ScanKind::TreeMesh, Downloaded, Found.Trees, 8);
 		}
 
-		LoadDocumented<UStaticMesh>(vg::GrassMeshPathCount(), &vg::GrassMeshPathAt, Found.GrassMeshes, 8);
-		if (Found.GrassMeshes.Num() == 0)
-		{
-			ScanKindIntoMeshes(vg::ScanKind::GrassMesh, Downloaded, Found.GrassMeshes, 8);
-		}
+		LoadDocumented<UStaticMesh>(vg::GrassMeshPathCount(), &vg::GrassMeshPathAt, Found.GrassMeshes, vg::kGrassMeshLoadLimit);
+		ScanKindIntoMeshes(vg::ScanKind::GrassMesh, Downloaded, Found.GrassMeshes, vg::kGrassMeshLoadLimit);
 
 		LoadDocumented<UStaticMesh>(vg::RockMeshPathCount(), &vg::RockMeshPathAt, Found.Rocks, 6);
 		if (Found.Rocks.Num() == 0)
