@@ -291,7 +291,20 @@ void AValleyPlayerController::OnPin()
 	FCollisionQueryParams Params(NAME_None, true, GetPawn());
 	if (GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params))
 	{
-		if (AValleyVillager* V = Cast<AValleyVillager>(Hit.GetActor()))
+		AActor* HitActor = Hit.GetActor();
+		AValleyVillager* V = Cast<AValleyVillager>(HitActor);
+		if (!V)
+		{
+			for (AActor* Walk = HitActor; Walk; Walk = Walk->GetOwner())
+			{
+				V = Cast<AValleyVillager>(Walk);
+				if (V)
+				{
+					break;
+				}
+			}
+		}
+		if (V)
 		{
 			if (AValleyWorld* W = Valley())
 			{

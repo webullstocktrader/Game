@@ -23,6 +23,36 @@
 		{
 			"Name": "EnhancedInput",
 			"Enabled": true
+		},
+		{
+			"Name": "Fab",
+			"Enabled": true,
+			"Optional": true
+		},
+		{
+			"Name": "Bridge",
+			"Enabled": true,
+			"Optional": true
+		},
+		{
+			"Name": "MegascansPlugin",
+			"Enabled": true,
+			"Optional": true
+		},
+		{
+			"Name": "MetaHumanCharacter",
+			"Enabled": true,
+			"Optional": true
+		},
+		{
+			"Name": "MetaHumanSDK",
+			"Enabled": true,
+			"Optional": true
+		},
+		{
+			"Name": "HairStrands",
+			"Enabled": true,
+			"Optional": true
 		}
 	]
 }

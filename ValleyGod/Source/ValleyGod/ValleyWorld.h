@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Sim/ValleySim.h"
+#include "ValleyAssets.h"
 #include "ValleyWorld.generated.h"
 
 class AValleyTerrain;
@@ -13,6 +14,9 @@ class ASkyLight;
 class AExponentialHeightFog;
 class APostProcessVolume;
 class UPointLightComponent;
+class UStaticMeshComponent;
+class UStaticMesh;
+class UMaterialInterface;
 
 UCLASS()
 class VALLEYGOD_API AValleyWorld : public AActor
@@ -34,13 +38,14 @@ public:
 	void PinVillager(int32 Id);
 	int32 CyclePin();
 	int32 GetPinnedId() const { return PinnedId; }
+	FString GraphicsStatusLine() const;
 
 	static AValleyWorld* Get(const UWorld* World);
 
 private:
 	void StripTemplateActors();
 	void SpawnAtmosphere();
-	void SpawnTreesAndRocks();
+	void SpawnTreesAndRocks(const Valley::FOptionalAssets& Assets);
 	void SpawnSheltersAndFire();
 	void SpawnPeople();
 	void SpawnRain();
@@ -48,6 +53,7 @@ private:
 	void UpdateSky();
 	void UpdateWeatherVisuals(float DeltaSeconds);
 	UStaticMeshComponent* Place(UStaticMesh* Mesh, const FVector& Loc, const FRotator& Rot, const FVector& Scale, UMaterialInterface* Mat, const FName& Name);
+	UStaticMeshComponent* PlaceSized(UStaticMesh* Mesh, const FVector& Loc, const FRotator& Rot, float TargetHeightCm, const FName& Name);
 
 	vg::World Brain;
 
@@ -81,9 +87,17 @@ private:
 	UPROPERTY()
 	TArray<TObjectPtr<UStaticMeshComponent>> Trees;
 
+	TArray<float> TreeBaseYaw;
+
 	UPROPERTY()
 	TObjectPtr<UPointLightComponent> FireLight;
 
+	UPROPERTY()
+	TSubclassOf<AActor> MaraMetaHumanClass;
+
 	int32 PinnedId = -1;
 	float RainClock = 0.f;
+	bool bMaraMetaHuman = false;
+	bool bQuixelGround = false;
+	bool bQuixelFoliage = false;
 };

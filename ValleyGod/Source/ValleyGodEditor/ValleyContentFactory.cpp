@@ -100,6 +100,10 @@ bool FValleyContentFactory::EnsureContent()
 {
 	IFileManager::Get().MakeDirectory(*FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Materials")), true);
 	IFileManager::Get().MakeDirectory(*FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Maps")), true);
+	IFileManager::Get().MakeDirectory(*FPaths::Combine(FPaths::ProjectContentDir(), TEXT("MetaHumans/Mara")), true);
+	IFileManager::Get().MakeDirectory(*FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Megascans")), true);
+	IFileManager::Get().MakeDirectory(*FPaths::Combine(FPaths::ProjectContentDir(), TEXT("ValleySlice")), true);
+	IFileManager::Get().MakeDirectory(*FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Fab")), true);
 
 	int32 Saved = 0;
 	int32 Failed = 0;

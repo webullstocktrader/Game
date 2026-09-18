@@ -127,7 +127,10 @@ void AValleyTerrain::SetWet(bool bInWet)
 		return;
 	}
 	bWet = bInWet;
-	if (UMaterialInterface* Mat = Valley::Material(bWet ? TEXT("M_DirtWet") : TEXT("M_Dirt")))
+	UMaterialInterface* Mat = bWet
+		? (WetGroundMat ? WetGroundMat.Get() : Valley::Material(TEXT("M_DirtWet")))
+		: (DryGroundMat ? DryGroundMat.Get() : Valley::Material(TEXT("M_Dirt")));
+	if (Mat)
 	{
 		GroundMesh->SetMaterial(0, Mat);
 	}
@@ -218,5 +221,37 @@ void AValleyTerrain::Rebuild()
 		{
 			WaterMesh->SetMaterial(0, Water);
 		}
+	}
+}
+
+void AValleyTerrain::ApplyGroundMaterials(UMaterialInterface* Dirt, UMaterialInterface* Grass, UMaterialInterface* Wet)
+{
+	if (Dirt)
+	{
+		DryGroundMat = Dirt;
+		GroundMesh->SetMaterial(0, Dirt);
+	}
+	else
+	{
+		DryGroundMat = Valley::Material(TEXT("M_Dirt"));
+	}
+
+	if (Grass)
+	{
+		GroundMesh->SetMaterial(1, Grass);
+	}
+
+	if (Wet)
+	{
+		WetGroundMat = Wet;
+	}
+	else
+	{
+		WetGroundMat = Valley::Material(TEXT("M_DirtWet"));
+	}
+
+	if (bWet && WetGroundMat)
+	{
+		GroundMesh->SetMaterial(0, WetGroundMat);
 	}
 }

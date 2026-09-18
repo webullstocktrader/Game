@@ -1,5 +1,6 @@
 #include "ValleySim.h"
 #include "ValleyPalette.h"
+#include "ValleyLookPaths.h"
 
 #include <cstdio>
 #include <cstring>
@@ -400,6 +401,77 @@ int main()
 				  AnimalLookAt(1).FurR, AnimalLookAt(1).FurG, AnimalLookAt(1).FurB)
 				> 0.03f,
 			"animals do not share one hide color");
+	}
+
+	{
+		CHECK(kMetaHumanMilestoneSlot == 0, "Mara is sim slot 0");
+		CHECK(std::strcmp(PersonLookAt(kMetaHumanMilestoneSlot).Name, "Mara") == 0, "milestone MetaHuman is Mara");
+		CHECK(UsesMetaHumanSlot(0), "Mara prefers a MetaHuman Blueprint when one exists");
+		int MetaSlots = 0;
+		for (int I = 0; I < kEarthHumans; ++I)
+		{
+			if (UsesMetaHumanSlot(I))
+			{
+				++MetaSlots;
+			}
+			else
+			{
+				CHECK(I != 0, "only Mara is MetaHuman this milestone");
+			}
+		}
+		CHECK(MetaSlots == 1, "exactly one adult uses MetaHuman this milestone");
+		CHECK(!UsesMetaHumanSlot(-1) && !UsesMetaHumanSlot(8), "out of range slots stay procedural");
+
+		CHECK(std::strcmp(MetaHumanContentFolder(), "/Game/MetaHumans/Mara") == 0, "Mara assemble folder");
+		CHECK(std::strcmp(MegascansContentFolder(), "/Game/Megascans") == 0, "Fab/Quixel default folder");
+		CHECK(std::strcmp(ValleySliceContentFolder(), "/Game/ValleySlice") == 0, "optional alias folder");
+		CHECK(std::strcmp(ValleySliceMapPath(), "/Game/Maps/ValleySlice") == 0, "playable slice map");
+
+		CHECK(MetaHumanClassPathCount() >= 3, "several Mara Blueprint candidates");
+		bool bHasMaraFolder = false;
+		bool bHasAlias = false;
+		for (int I = 0; I < MetaHumanClassPathCount(); ++I)
+		{
+			const char* P = MetaHumanClassPathAt(I);
+			CHECK(P && P[0] == '/', "class path is an Unreal long package name");
+			if (std::strstr(P, "/Game/MetaHumans/Mara/"))
+			{
+				bHasMaraFolder = true;
+			}
+			if (std::strstr(P, "/Game/ValleySlice/"))
+			{
+				bHasAlias = true;
+			}
+		}
+		CHECK(bHasMaraFolder, "candidates include Content/MetaHumans/Mara");
+		CHECK(bHasAlias, "candidates include Content/ValleySlice alias");
+
+		CHECK(DirtMaterialPathCount() >= 1 && GrassMaterialPathCount() >= 1, "ground material aliases exist");
+		CHECK(TreeMeshPathCount() >= 1 && GrassMeshPathCount() >= 1 && RockMeshPathCount() >= 1,
+			"foliage mesh aliases exist");
+		CHECK(std::strstr(DirtMaterialPathAt(0), "/Game/") == DirtMaterialPathAt(0), "dirt alias is /Game");
+		CHECK(std::strstr(TreeMeshPathAt(0), "/Game/") == TreeMeshPathAt(0), "tree alias is /Game");
+
+		CHECK(ClassifyContentPath("/Game/Megascans/Surfaces/Forest_Dirt_01/MI_Forest_Dirt_01", ScanKind::DirtMaterial),
+			"Quixel dirt surface classifies as dirt");
+		CHECK(!ClassifyContentPath("/Game/Megascans/3D_Plants/European_Beech/SM_European_Beech_Var1", ScanKind::DirtMaterial),
+			"a beech mesh is not dirt");
+		CHECK(ClassifyContentPath("/Game/Megascans/Surfaces/Wild_Grass/MI_Wild_Grass", ScanKind::GrassMaterial),
+			"Quixel grass surface classifies as grass");
+		CHECK(ClassifyContentPath("/Game/Megascans/3D_Plants/European_Beech/SM_European_Beech_Var1", ScanKind::TreeMesh),
+			"beech plant classifies as a tree");
+		CHECK(ClassifyContentPath("/Game/Fab/ForestPack/SM_European_Beech_Var1", ScanKind::TreeMesh),
+			"Fab beech without 3D_Plants still classifies as a tree");
+		CHECK(ClassifyContentPath("/Game/Fab/Meadow/SM_Wild_Grass_Clump", ScanKind::GrassMesh),
+			"Fab grass clump without 3D_Plants classifies as grass mesh");
+		CHECK(ClassifyContentPath("/Game/Megascans/3D_Plants/Wild_Grass_Clump/SM_Wild_Grass_Clump", ScanKind::GrassMesh),
+			"grass clump plant classifies as grass mesh");
+		CHECK(ClassifyContentPath("/Game/Megascans/3D_Assets/Cliff_Rock/SM_Cliff_Rock", ScanKind::RockMesh),
+			"cliff rock classifies as rock");
+		CHECK(ClassifyContentPath("/Game/Megascans/Surfaces/Wet_Mud/MI_Wet_Mud", ScanKind::WetDirtMaterial),
+			"wet mud classifies as wet dirt");
+		CHECK(!ClassifyContentPath("/Game/Materials/M_Dirt", ScanKind::TreeMesh), "baked M_Dirt is not a tree");
+		CHECK(!ClassifyContentPath(nullptr, ScanKind::DirtMaterial), "null path is not a match");
 	}
 
 	std::printf("%d passed, %d failed\n", GPasses, GFails);

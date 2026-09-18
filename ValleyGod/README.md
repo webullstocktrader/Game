@@ -94,7 +94,7 @@ The valley is built when the game starts. You do not place anything in the level
 - Not space, planet travel, or a fantasy planet. Same solar system, later — not here.
 - Characters wear hide tunics. No intimate content.
 
-Meshes are built in-engine (cylinders, spheres, layered canopies) so the project runs without Marketplace packs. Lighting is Lumen with a stronger sun, soft sky, light fog, and histogram exposure. Dirt goes wet when it rains. PLAY.bat bakes `Content/Materials/M_*` when Unreal prep succeeds; if Content is empty, the game module builds the same wet materials at runtime so `-game` does not fall back to WorldGrid or BasicShape.
+Meshes are built in-engine (cylinders, spheres, layered canopies) **until** you drop MetaHuman + Quixel downloads into the folders in `docs/METAHUMAN-QUIXEL.md`. Lighting is Lumen with a stronger sun, soft sky, light fog, and histogram exposure. Dirt goes wet when it rains. PLAY.bat bakes `Content/Materials/M_*` when Unreal prep succeeds; if Content materials are empty, the game module builds the same wet materials at runtime so `-game` does not fall back to WorldGrid or BasicShape.
 
 ---
 
@@ -127,6 +127,14 @@ PLAY.bat now launches `-game` even when prep failed. Runtime materials should st
 3. Fly to camp: hide roofs, wood poles, stone fire ring. Eight named adults in hide tunics. Trees have thick trunks and layered canopies.
 4. Press **1** — dirt darkens (wet). Press **0** to clear.
 
+**MetaHuman + Quixel (after Fab / Creator downloads)**  
+Full steps: [`docs/METAHUMAN-QUIXEL.md`](docs/METAHUMAN-QUIXEL.md).
+
+1. Sign into **Fab**, download a Quixel grass/forest/dirt pack into this project (`Content/Megascans/`).
+2. In MetaHuman Creator, assemble adult **Mara** into `Content/MetaHumans/Mara`.
+3. PLAY. Bottom-left HUD: `Look  Mara MetaHuman  ·  ground Quixel  ·  foliage Quixel`.
+4. Empty folders are OK — HUD stays `procedural` and `-game` still runs.
+
 **Sim tests (no Unreal required)**  
 From this folder: `bash Tests/run_tests.sh`
 
@@ -140,8 +148,11 @@ From this folder: `bash Tests/run_tests.sh`
 | `PLAY.bat` | Double-click this |
 | `Config/` | Lumen, project name |
 | `Source/ValleyGod/` | Valley, villagers, weather, invisible camera |
-| `Source/ValleyGod/Sim/` | Engine-free day/hunger/weather brain |
+| `Source/ValleyGod/Sim/` | Engine-free day/hunger/weather brain + MetaHuman/Quixel path table |
 | `Source/ValleyGodEditor/` | Writes materials and the empty slice map the first time |
+| `Content/MetaHumans/Mara/` | Drop assembled Mara here (not committed) |
+| `Content/Megascans/` | Fab/Quixel downloads (not committed) |
+| `docs/METAHUMAN-QUIXEL.md` | Fab sign-in, Mara assemble, PLAY |
 | `docs/WORLD-LORE.md` | Earth / this solar system. No fantasy planet. No space in this slice |
 | `docs/CAST.md` | Eight named adults: four women, four men |
 
