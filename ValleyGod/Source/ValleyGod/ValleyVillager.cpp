@@ -68,7 +68,7 @@ void AValleyVillager::SpawnPresentation(UClass* PresentationClass)
 	AActor* Spawned = GetWorld()->SpawnActor<AActor>(PresentationClass, GetActorTransform(), Params);
 	if (!Spawned)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Valley God: Mara MetaHuman spawn failed for %s"), *PresentationClass->GetName());
+		UE_LOG(LogTemp, Warning, TEXT("Valley God: MetaHuman spawn failed for %s"), *PresentationClass->GetName());
 		return;
 	}
 
@@ -106,7 +106,7 @@ void AValleyVillager::SpawnPresentation(UClass* PresentationClass)
 	const bool bAttached = Spawned->AttachToComponent(GetRootComponent(), FAttachmentTransformRules::SnapToTargetNotIncludingScale);
 	if (!bAttached)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Valley God: Mara MetaHuman attach failed for %s; using procedural body"), *PresentationClass->GetName());
+		UE_LOG(LogTemp, Warning, TEXT("Valley God: MetaHuman attach failed for %s; using procedural body"), *PresentationClass->GetName());
 		Spawned->Destroy();
 		return;
 	}

@@ -405,38 +405,88 @@ int main()
 
 	{
 		CHECK(kMetaHumanMilestoneSlot == 0, "Mara is sim slot 0");
-		CHECK(std::strcmp(PersonLookAt(kMetaHumanMilestoneSlot).Name, "Mara") == 0, "milestone MetaHuman is Mara");
+		CHECK(std::strcmp(PersonLookAt(kMetaHumanMilestoneSlot).Name, "Mara") == 0, "first MetaHuman slot is Mara");
 		CHECK(UsesMetaHumanSlot(0), "Mara prefers a MetaHuman Blueprint when one exists");
 		int MetaSlots = 0;
+		const char* Expected[8] = {"Mara", "Nima", "Lira", "Sable", "Flint", "Oak", "Reed", "Bram"};
 		for (int I = 0; I < kEarthHumans; ++I)
 		{
-			if (UsesMetaHumanSlot(I))
+			CHECK(UsesMetaHumanSlot(I), "every starting adult may use a MetaHuman Blueprint");
+			CHECK(std::strcmp(PersonLookAt(I).Name, Expected[I]) == 0, "slot order matches named adults");
+			CHECK(VillagerMetaHumanPathCount(I) >= 4, "each adult has several Blueprint candidates");
+			bool bHasEditable = false;
+			bool bHasMetaHumans = false;
+			bool bHasAlias = false;
+			bool bHasNamedBP = false;
+			for (int P = 0; P < VillagerMetaHumanPathCount(I); ++P)
 			{
-				++MetaSlots;
+				const char* Path = VillagerMetaHumanPathAt(I, P);
+				CHECK(Path && Path[0] == '/', "villager class path is an Unreal long package name");
+				if (std::strstr(Path, "/Game/EditableMetahumans/"))
+				{
+					bHasEditable = true;
+				}
+				if (std::strstr(Path, "/Game/MetaHumans/"))
+				{
+					bHasMetaHumans = true;
+				}
+				if (std::strstr(Path, "/Game/ValleySlice/"))
+				{
+					bHasAlias = true;
+				}
+				if (std::strstr(Path, Expected[I]))
+				{
+					bHasNamedBP = true;
+				}
 			}
-			else
-			{
-				CHECK(I != 0, "only Mara is MetaHuman this milestone");
-			}
+			CHECK(bHasEditable, "candidates include Content/EditableMetahumans");
+			CHECK(bHasMetaHumans, "candidates include Content/MetaHumans");
+			CHECK(bHasAlias, "candidates include Content/ValleySlice alias");
+			CHECK(bHasNamedBP, "candidates include the villager name");
+			++MetaSlots;
 		}
-		CHECK(MetaSlots == 1, "exactly one adult uses MetaHuman this milestone");
-		CHECK(!UsesMetaHumanSlot(-1) && !UsesMetaHumanSlot(8), "out of range slots stay procedural");
+		CHECK(MetaSlots == 8, "all eight starting adults are MetaHuman-eligible");
+		CHECK(UsesMetaHumanSlot(8), "later adults may use a discovered Blueprint if population grows");
+		CHECK(!UsesMetaHumanSlot(-1), "negative slots stay procedural");
 
-		CHECK(std::strcmp(MetaHumanContentFolder(), "/Game/MetaHumans/Mara") == 0, "Mara assemble folder");
+		CHECK(PackageMatchesVillager("/Game/EditableMetahumans/MHC_Hannah/Mara/BP_Mara", "Mara"),
+			"assembled Mara under MHC_Hannah matches Mara");
+		CHECK(!PackageMatchesVillager("/Game/EditableMetahumans/MHC_Hannah/Mara/BP_Mara", "Nima"),
+			"Mara Blueprint does not match Nima");
+		CHECK(PackageMatchesVillager("/Game/MetaHumans/Nima/BP_Nima", "Nima"), "BP_Nima matches Nima");
+		CHECK(PackageMatchesVillager("/Game/EditableMetahumans/Flint/BP_Flint", "Flint"), "BP_Flint matches Flint");
+		CHECK(!PackageMatchesVillager("/Game/EditableMetahumans/Mara/SK_Mara_Body", "Mara"),
+			"body skeletal mesh is not a presentation Blueprint");
+		CHECK(LooksLikeGenericMetaHumanBlueprint("/Game/EditableMetahumans/Shared/BP_MetaHuman"),
+			"generic BP_MetaHuman can fill an unmatched adult");
+		CHECK(!LooksLikeGenericMetaHumanBlueprint("/Game/EditableMetahumans/Mara/BP_Mara"),
+			"named villager Blueprint is not generic");
+		CHECK(!LooksLikeGenericMetaHumanBlueprint("/Game/EditableMetahumans/Mara/Groom_Hair"),
+			"groom assets are not presentation Blueprints");
+
+		CHECK(std::strcmp(EditableMetahumansContentFolder(), "/Game/EditableMetahumans") == 0,
+			"MetaHuman Creator assemble root");
+		CHECK(std::strcmp(MetaHumanContentFolder(), "/Game/MetaHumans") == 0, "legacy MetaHumans assemble root");
+		CHECK(std::strcmp(PNGrassLibraryContentFolder(), "/Game/PN_GrassLibrary") == 0, "PN grass pack folder");
 		CHECK(std::strcmp(MegascansContentFolder(), "/Game/Megascans") == 0, "Fab/Quixel default folder");
 		CHECK(std::strcmp(ValleySliceContentFolder(), "/Game/ValleySlice") == 0, "optional alias folder");
 		CHECK(std::strcmp(ValleySliceMapPath(), "/Game/Maps/ValleySlice") == 0, "playable slice map");
 
-		CHECK(MetaHumanClassPathCount() >= 3, "several Mara Blueprint candidates");
+		CHECK(MetaHumanClassPathCount() >= 4, "Mara still has several Blueprint candidates");
 		bool bHasMaraFolder = false;
+		bool bHasMaraEditable = false;
 		bool bHasAlias = false;
 		for (int I = 0; I < MetaHumanClassPathCount(); ++I)
 		{
 			const char* P = MetaHumanClassPathAt(I);
 			CHECK(P && P[0] == '/', "class path is an Unreal long package name");
-			if (std::strstr(P, "/Game/MetaHumans/Mara/"))
+			if (std::strstr(P, "/Game/MetaHumans/Mara") || std::strstr(P, "/Game/MetaHumans/Mara/"))
 			{
 				bHasMaraFolder = true;
+			}
+			if (std::strstr(P, "/Game/EditableMetahumans/"))
+			{
+				bHasMaraEditable = true;
 			}
 			if (std::strstr(P, "/Game/ValleySlice/"))
 			{
@@ -444,13 +494,29 @@ int main()
 			}
 		}
 		CHECK(bHasMaraFolder, "candidates include Content/MetaHumans/Mara");
+		CHECK(bHasMaraEditable, "candidates include Content/EditableMetahumans");
 		CHECK(bHasAlias, "candidates include Content/ValleySlice alias");
 
-		CHECK(DirtMaterialPathCount() >= 1 && GrassMaterialPathCount() >= 1, "ground material aliases exist");
-		CHECK(TreeMeshPathCount() >= 1 && GrassMeshPathCount() >= 1 && RockMeshPathCount() >= 1,
+		CHECK(DirtMaterialPathCount() >= 2 && GrassMaterialPathCount() >= 2, "ground material aliases exist");
+		CHECK(TreeMeshPathCount() >= 2 && GrassMeshPathCount() >= 2 && RockMeshPathCount() >= 1,
 			"foliage mesh aliases exist");
 		CHECK(std::strstr(DirtMaterialPathAt(0), "/Game/") == DirtMaterialPathAt(0), "dirt alias is /Game");
 		CHECK(std::strstr(TreeMeshPathAt(0), "/Game/") == TreeMeshPathAt(0), "tree alias is /Game");
+
+		bool bHasPNGrass = false;
+		for (int I = 0; I < GrassMeshPathCount(); ++I)
+		{
+			if (std::strstr(GrassMeshPathAt(I), "/Game/PN_GrassLibrary/"))
+			{
+				bHasPNGrass = true;
+			}
+		}
+		CHECK(bHasPNGrass, "grass aliases include PN_GrassLibrary");
+
+		CHECK(PreferredTreeScatterCount() >= 56, "Quixel trees scatter denser than a thin ring");
+		CHECK(PreferredGrassScatterCount() >= 140, "grass clumps are dense enough to read as a meadow");
+		CHECK(PreferredRockScatterCount() >= 24, "rocks fill the valley floor");
+		CHECK(ProceduralGrassTuftCount() >= 70, "empty-folder valley still gets cheap grass tufts");
 
 		CHECK(ClassifyContentPath("/Game/Megascans/Surfaces/Forest_Dirt_01/MI_Forest_Dirt_01", ScanKind::DirtMaterial),
 			"Quixel dirt surface classifies as dirt");
@@ -458,6 +524,10 @@ int main()
 			"a beech mesh is not dirt");
 		CHECK(ClassifyContentPath("/Game/Megascans/Surfaces/Wild_Grass/MI_Wild_Grass", ScanKind::GrassMaterial),
 			"Quixel grass surface classifies as grass");
+		CHECK(ClassifyContentPath("/Game/PN_GrassLibrary/Materials/MI_Grass_01", ScanKind::GrassMaterial),
+			"PN grass library material classifies as grass");
+		CHECK(ClassifyContentPath("/Game/PN_GrassLibrary/Meshes/SM_Grass_01", ScanKind::GrassMesh),
+			"PN grass library mesh classifies as grass");
 		CHECK(ClassifyContentPath("/Game/Megascans/3D_Plants/European_Beech/SM_European_Beech_Var1", ScanKind::TreeMesh),
 			"beech plant classifies as a tree");
 		CHECK(ClassifyContentPath("/Game/Fab/ForestPack/SM_European_Beech_Var1", ScanKind::TreeMesh),

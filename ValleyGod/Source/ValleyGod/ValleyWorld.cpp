@@ -47,7 +47,11 @@ void AValleyWorld::BuildValley()
 	vg::InitWorld(Brain);
 	StripTemplateActors();
 	const Valley::FOptionalAssets Assets = Valley::DiscoverOptionalAssets();
-	MaraMetaHumanClass = Assets.MaraClass;
+	VillagerMetaHumanClasses.Reset();
+	for (UClass* Class : Assets.VillagerClasses)
+	{
+		VillagerMetaHumanClasses.Add(Class);
+	}
 	bQuixelGround = Assets.Dirt != nullptr || Assets.Grass != nullptr;
 	bQuixelFoliage = Assets.Trees.Num() > 0 || Assets.GrassMeshes.Num() > 0 || Assets.Rocks.Num() > 0;
 	Terrain = GetWorld()->SpawnActor<AValleyTerrain>(FVector::ZeroVector, FRotator::ZeroRotator);
@@ -57,10 +61,13 @@ void AValleyWorld::BuildValley()
 	SpawnTreesAndRocks(Assets);
 	SpawnSheltersAndFire();
 	SpawnPeople();
-	bMaraMetaHuman = false;
-	if (AValleyVillager* Mara = FindVillager(vg::kMetaHumanMilestoneSlot))
+	MetaHumanCount = 0;
+	for (AValleyVillager* V : Villagers)
 	{
-		bMaraMetaHuman = Mara->IsUsingMetaHuman();
+		if (V && V->IsUsingMetaHuman())
+		{
+			++MetaHumanCount;
+		}
 	}
 	SpawnRain();
 	SpawnTornado();
@@ -162,8 +169,22 @@ UStaticMeshComponent* AValleyWorld::PlaceSized(UStaticMesh* Mesh, const FVector&
 
 FString AValleyWorld::GraphicsStatusLine() const
 {
-	return FString::Printf(TEXT("Look  Mara %s  ·  ground %s  ·  foliage %s"),
-		bMaraMetaHuman ? TEXT("MetaHuman") : TEXT("procedural"),
+	FString People;
+	const int32 Total = Villagers.Num();
+	if (MetaHumanCount <= 0)
+	{
+		People = TEXT("people procedural");
+	}
+	else if (Total > 0 && MetaHumanCount >= Total)
+	{
+		People = FString::Printf(TEXT("%d MetaHuman"), MetaHumanCount);
+	}
+	else
+	{
+		People = FString::Printf(TEXT("%d MetaHuman / %d procedural"), MetaHumanCount, FMath::Max(0, Total - MetaHumanCount));
+	}
+	return FString::Printf(TEXT("Look  %s  ·  ground %s  ·  foliage %s"),
+		*People,
 		bQuixelGround ? TEXT("Quixel") : TEXT("procedural"),
 		bQuixelFoliage ? TEXT("Quixel") : TEXT("procedural"));
 }
@@ -244,18 +265,32 @@ void AValleyWorld::SpawnTreesAndRocks(const Valley::FOptionalAssets& Assets)
 			|| (FMath::Abs(X) < 500.f && FMath::Abs(Y) < 400.f);
 	};
 
+	auto ScatterUntil = [&](int32 Want, int32 MaxAttempts, auto&& PlaceOne)
+	{
+		int32 Placed = 0;
+		for (int32 Attempt = 0; Attempt < MaxAttempts && Placed < Want; ++Attempt)
+		{
+			if (PlaceOne(Attempt, Placed))
+			{
+				++Placed;
+			}
+		}
+		return Placed;
+	};
+
 	int32 TreeN = 0;
 	if (Assets.Trees.Num() > 0)
 	{
-		for (int32 I = 0; I < 28; ++I)
+		const int32 Want = vg::PreferredTreeScatterCount();
+		ScatterUntil(Want, Want * 4, [&](int32 Attempt, int32 /*Placed*/)
 		{
 			const float X = Rng.FRandRange(-5200.f, 5200.f);
 			const float Y = Rng.FRandRange(-5200.f, 5200.f);
 			if (InClearing(X, Y))
 			{
-				continue;
+				return false;
 			}
-			UStaticMesh* Mesh = Assets.Trees[I % Assets.Trees.Num()];
+			UStaticMesh* Mesh = Assets.Trees[Attempt % Assets.Trees.Num()];
 			const FVector G = Terrain->GroundAt(FVector(X, Y, 0.f));
 			const float Yaw = Rng.FRandRange(0.f, 360.f);
 			if (UStaticMeshComponent* Placed = PlaceSized(Mesh, G, FRotator(0.f, Yaw, 0.f),
@@ -263,19 +298,22 @@ void AValleyWorld::SpawnTreesAndRocks(const Valley::FOptionalAssets& Assets)
 			{
 				Trees.Add(Placed);
 				TreeBaseYaw.Add(Yaw);
+				++TreeN;
+				return true;
 			}
-			++TreeN;
-		}
+			return false;
+		});
 	}
 	else if (Cyl && Sphere)
 	{
-		for (int32 I = 0; I < 48; ++I)
+		const int32 Want = FMath::Max(48, vg::PreferredTreeScatterCount() - 8);
+		ScatterUntil(Want, Want * 4, [&](int32 /*Attempt*/, int32 /*Placed*/)
 		{
 			const float X = Rng.FRandRange(-5200.f, 5200.f);
 			const float Y = Rng.FRandRange(-5200.f, 5200.f);
 			if (InClearing(X, Y))
 			{
-				continue;
+				return false;
 			}
 			const FVector G = Terrain->GroundAt(FVector(X, Y, 0.f));
 			const float H = Rng.FRandRange(2.8f, 5.2f);
@@ -311,41 +349,77 @@ void AValleyWorld::SpawnTreesAndRocks(const Valley::FOptionalAssets& Assets)
 					FVector(0.12f, 0.12f, H * 0.35f), Bark, FName(*FString::Printf(TEXT("Branch%d"), TreeN)));
 			}
 			++TreeN;
-		}
+			return true;
+		});
 	}
 
 	if (Assets.GrassMeshes.Num() > 0)
 	{
-		for (int32 I = 0; I < 70; ++I)
+		const int32 Want = vg::PreferredGrassScatterCount();
+		int32 GrassN = 0;
+		ScatterUntil(Want, Want * 3, [&](int32 Attempt, int32 /*Placed*/)
 		{
-			const float X = Rng.FRandRange(-2400.f, 2400.f);
-			const float Y = Rng.FRandRange(-800.f, 3200.f);
+			const float X = Rng.FRandRange(-2800.f, 2800.f);
+			const float Y = Rng.FRandRange(-1200.f, 3600.f);
 			if (InClearing(X, Y))
 			{
-				continue;
+				return false;
 			}
-			UStaticMesh* Mesh = Assets.GrassMeshes[I % Assets.GrassMeshes.Num()];
+			UStaticMesh* Mesh = Assets.GrassMeshes[Attempt % Assets.GrassMeshes.Num()];
 			const FVector G = Terrain->GroundAt(FVector(X, Y, 0.f));
 			PlaceSized(Mesh, G, FRotator(0.f, Rng.FRandRange(0.f, 360.f), 0.f), Rng.FRandRange(45.f, 110.f),
-				FName(*FString::Printf(TEXT("QGrass%d"), I)));
-		}
+				FName(*FString::Printf(TEXT("QGrass%d"), GrassN)));
+			++GrassN;
+			return true;
+		});
+	}
+	else if (Sphere && Cone)
+	{
+		const int32 Want = vg::ProceduralGrassTuftCount();
+		int32 GrassN = 0;
+		ScatterUntil(Want, Want * 3, [&](int32 /*Attempt*/, int32 /*Placed*/)
+		{
+			const float X = Rng.FRandRange(-2800.f, 2800.f);
+			const float Y = Rng.FRandRange(-1200.f, 3600.f);
+			if (InClearing(X, Y))
+			{
+				return false;
+			}
+			const FVector G = Terrain->GroundAt(FVector(X, Y, 0.f));
+			const float S = Rng.FRandRange(0.18f, 0.42f);
+			Place(Cone, G + FVector(0.f, 0.f, S * 22.f), FRotator(0.f, Rng.FRandRange(0.f, 180.f), 0.f),
+				FVector(S, S, Rng.FRandRange(0.35f, 0.7f)), Leaf,
+				FName(*FString::Printf(TEXT("Tuft%d"), GrassN)));
+			if ((GrassN % 3) == 0)
+			{
+				Place(Sphere, G + FVector(Rng.FRandRange(-8.f, 8.f), Rng.FRandRange(-8.f, 8.f), 10.f),
+					FRotator::ZeroRotator, FVector(S * 1.4f, S * 1.3f, 0.12f), LeafDark,
+					FName(*FString::Printf(TEXT("TuftPad%d"), GrassN)));
+			}
+			++GrassN;
+			return true;
+		});
 	}
 
 	if (Assets.Rocks.Num() > 0)
 	{
-		for (int32 I = 0; I < 16; ++I)
+		const int32 Want = vg::PreferredRockScatterCount();
+		int32 RockN = 0;
+		ScatterUntil(Want, Want * 3, [&](int32 Attempt, int32 /*Placed*/)
 		{
 			const float X = Rng.FRandRange(-4000.f, 4000.f);
 			const float Y = Rng.FRandRange(-2000.f, 2200.f);
-			UStaticMesh* Mesh = Assets.Rocks[I % Assets.Rocks.Num()];
+			UStaticMesh* Mesh = Assets.Rocks[Attempt % Assets.Rocks.Num()];
 			const FVector G = Terrain->GroundAt(FVector(X, Y, 0.f));
 			PlaceSized(Mesh, G, FRotator(Rng.FRandRange(0.f, 25.f), Rng.FRandRange(0.f, 180.f), 0.f), Rng.FRandRange(40.f, 120.f),
-				FName(*FString::Printf(TEXT("QRock%d"), I)));
-		}
+				FName(*FString::Printf(TEXT("QRock%d"), RockN)));
+			++RockN;
+			return true;
+		});
 	}
 	else if (Sphere)
 	{
-		for (int32 I = 0; I < 18; ++I)
+		for (int32 I = 0; I < FMath::Max(18, vg::PreferredRockScatterCount() - 6); ++I)
 		{
 			const float X = Rng.FRandRange(-4000.f, 4000.f);
 			const float Y = Rng.FRandRange(-2000.f, 2200.f);
@@ -404,6 +478,14 @@ void AValleyWorld::SpawnSheltersAndFire()
 		Place(Cyl, FireG + FVector(-70.f, 30.f, 55.f), FRotator::ZeroRotator, FVector(0.08f, 0.08f, 1.1f), Wood, TEXT("RackR"));
 		Place(Cube, FireG + FVector(-90.f, 30.f, 100.f), FRotator::ZeroRotator, FVector(0.7f, 0.08f, 0.55f), Hide, TEXT("RackHide"));
 		Place(Sphere ? Sphere : Cyl, FireG + FVector(40.f, -80.f, 10.f), FRotator(12.f, 30.f, 0.f), FVector(0.28f, 0.22f, 0.1f), Stone, TEXT("GrindStone"));
+		Place(Cyl, FireG + FVector(-40.f, -95.f, 14.f), FRotator(0.f, 35.f, 90.f), FVector(0.16f, 0.16f, 0.22f), Wood, TEXT("SeatLog"));
+		Place(Cyl, FireG + FVector(70.f, -110.f, 12.f), FRotator(0.f, -20.f, 88.f), FVector(0.14f, 0.14f, 0.2f), Wood, TEXT("SeatLogB"));
+		Place(Sphere ? Sphere : Cyl, FireG + FVector(-55.f, 70.f, 10.f), FRotator::ZeroRotator, FVector(0.16f, 0.14f, 0.08f), Hide, TEXT("WaterSkin"));
+		Place(Sphere ? Sphere : Cyl, FireG + FVector(-48.f, 82.f, 8.f), FRotator::ZeroRotator, FVector(0.12f, 0.1f, 0.06f), Hide, TEXT("WaterSkinB"));
+		Place(Cube, FireG + FVector(130.f, 20.f, 16.f), FRotator(8.f, 25.f, 0.f), FVector(0.38f, 0.22f, 0.08f), Hide, TEXT("HidePile"));
+		Place(Cube, FireG + FVector(148.f, 8.f, 12.f), FRotator(-6.f, 70.f, 4.f), FVector(0.32f, 0.2f, 0.06f), Hide, TEXT("HidePileB"));
+		Place(Cyl, FireG + FVector(20.f, 110.f, 8.f), FRotator::ZeroRotator, FVector(0.22f, 0.22f, 0.05f), Stone, TEXT("Bowl"));
+		Place(Sphere ? Sphere : Cyl, FireG + FVector(20.f, 110.f, 14.f), FRotator::ZeroRotator, FVector(0.12f, 0.12f, 0.05f), Stone, TEXT("BowlLip"));
 	}
 
 	FireLight = NewObject<UPointLightComponent>(this, TEXT("FireLight"));
@@ -418,13 +500,18 @@ void AValleyWorld::SpawnSheltersAndFire()
 
 void AValleyWorld::SpawnPeople()
 {
-	// These eight adults are the entire human population on Earth this slice.
-	// Do not spawn extra tribes, camps, or background people.
-	const int32 Humans = FMath::Min(Brain.VillagerCount, vg::kEarthHumans);
+	// Spawn whoever the sim currently has. Clamp only to the sim array size so a
+	// later larger Villagers[] can grow; do not hard-lock the watchable cast to 8.
+	const int32 MaxHumans = static_cast<int32>(UE_ARRAY_COUNT(Brain.Villagers));
+	const int32 Humans = FMath::Clamp(Brain.VillagerCount, 0, MaxHumans);
 	for (int32 I = 0; I < Humans; ++I)
 	{
 		AValleyVillager* V = GetWorld()->SpawnActor<AValleyVillager>();
-		UClass* Presentation = vg::UsesMetaHumanSlot(I) ? MaraMetaHumanClass.Get() : nullptr;
+		UClass* Presentation = nullptr;
+		if (vg::UsesMetaHumanSlot(I) && VillagerMetaHumanClasses.IsValidIndex(I))
+		{
+			Presentation = VillagerMetaHumanClasses[I].Get();
+		}
 		V->Arm(Brain.Villagers[I], Presentation);
 		V->SyncFromSim(Brain.Villagers[I], Terrain, 0.f);
 		Villagers.Add(V);

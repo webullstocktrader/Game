@@ -82,6 +82,19 @@ void AValleyAnimal::BuildBody()
 	Add(TEXT("HoofRL"), Sphere, FVector(-Len * 22.f, -Rad * 40.f, 6.f), FRotator::ZeroRotator, FVector(0.08f, 0.06f, 0.05f), DarkUse);
 	Add(TEXT("HoofRR"), Sphere, FVector(-Len * 22.f, Rad * 40.f, 6.f), FRotator::ZeroRotator, FVector(0.08f, 0.06f, 0.05f), DarkUse);
 	Add(TEXT("Tail"), Cyl, FVector(-Len * 48.f, 0.f, 58.f + Leg * 6.f), FRotator(55.f, 0.f, 0.f), FVector(0.06f, 0.05f, 0.28f), FurUse);
+	if (Look.NeckLen >= 0.34f && Cone)
+	{
+		Add(TEXT("AntlerL"), Cone, FVector(Len * 52.f, -10.f, 112.f + Leg * 6.f), FRotator(-25.f, -20.f, -8.f), FVector(0.05f, 0.04f, 0.22f), DarkUse);
+		Add(TEXT("AntlerR"), Cone, FVector(Len * 52.f, 10.f, 112.f + Leg * 6.f), FRotator(-25.f, 20.f, 8.f), FVector(0.05f, 0.04f, 0.22f), DarkUse);
+		Add(TEXT("AntlerL2"), Cone, FVector(Len * 48.f, -16.f, 124.f + Leg * 6.f), FRotator(-8.f, -40.f, 0.f), FVector(0.035f, 0.03f, 0.14f), DarkUse);
+		Add(TEXT("AntlerR2"), Cone, FVector(Len * 48.f, 16.f, 124.f + Leg * 6.f), FRotator(-8.f, 40.f, 0.f), FVector(0.035f, 0.03f, 0.14f), DarkUse);
+	}
+	if (Look.BodyRad >= 0.29f)
+	{
+		Add(TEXT("TuskL"), Cone ? Cone : Cyl, FVector(Len * 76.f, -5.f, 76.f + Leg * 6.f), FRotator(70.f, -12.f, 0.f), FVector(0.03f, 0.025f, 0.1f), DarkUse);
+		Add(TEXT("TuskR"), Cone ? Cone : Cyl, FVector(Len * 76.f, 5.f, 76.f + Leg * 6.f), FRotator(70.f, 12.f, 0.f), FVector(0.03f, 0.025f, 0.1f), DarkUse);
+		Add(TEXT("ShoulderHump"), Sphere, FVector(Len * 18.f, 0.f, 70.f + Leg * 8.f), FRotator::ZeroRotator, FVector(Rad * 0.7f, Rad * 0.55f, 0.16f), FurUse);
+	}
 	if (Cube)
 	{
 		Add(TEXT("Withers"), Cube, FVector(Len * 10.f, 0.f, 62.f + Leg * 8.f), FRotator::ZeroRotator, FVector(Rad * 0.5f, Rad * 0.4f, 0.08f), FurUse);

@@ -93,11 +93,11 @@ private:
 	TObjectPtr<UPointLightComponent> FireLight;
 
 	UPROPERTY()
-	TSubclassOf<AActor> MaraMetaHumanClass;
+	TArray<TSubclassOf<AActor>> VillagerMetaHumanClasses;
 
 	int32 PinnedId = -1;
 	float RainClock = 0.f;
-	bool bMaraMetaHuman = false;
+	int32 MetaHumanCount = 0;
 	bool bQuixelGround = false;
 	bool bQuixelFoliage = false;
 };
