@@ -33,7 +33,8 @@ namespace vg
 			{"M_SkinWarm", 0.46f, 0.3f, 0.2f, 1.f, 0.f, 0.74f, 0.26f, 0.f, 0.42f, 0.42f, 0.12f, 0.08f, SurfaceKind::Subsurface, false},
 			{"M_ClothOchre", 0.26f, 0.14f, 0.055f, 1.f, 0.f, 0.7f, 0.28f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
 			{"M_Hair", 0.045f, 0.028f, 0.016f, 1.f, 0.04f, 0.52f, 0.36f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
-			{"M_Stone", 0.20f, 0.18f, 0.15f, 1.f, 0.06f, 0.64f, 0.38f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false, true},
+			{"M_Stone", 0.20f, 0.18f, 0.15f, 1.f, 0.06f, 0.64f, 0.38f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
+			{"M_StoneGround", 0.20f, 0.18f, 0.15f, 1.f, 0.06f, 0.64f, 0.38f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false, true},
 			{"M_Fire", 1.f, 0.42f, 0.08f, 1.f, 0.f, 1.f, 0.f, 18.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Emissive, false},
 			{"M_Eye", 0.04f, 0.03f, 0.025f, 1.f, 0.05f, 0.28f, 0.45f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
 		};

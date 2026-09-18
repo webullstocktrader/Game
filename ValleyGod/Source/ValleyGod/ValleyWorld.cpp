@@ -513,11 +513,7 @@ void AValleyWorld::SpawnRain()
 void AValleyWorld::SpawnTornado()
 {
 	UStaticMesh* Cyl = Valley::CylinderMesh();
-		UMaterialInterface* Dust = Valley::Material(TEXT("M_Charcoal"));
-		if (!Dust)
-		{
-			Dust = Valley::Material(TEXT("M_Dirt"));
-		}
+	UMaterialInterface* Dust = Valley::Material(TEXT("M_Charcoal"));
 	if (!Cyl)
 	{
 		return;

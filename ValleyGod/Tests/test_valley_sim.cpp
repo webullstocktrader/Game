@@ -310,6 +310,7 @@ int main()
 		CHECK(FindMaterialRecipe("M_ClothOchre") != nullptr, "cloth recipe");
 		CHECK(FindMaterialRecipe("M_Hair") != nullptr, "hair recipe");
 		CHECK(FindMaterialRecipe("M_Stone") != nullptr, "stone recipe");
+		CHECK(FindMaterialRecipe("M_StoneGround") != nullptr, "ground stone recipe");
 		CHECK(FindMaterialRecipe("M_Fire") != nullptr, "fire recipe");
 		CHECK(FindMaterialRecipe("M_Fur") != nullptr, "fur recipe");
 		CHECK(FindMaterialRecipe("M_Mud") != nullptr, "river-bank mud recipe");
@@ -336,12 +337,27 @@ int main()
 		const MaterialRecipe* Fur = FindMaterialRecipe("M_Fur");
 		const MaterialRecipe* FurBelly = FindMaterialRecipe("M_FurBelly");
 		const MaterialRecipe* FurDark = FindMaterialRecipe("M_FurDark");
+		const MaterialRecipe* Stone = FindMaterialRecipe("M_Stone");
+		const MaterialRecipe* StoneGround = FindMaterialRecipe("M_StoneGround");
 		const MaterialRecipe* Skin = FindMaterialRecipe("M_SkinWarm");
 		if (Dirt && Wet)
 		{
 			CHECK(Wet->Roughness < Dirt->Roughness, "wet dirt is glossier than dry dirt");
 			CHECK(Wet->R + Wet->G + Wet->B < Dirt->R + Dirt->G + Dirt->B, "wet dirt is darker");
 			CHECK(Dirt->UseVertexColor && Wet->UseVertexColor, "dirt shaders accept ground vertex shade");
+		}
+		if (Mud)
+		{
+			CHECK(Mud->UseVertexColor, "mud shaders accept ground vertex shade");
+		}
+		if (Grass && GrassWet)
+		{
+			CHECK(Grass->UseVertexColor && GrassWet->UseVertexColor, "grass shaders accept ground vertex shade");
+		}
+		if (Stone && StoneGround)
+		{
+			CHECK(!Stone->UseVertexColor, "prop stone does not depend on mesh vertex colors");
+			CHECK(StoneGround->UseVertexColor, "ground stone accepts terrain vertex shade");
 		}
 		if (Dirt && Mud)
 		{

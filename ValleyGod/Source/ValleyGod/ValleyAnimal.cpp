@@ -65,8 +65,8 @@ void AValleyAnimal::BuildBody()
 	const float Leg = Look.LegLen;
 	const float Neck = Look.NeckLen;
 	const float HeadS = Look.HeadScale > 0.f ? Look.HeadScale : 0.2f;
-	const float BodyZ = 48.f + Leg * 10.f;
-	const float HeadZ = BodyZ + (Look.Tusks ? 8.f : 36.f);
+	const float BodyZ = 16.f + Leg * 58.f;
+	const float HeadZ = BodyZ + (Look.Tusks ? 6.f : 32.f);
 	const float NeckPitch = Look.Tusks ? 18.f : 42.f;
 
 	Add(TEXT("Chest"), Sphere, FVector(Len * 30.f, 0.f, BodyZ + 4.f), FRotator::ZeroRotator, FVector(Rad * 1.2f, Rad * 1.08f, Rad * 1.12f), FurUse);
@@ -85,13 +85,15 @@ void AValleyAnimal::BuildBody()
 	Add(TEXT("EyeL"), Sphere, FVector(Len * 64.f, -6.f, HeadZ + 4.f), FRotator::ZeroRotator, FVector(0.04f, 0.03f, 0.03f), EyeUse);
 	Add(TEXT("EyeR"), Sphere, FVector(Len * 64.f, 6.f, HeadZ + 4.f), FRotator::ZeroRotator, FVector(0.04f, 0.03f, 0.03f), EyeUse);
 
-	const float UpperH = FMath::Max(BodyZ * 0.42f, 18.f);
-	const float LowerH = FMath::Max(BodyZ * 0.36f, 16.f);
-	const float HipZ = BodyZ - UpperH * 0.5f;
-	const float ShinZ = 6.f + LowerH * 0.5f;
+	const float HipJoint = BodyZ - 4.f;
+	const float Span = FMath::Max(HipJoint - 8.f, 20.f);
+	const float UpperH = Span * 0.54f;
+	const float LowerH = Span * 0.46f;
+	const float HipZ = HipJoint - UpperH * 0.5f;
+	const float ShinZ = 8.f + LowerH * 0.5f;
 	auto AddLeg = [&](const TCHAR* Upper, const TCHAR* Lower, const TCHAR* Hoof, float LX, float LY)
 	{
-		Add(Upper, Cyl, FVector(LX, LY, HipZ), FRotator::ZeroRotator, FVector(0.11f, 0.11f, UpperH / 100.f), FurUse);
+		Add(Upper, Cyl, FVector(LX, LY, HipZ), FRotator::ZeroRotator, FVector(Look.Tusks ? 0.13f : 0.10f, Look.Tusks ? 0.13f : 0.10f, UpperH / 100.f), FurUse);
 		Add(Lower, Cyl, FVector(LX, LY, ShinZ), FRotator::ZeroRotator, FVector(0.065f, 0.065f, LowerH / 100.f), DarkUse);
 		Add(Hoof, Sphere, FVector(LX, LY, 6.f), FRotator::ZeroRotator, FVector(0.09f, 0.07f, 0.05f), DarkUse);
 	};

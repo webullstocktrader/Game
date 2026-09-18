@@ -119,7 +119,7 @@ UnrealEditor.exe "ValleyGod.uproject" -run=ValleyGodEditor.ValleyPrepCommandlet 
 Open the project in the editor once (not `-game`). The editor writes `/Game/Maps/ValleySlice` and the materials on startup. Then press Play.
 
 **Looks dry / gray / checkerboard**  
-PLAY.bat now launches `-game` even when prep failed. Runtime materials should still show wet dirt, grass, bark, hide, and skin. To bake assets onto disk: run PLAY.bat once (it calls `-run=ValleyPrep`) or open the editor. After a successful prep, `Content/Materials` contains `M_Dirt`, `M_DirtWet`, `M_Mud`, `M_Grass`, `M_GrassWet`, `M_Water`, `M_Bark`, `M_BarkDark`, `M_Foliage`, `M_FoliageSun`, `M_FoliageUnderside`, `M_Wood`, `M_WoodDark`, `M_Hide`, `M_HideDark`, `M_Fur`, `M_FurBelly`, `M_FurDark`, `M_SkinWarm`, and the rest of the `M_*` set.
+PLAY.bat now launches `-game` even when prep failed. Runtime materials should still show wet dirt, grass, bark, hide, and skin. To bake assets onto disk: run PLAY.bat once (it calls `-run=ValleyPrep`) or open the editor. After a successful prep, `Content/Materials` contains `M_Dirt`, `M_DirtWet`, `M_Mud`, `M_Grass`, `M_GrassWet`, `M_Water`, `M_Bark`, `M_BarkDark`, `M_Foliage`, `M_FoliageSun`, `M_FoliageUnderside`, `M_Wood`, `M_WoodDark`, `M_Hide`, `M_HideDark`, `M_Fur`, `M_FurBelly`, `M_FurDark`, `M_Stone`, `M_StoneGround`, `M_SkinWarm`, and the rest of the `M_*` set.
 
 **How to verify this graphics pass**
 1. Double-click `PLAY.bat` (quotes handle spaces in the project path).
