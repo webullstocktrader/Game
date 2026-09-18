@@ -85,12 +85,14 @@ void AValleyAnimal::BuildBody()
 	Add(TEXT("EyeL"), Sphere, FVector(Len * 64.f, -6.f, HeadZ + 4.f), FRotator::ZeroRotator, FVector(0.04f, 0.03f, 0.03f), EyeUse);
 	Add(TEXT("EyeR"), Sphere, FVector(Len * 64.f, 6.f, HeadZ + 4.f), FRotator::ZeroRotator, FVector(0.04f, 0.03f, 0.03f), EyeUse);
 
-	const float HipZ = Leg * 28.f;
-	const float KneeZ = Leg * 14.f;
+	const float UpperH = FMath::Max(BodyZ * 0.42f, 18.f);
+	const float LowerH = FMath::Max(BodyZ * 0.36f, 16.f);
+	const float HipZ = BodyZ - UpperH * 0.5f;
+	const float ShinZ = 6.f + LowerH * 0.5f;
 	auto AddLeg = [&](const TCHAR* Upper, const TCHAR* Lower, const TCHAR* Hoof, float LX, float LY)
 	{
-		Add(Upper, Cyl, FVector(LX, LY, HipZ), FRotator::ZeroRotator, FVector(0.10f, 0.10f, Leg * 0.55f), FurUse);
-		Add(Lower, Cyl, FVector(LX, LY, KneeZ), FRotator::ZeroRotator, FVector(0.06f, 0.06f, Leg * 0.5f), DarkUse);
+		Add(Upper, Cyl, FVector(LX, LY, HipZ), FRotator::ZeroRotator, FVector(0.11f, 0.11f, UpperH / 100.f), FurUse);
+		Add(Lower, Cyl, FVector(LX, LY, ShinZ), FRotator::ZeroRotator, FVector(0.065f, 0.065f, LowerH / 100.f), DarkUse);
 		Add(Hoof, Sphere, FVector(LX, LY, 6.f), FRotator::ZeroRotator, FVector(0.09f, 0.07f, 0.05f), DarkUse);
 	};
 	AddLeg(TEXT("UFL"), TEXT("LFL"), TEXT("HoofFL"), Len * 26.f, -Rad * 36.f);
