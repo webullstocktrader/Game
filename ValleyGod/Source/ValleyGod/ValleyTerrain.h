@@ -35,6 +35,7 @@ private:
 	float ComputeBaseHeight(float X, float Y) const;
 	float RiverDistance(float X, float Y) const;
 	bool IsGrass(float X, float Y, float Height) const;
+	bool IsStone(float X, float Y, float Height) const;
 	void Rebuild();
 	void AddQuad(TArray<FVector>& Verts, TArray<int32>& Tris, TArray<FVector>& Norms, TArray<FVector2D>& UVs, TArray<FColor>& Colors,
 		const FVector& A, const FVector& B, const FVector& C, const FVector& D, const FColor& Color);

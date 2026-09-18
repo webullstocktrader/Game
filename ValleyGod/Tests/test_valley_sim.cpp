@@ -1,8 +1,10 @@
 #include "ValleySim.h"
+#include "ValleyPalette.h"
 
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
+#include <cmath>
 
 static int GFails = 0;
 static int GPasses = 0;
@@ -292,6 +294,112 @@ int main()
 	{
 		CHECK(std::strcmp(WeatherName(Weather::Rain), "Rain") == 0, "rain label");
 		CHECK(std::strcmp(ActivityName(Activity::Talk), "Talk") == 0, "talk label");
+	}
+
+	{
+		CHECK(MaterialRecipeCount() >= 13, "wet-look recipe table is populated");
+		CHECK(FindMaterialRecipe("M_Dirt") != nullptr, "dirt recipe");
+		CHECK(FindMaterialRecipe("M_DirtWet") != nullptr, "wet dirt recipe");
+		CHECK(FindMaterialRecipe("M_Grass") != nullptr, "grass recipe");
+		CHECK(FindMaterialRecipe("M_Water") != nullptr, "water recipe");
+		CHECK(FindMaterialRecipe("M_Bark") != nullptr, "bark recipe");
+		CHECK(FindMaterialRecipe("M_Foliage") != nullptr, "foliage recipe");
+		CHECK(FindMaterialRecipe("M_Wood") != nullptr, "wood recipe");
+		CHECK(FindMaterialRecipe("M_Hide") != nullptr, "hide recipe");
+		CHECK(FindMaterialRecipe("M_SkinWarm") != nullptr, "skin recipe");
+		CHECK(FindMaterialRecipe("M_ClothOchre") != nullptr, "cloth recipe");
+		CHECK(FindMaterialRecipe("M_Hair") != nullptr, "hair recipe");
+		CHECK(FindMaterialRecipe("M_Stone") != nullptr, "stone recipe");
+		CHECK(FindMaterialRecipe("M_Fire") != nullptr, "fire recipe");
+		CHECK(FindMaterialRecipe("M_Fur") != nullptr, "fur recipe");
+		CHECK(FindMaterialRecipe("WorldGrid") == nullptr, "no engine placeholder in the palette");
+
+		const MaterialRecipe* Dirt = FindMaterialRecipe("M_Dirt");
+		const MaterialRecipe* Wet = FindMaterialRecipe("M_DirtWet");
+		const MaterialRecipe* Water = FindMaterialRecipe("M_Water");
+		const MaterialRecipe* Skin = FindMaterialRecipe("M_SkinWarm");
+		if (Dirt && Wet)
+		{
+			CHECK(Wet->Roughness < Dirt->Roughness, "wet dirt is glossier than dry dirt");
+			CHECK(Wet->R + Wet->G + Wet->B < Dirt->R + Dirt->G + Dirt->B, "wet dirt is darker");
+		}
+		if (Water)
+		{
+			CHECK(Water->Kind == SurfaceKind::Translucent, "water is translucent");
+			CHECK(Water->Roughness <= 0.08f, "water is reflective");
+			CHECK(Water->R < 0.05f && Water->G < 0.08f, "water is dark");
+		}
+		if (Skin)
+		{
+			CHECK(Skin->Kind == SurfaceKind::Subsurface, "skin uses soft subsurface, not plastic");
+			CHECK(Skin->Roughness >= 0.62f, "skin is matte flesh, not glossy plastic");
+			CHECK(Skin->Specular <= 0.35f, "skin specular stays below plastic default");
+		}
+		for (int I = 0; I < MaterialRecipeCount(); ++I)
+		{
+			const MaterialRecipe& R = MaterialRecipeAt(I);
+			CHECK(R.Name && R.Name[0] == 'M' && R.Name[1] == '_', "baked names are M_*");
+			for (int J = 0; J < I; ++J)
+			{
+				CHECK(std::strcmp(R.Name, MaterialRecipeAt(J).Name) != 0, "recipe names unique");
+			}
+		}
+	}
+
+	{
+		CHECK(PersonLookCount() == kEarthHumans, "one look per adult");
+		const char* Expected[8] = {"Mara", "Nima", "Lira", "Sable", "Flint", "Oak", "Reed", "Bram"};
+		int Women = 0;
+		int Men = 0;
+		int Beards = 0;
+		for (int I = 0; I < PersonLookCount(); ++I)
+		{
+			const PersonLook& L = PersonLookAt(I);
+			CHECK(std::strcmp(L.Name, Expected[I]) == 0, "cast order matches sim names");
+			CHECK(L.Height > 0.9f && L.Height < 1.2f, "adult height scale");
+			CHECK(L.Head > 0.2f && L.Head < L.Torso, "head reads smaller than torso");
+			CHECK(L.Shoulder > 0.25f && L.Hip > 0.25f, "shoulders and hips are built");
+			CHECK(L.HairStyle >= 0 && L.HairStyle <= 5, "known hair style");
+			if (L.Woman)
+			{
+				++Women;
+				CHECK(!L.Beard, "women have no beards this pass");
+			}
+			else
+			{
+				++Men;
+			}
+			if (L.Beard)
+			{
+				++Beards;
+			}
+			for (int J = 0; J < I; ++J)
+			{
+				const PersonLook& O = PersonLookAt(J);
+				CHECK(ColorDistance(L.SkinR, L.SkinG, L.SkinB, O.SkinR, O.SkinG, O.SkinB) > 0.04f,
+					"each adult has distinct skin");
+				const float HairD = ColorDistance(L.HairR, L.HairG, L.HairB, O.HairR, O.HairG, O.HairB);
+				const bool bHairOrStyle = HairD > 0.02f || L.HairStyle != O.HairStyle || L.Beard != O.Beard;
+				CHECK(bHairOrStyle, "hair reads different between adults");
+			}
+		}
+		CHECK(Women == 4 && Men == 4, "four women, four men looks");
+		CHECK(Beards >= 2, "Flint and Oak keep beards");
+	}
+
+	{
+		CHECK(AnimalLookCount() >= 4, "each hunt animal has a fur look");
+		for (int I = 0; I < AnimalLookCount(); ++I)
+		{
+			const AnimalLook& A = AnimalLookAt(I);
+			CHECK(A.BodyLen > A.BodyRad * 2.f, "animals are long quadrupeds, not lumps");
+			CHECK(A.LegLen > 0.35f, "legs long enough to read as deer/boar");
+			CHECK(A.NeckLen > 0.15f, "neck/snout present");
+		}
+		CHECK(ColorDistance(AnimalLookAt(0).FurR, AnimalLookAt(0).FurG, AnimalLookAt(0).FurB,
+				  AnimalLookAt(1).FurR, AnimalLookAt(1).FurG, AnimalLookAt(1).FurB)
+				> 0.03f,
+			"animals do not share one hide color");
 	}
 
 	std::printf("%d passed, %d failed\n", GPasses, GFails);

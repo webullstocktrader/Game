@@ -47,8 +47,8 @@ if not exist "ValleyGod.sln" (
 	echo Generating Visual Studio project files...
 	if exist "%UEUBT%" (
 		"%UEUBT%" -projectfiles -project="%~dp0ValleyGod.uproject" -game -engine -progress
-	) else (
-		"%UEEDITOR%" "ValleyGod.uproject" -projectfiles
+	) 	else (
+		"%UEEDITOR%" "%~dp0ValleyGod.uproject" -projectfiles
 	)
 )
 
@@ -62,9 +62,13 @@ if errorlevel 1 (
 )
 
 echo Preparing wet dirt materials and the empty valley map...
-"%UEEDITOR%" "ValleyGod.uproject" -run=ValleyPrep -unattended -nopause -nosplash
+"%UEEDITOR%" "%~dp0ValleyGod.uproject" -run=ValleyGodEditor.ValleyPrepCommandlet -unattended -nopause -nosplash -log
 if errorlevel 1 (
-	echo Prep commandlet reported an error. Opening the editor anyway — it will try again on startup.
+	echo Qualified prep name failed, trying -run=ValleyPrep...
+	"%UEEDITOR%" "%~dp0ValleyGod.uproject" -run=ValleyPrep -unattended -nopause -nosplash -log
+)
+if errorlevel 1 (
+	echo Prep commandlet reported an error. Launching anyway — runtime materials cover missing Content.
 )
 
 echo.
@@ -73,9 +77,9 @@ echo WASD + Q/E fly    mouse look    1-4 weather    0 clear    P pause
 echo.
 
 if exist "%~dp0Content\Maps\ValleySlice.umap" (
-	"%UEEDITOR%" "ValleyGod.uproject" /Game/Maps/ValleySlice -game -log
+	"%UEEDITOR%" "%~dp0ValleyGod.uproject" /Game/Maps/ValleySlice -game -log
 ) else (
-	echo Opening the editor so it can finish writing the slice. Press Play ^(Alt+P^) when it loads.
-	"%UEEDITOR%" "ValleyGod.uproject"
+	echo Slice map not on disk yet. Launching -game on the default map; the valley still spawns in code.
+	"%UEEDITOR%" "%~dp0ValleyGod.uproject" -game -log
 )
 endlocal

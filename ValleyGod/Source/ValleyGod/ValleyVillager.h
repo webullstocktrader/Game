@@ -44,6 +44,12 @@ private:
 	UPROPERTY()
 	TObjectPtr<UStaticMeshComponent> ArmR;
 
+	UPROPERTY()
+	TObjectPtr<UStaticMeshComponent> ThighL;
+
+	UPROPERTY()
+	TObjectPtr<UStaticMeshComponent> ThighR;
+
 	int32 VillagerId = 0;
 	float WalkPhase = 0.f;
 	bool bWoman = true;

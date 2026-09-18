@@ -2,11 +2,11 @@
 #include "ValleyTypes.h"
 #include "ValleyTerrain.h"
 #include "Sim/ValleySim.h"
+#include "Sim/ValleyPalette.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/TextRenderComponent.h"
 #include "Camera/PlayerCameraManager.h"
 #include "GameFramework/PlayerController.h"
-#include "Materials/MaterialInstanceDynamic.h"
 
 AValleyVillager::AValleyVillager()
 {
@@ -53,130 +53,113 @@ void AValleyVillager::BuildBody(const vg::Villager& Sim)
 		return;
 	}
 
-	struct FLook
-	{
-		float Height;
-		float Shoulder;
-		float Hip;
-		float Torso;
-		FLinearColor Skin;
-		FLinearColor Cloth;
-		FLinearColor Hair;
-		int32 HairStyle;
-		bool bBeard;
-	};
-
-	// Distinct adult looks. HairStyle: 0 crop, 1 bun, 2 long, 3 tied, 4 thick, 5 streak-bun.
-	const FLook Looks[8] = {
-		{ 0.96f, 0.34f, 0.40f, 0.30f, FLinearColor(0.50f, 0.34f, 0.22f), FLinearColor(0.42f, 0.24f, 0.08f), FLinearColor(0.07f, 0.04f, 0.02f), 0, false }, // Mara
-		{ 1.00f, 0.36f, 0.46f, 0.34f, FLinearColor(0.62f, 0.42f, 0.28f), FLinearColor(0.38f, 0.12f, 0.08f), FLinearColor(0.12f, 0.06f, 0.02f), 2, false }, // Nima
-		{ 0.93f, 0.32f, 0.38f, 0.28f, FLinearColor(0.28f, 0.16f, 0.10f), FLinearColor(0.16f, 0.14f, 0.12f), FLinearColor(0.22f, 0.20f, 0.18f), 5, false }, // Lira
-		{ 1.04f, 0.35f, 0.44f, 0.32f, FLinearColor(0.22f, 0.12f, 0.08f), FLinearColor(0.18f, 0.10f, 0.05f), FLinearColor(0.03f, 0.02f, 0.015f), 4, false }, // Sable
-		{ 1.08f, 0.50f, 0.34f, 0.42f, FLinearColor(0.42f, 0.28f, 0.16f), FLinearColor(0.14f, 0.09f, 0.05f), FLinearColor(0.05f, 0.03f, 0.02f), 0, true },  // Flint
-		{ 1.12f, 0.56f, 0.40f, 0.50f, FLinearColor(0.55f, 0.40f, 0.28f), FLinearColor(0.10f, 0.08f, 0.06f), FLinearColor(0.10f, 0.08f, 0.06f), 4, true },  // Oak
-		{ 1.02f, 0.42f, 0.32f, 0.34f, FLinearColor(0.36f, 0.26f, 0.16f), FLinearColor(0.16f, 0.18f, 0.10f), FLinearColor(0.08f, 0.05f, 0.03f), 3, false }, // Reed
-		{ 1.05f, 0.48f, 0.38f, 0.44f, FLinearColor(0.48f, 0.30f, 0.20f), FLinearColor(0.28f, 0.10f, 0.05f), FLinearColor(0.06f, 0.03f, 0.02f), 0, false }  // Bram
-	};
-
-	const int32 Idx = FMath::Clamp(Sim.Id, 0, 7);
-	const FLook& L = Looks[Idx];
+	const vg::PersonLook& L = vg::PersonLookAt(Sim.Id);
+	bWoman = L.Woman;
 	HeightScale = L.Height;
 	SetActorScale3D(FVector(HeightScale));
 
-	auto Tint = [this](UMaterialInterface* Parent, const FLinearColor& Color, const FName& Name) -> UMaterialInterface*
-	{
-		if (!Parent)
-		{
-			return Valley::FallbackMaterial();
-		}
-		UMaterialInstanceDynamic* Dyn = UMaterialInstanceDynamic::Create(Parent, this, Name);
-		if (Dyn)
-		{
-			Dyn->SetVectorParameterValue(TEXT("BaseColor"), Color);
-			return Dyn;
-		}
-		return Parent;
-	};
+	const FLinearColor Skin(L.SkinR, L.SkinG, L.SkinB);
+	const FLinearColor Cloth(L.ClothR, L.ClothG, L.ClothB);
+	const FLinearColor Hair(L.HairR, L.HairG, L.HairB);
+	const FLinearColor Hide = Cloth * 0.82f + FLinearColor(0.06f, 0.04f, 0.02f);
 
-	UMaterialInterface* SkinUse = Tint(Valley::Material(TEXT("M_SkinWarm")), L.Skin, TEXT("SkinDyn"));
-	UMaterialInterface* ClothUse = Tint(Valley::Material(TEXT("M_ClothOchre")), L.Cloth, TEXT("ClothDyn"));
-	UMaterialInterface* HairUse = Tint(Valley::Material(TEXT("M_Hair")), L.Hair, TEXT("HairDyn"));
-	UMaterialInterface* HideUse = Tint(Valley::Material(TEXT("M_Hide")), L.Cloth * 0.85f, TEXT("HideDyn"));
+	UMaterialInterface* SkinUse = Valley::Tint(this, Valley::Material(TEXT("M_SkinWarm")), Skin, TEXT("SkinDyn"));
+	UMaterialInterface* ClothUse = Valley::Tint(this, Valley::Material(TEXT("M_ClothOchre")), Cloth, TEXT("ClothDyn"));
+	UMaterialInterface* HairUse = Valley::Tint(this, Valley::Material(TEXT("M_Hair")), Hair, TEXT("HairDyn"));
+	UMaterialInterface* HideUse = Valley::Tint(this, Valley::Material(TEXT("M_Hide")), Hide, TEXT("HideDyn"));
+	UMaterialInterface* EyeUse = Valley::Material(TEXT("M_Eye"));
+	UMaterialInterface* WoodUse = Valley::Material(TEXT("M_Wood"));
 
 	const bool bF = bWoman;
 	const float Shoulder = L.Shoulder;
 	const float Hip = L.Hip;
 	const float Torso = L.Torso;
+	const float HeadS = L.Head;
+	const float LegX = Hip * 18.f;
+	const float ArmY = Shoulder * 40.f;
 
-	// Hide tunic covers torso. Female: fitted bodice + longer skirt. Male: longer straight tunic.
+	// Bare legs under the tunic so the body is not one capsule.
+	AddPart(TEXT("FootL"), Sphere, FVector(6.f, -LegX, 7.f), FRotator::ZeroRotator, FVector(0.16f, 0.09f, 0.06f), HideUse);
+	AddPart(TEXT("FootR"), Sphere, FVector(6.f, LegX, 7.f), FRotator::ZeroRotator, FVector(0.16f, 0.09f, 0.06f), HideUse);
+	AddPart(TEXT("CalfL"), Cyl, FVector(1.f, -LegX, 26.f), FRotator::ZeroRotator, FVector(bF ? 0.10f : 0.12f, bF ? 0.10f : 0.12f, 0.30f), SkinUse);
+	AddPart(TEXT("CalfR"), Cyl, FVector(1.f, LegX, 26.f), FRotator::ZeroRotator, FVector(bF ? 0.10f : 0.12f, bF ? 0.10f : 0.12f, 0.30f), SkinUse);
+	ThighL = AddPart(TEXT("ThighL"), Cyl, FVector(0.f, -LegX, 58.f), FRotator::ZeroRotator, FVector(bF ? 0.13f : 0.15f, bF ? 0.13f : 0.15f, 0.32f), SkinUse);
+	ThighR = AddPart(TEXT("ThighR"), Cyl, FVector(0.f, LegX, 58.f), FRotator::ZeroRotator, FVector(bF ? 0.13f : 0.15f, bF ? 0.13f : 0.15f, 0.32f), SkinUse);
+
+	AddPart(TEXT("Pelvis"), Cyl, FVector(0.f, 0.f, 82.f), FRotator::ZeroRotator, FVector(Hip * 0.92f, Hip * 0.72f, 0.16f), HideUse);
+	AddPart(TEXT("Abdomen"), Cyl, FVector(0.f, 0.f, 98.f), FRotator::ZeroRotator, FVector(Torso * 0.78f, Torso * 0.58f, 0.22f), SkinUse);
+	AddPart(TEXT("Chest"), Cyl, FVector(1.f, 0.f, 118.f), FRotator::ZeroRotator, FVector(Torso * 0.95f, Torso * 0.62f, 0.24f), SkinUse);
+
 	if (bF)
 	{
-		AddPart(TEXT("Skirt"), Cyl, FVector(0.f, 0.f, 46.f), FRotator::ZeroRotator, FVector(Hip, Hip * 0.78f, 0.72f), HideUse);
+		AddPart(TEXT("Skirt"), Cyl, FVector(0.f, 0.f, 52.f), FRotator::ZeroRotator, FVector(Hip * 1.02f, Hip * 0.82f, 0.58f), HideUse);
 		if (Cone)
 		{
-			AddPart(TEXT("SkirtFlare"), Cone, FVector(0.f, 0.f, 28.f), FRotator(180.f, 0.f, 0.f), FVector(Hip * 1.15f, Hip * 0.9f, 0.35f), HideUse);
+			AddPart(TEXT("SkirtHem"), Cone, FVector(0.f, 0.f, 28.f), FRotator(180.f, 0.f, 0.f), FVector(Hip * 1.18f, Hip * 0.95f, 0.28f), HideUse);
 		}
-		AddPart(TEXT("Bodice"), Cyl, FVector(0.f, 0.f, 96.f), FRotator::ZeroRotator, FVector(Torso * 0.95f, Torso * 0.72f, 0.52f), ClothUse);
-		// Clothed chest volume — same hide as the wrap, not skin.
-		AddPart(TEXT("WrapChest"), Sphere, FVector(4.f, 0.f, 108.f), FRotator::ZeroRotator, FVector(0.28f, 0.38f, 0.18f), ClothUse);
-		AddPart(TEXT("Waist"), Cyl, FVector(0.f, 0.f, 72.f), FRotator::ZeroRotator, FVector(Torso * 0.72f, Torso * 0.62f, 0.18f), ClothUse);
+		AddPart(TEXT("Bodice"), Cyl, FVector(0.f, 0.f, 112.f), FRotator::ZeroRotator, FVector(Torso * 1.02f, Torso * 0.72f, 0.38f), ClothUse);
+		AddPart(TEXT("Wrap"), Cyl, FVector(2.f, 0.f, 108.f), FRotator(8.f, 0.f, 0.f), FVector(Torso * 1.08f, Torso * 0.78f, 0.12f), HideUse);
+		AddPart(TEXT("Waist"), Cyl, FVector(0.f, 0.f, 84.f), FRotator::ZeroRotator, FVector(Torso * 0.95f, Torso * 0.7f, 0.08f), ClothUse);
 	}
 	else
 	{
-		AddPart(TEXT("Tunic"), Cyl, FVector(0.f, 0.f, 78.f), FRotator::ZeroRotator, FVector(Torso, Torso * 0.62f, 0.95f), ClothUse);
-		AddPart(TEXT("Belt"), Cyl, FVector(0.f, 0.f, 58.f), FRotator::ZeroRotator, FVector(Torso * 1.05f, Torso * 0.68f, 0.08f), HideUse);
-		AddPart(TEXT("ShoulderL"), Sphere, FVector(2.f, -Shoulder * 28.f, 118.f), FRotator::ZeroRotator, FVector(0.16f, 0.18f, 0.14f), ClothUse);
-		AddPart(TEXT("ShoulderR"), Sphere, FVector(2.f, Shoulder * 28.f, 118.f), FRotator::ZeroRotator, FVector(0.16f, 0.18f, 0.14f), ClothUse);
+		AddPart(TEXT("Tunic"), Cyl, FVector(0.f, 0.f, 88.f), FRotator::ZeroRotator, FVector(Torso * 1.05f, Torso * 0.68f, 0.72f), ClothUse);
+		AddPart(TEXT("Belt"), Cyl, FVector(0.f, 0.f, 64.f), FRotator::ZeroRotator, FVector(Torso * 1.12f, Torso * 0.74f, 0.07f), HideUse);
+		AddPart(TEXT("ShoulderL"), Sphere, FVector(2.f, -ArmY * 0.72f, 132.f), FRotator::ZeroRotator, FVector(0.18f, 0.16f, 0.14f), ClothUse);
+		AddPart(TEXT("ShoulderR"), Sphere, FVector(2.f, ArmY * 0.72f, 132.f), FRotator::ZeroRotator, FVector(0.18f, 0.16f, 0.14f), ClothUse);
 	}
 
-	AddPart(TEXT("Pelvis"), Cyl, FVector(0.f, 0.f, 36.f), FRotator::ZeroRotator, FVector(Hip * 0.85f, Hip * 0.7f, 0.22f), HideUse);
-	AddPart(TEXT("Neck"), Cyl, FVector(0.f, 0.f, 128.f), FRotator::ZeroRotator, FVector(bF ? 0.11f : 0.14f, bF ? 0.11f : 0.14f, 0.16f), SkinUse);
-	AddPart(TEXT("Head"), Sphere, FVector(0.f, 0.f, 148.f), FRotator::ZeroRotator, FVector(bF ? 0.30f : 0.33f, bF ? 0.26f : 0.29f, bF ? 0.32f : 0.34f), SkinUse);
-	AddPart(TEXT("FootL"), Sphere, FVector(4.f, -Hip * 18.f, 6.f), FRotator::ZeroRotator, FVector(0.14f, 0.08f, 0.06f), HideUse);
-	AddPart(TEXT("FootR"), Sphere, FVector(4.f, Hip * 18.f, 6.f), FRotator::ZeroRotator, FVector(0.14f, 0.08f, 0.06f), HideUse);
+	AddPart(TEXT("Neck"), Cyl, FVector(0.f, 0.f, 138.f), FRotator::ZeroRotator, FVector(bF ? 0.11f : 0.13f, bF ? 0.11f : 0.13f, 0.14f), SkinUse);
+	AddPart(TEXT("Head"), Sphere, FVector(2.f, 0.f, 156.f), FRotator::ZeroRotator, FVector(HeadS, HeadS * 0.88f, HeadS * 1.05f), SkinUse);
+	AddPart(TEXT("Jaw"), Sphere, FVector(8.f, 0.f, 146.f), FRotator::ZeroRotator, FVector(HeadS * 0.55f, HeadS * 0.62f, HeadS * 0.38f), SkinUse);
+	AddPart(TEXT("Nose"), Sphere, FVector(16.f, 0.f, 156.f), FRotator::ZeroRotator, FVector(0.06f, 0.045f, 0.05f), SkinUse);
+	AddPart(TEXT("EyeL"), Sphere, FVector(14.f, -7.f, 160.f), FRotator::ZeroRotator, FVector(0.045f, 0.035f, 0.03f), EyeUse);
+	AddPart(TEXT("EyeR"), Sphere, FVector(14.f, 7.f, 160.f), FRotator::ZeroRotator, FVector(0.045f, 0.035f, 0.03f), EyeUse);
 
-	const float LegX = Hip * 16.f;
-	AddPart(TEXT("LegL"), Cyl, FVector(0.f, -LegX, 18.f), FRotator::ZeroRotator, FVector(bF ? 0.10f : 0.13f, bF ? 0.10f : 0.13f, 0.34f), SkinUse);
-	AddPart(TEXT("LegR"), Cyl, FVector(0.f, LegX, 18.f), FRotator::ZeroRotator, FVector(bF ? 0.10f : 0.13f, bF ? 0.10f : 0.13f, 0.34f), SkinUse);
-	ArmL = AddPart(TEXT("ArmL"), Cyl, FVector(2.f, -Shoulder * 38.f, 100.f), FRotator(12.f, 0.f, 8.f), FVector(bF ? 0.07f : 0.10f, bF ? 0.07f : 0.10f, 0.38f), SkinUse);
-	ArmR = AddPart(TEXT("ArmR"), Cyl, FVector(2.f, Shoulder * 38.f, 100.f), FRotator(-12.f, 0.f, -8.f), FVector(bF ? 0.07f : 0.10f, bF ? 0.07f : 0.10f, 0.38f), SkinUse);
+	ArmL = AddPart(TEXT("ArmL"), Cyl, FVector(3.f, -ArmY, 118.f), FRotator(12.f, 0.f, 10.f), FVector(bF ? 0.08f : 0.11f, bF ? 0.08f : 0.11f, 0.28f), SkinUse);
+	ArmR = AddPart(TEXT("ArmR"), Cyl, FVector(3.f, ArmY, 118.f), FRotator(-12.f, 0.f, -10.f), FVector(bF ? 0.08f : 0.11f, bF ? 0.08f : 0.11f, 0.28f), SkinUse);
+	AddPart(TEXT("ForeL"), Cyl, FVector(8.f, -ArmY - 4.f, 92.f), FRotator(18.f, 0.f, 8.f), FVector(bF ? 0.07f : 0.09f, bF ? 0.07f : 0.09f, 0.24f), SkinUse);
+	AddPart(TEXT("ForeR"), Cyl, FVector(8.f, ArmY + 4.f, 92.f), FRotator(-18.f, 0.f, -8.f), FVector(bF ? 0.07f : 0.09f, bF ? 0.07f : 0.09f, 0.24f), SkinUse);
+	AddPart(TEXT("HandL"), Sphere, FVector(14.f, -ArmY - 8.f, 74.f), FRotator::ZeroRotator, FVector(0.08f, 0.06f, 0.05f), SkinUse);
+	AddPart(TEXT("HandR"), Sphere, FVector(14.f, ArmY + 8.f, 74.f), FRotator::ZeroRotator, FVector(0.08f, 0.06f, 0.05f), SkinUse);
 
-	// Hair — readable from a fly camera.
 	switch (L.HairStyle)
 	{
 	case 1: // bun
-		AddPart(TEXT("Hair"), Sphere, FVector(-6.f, 0.f, 162.f), FRotator::ZeroRotator, FVector(0.22f, 0.22f, 0.20f), HairUse);
-		AddPart(TEXT("HairCap"), Sphere, FVector(-2.f, 0.f, 158.f), FRotator::ZeroRotator, FVector(0.28f, 0.26f, 0.12f), HairUse);
+		AddPart(TEXT("HairCap"), Sphere, FVector(-2.f, 0.f, 168.f), FRotator::ZeroRotator, FVector(HeadS * 0.95f, HeadS * 0.9f, 0.14f), HairUse);
+		AddPart(TEXT("HairBun"), Sphere, FVector(-10.f, 0.f, 174.f), FRotator::ZeroRotator, FVector(0.20f, 0.20f, 0.18f), HairUse);
 		break;
 	case 2: // long
-		AddPart(TEXT("HairCap"), Sphere, FVector(-2.f, 0.f, 158.f), FRotator::ZeroRotator, FVector(0.30f, 0.28f, 0.14f), HairUse);
-		AddPart(TEXT("HairL"), Cyl, FVector(-8.f, -8.f, 128.f), FRotator(12.f, 0.f, 0.f), FVector(0.08f, 0.08f, 0.45f), HairUse);
-		AddPart(TEXT("HairR"), Cyl, FVector(-8.f, 8.f, 128.f), FRotator(12.f, 0.f, 0.f), FVector(0.08f, 0.08f, 0.45f), HairUse);
+		AddPart(TEXT("HairCap"), Sphere, FVector(-2.f, 0.f, 168.f), FRotator::ZeroRotator, FVector(HeadS * 1.02f, HeadS * 0.95f, 0.16f), HairUse);
+		AddPart(TEXT("HairL"), Cyl, FVector(-10.f, -9.f, 132.f), FRotator(14.f, 0.f, 0.f), FVector(0.08f, 0.08f, 0.52f), HairUse);
+		AddPart(TEXT("HairR"), Cyl, FVector(-10.f, 9.f, 132.f), FRotator(14.f, 0.f, 0.f), FVector(0.08f, 0.08f, 0.52f), HairUse);
 		break;
 	case 3: // tied
-		AddPart(TEXT("HairCap"), Sphere, FVector(-2.f, 0.f, 156.f), FRotator::ZeroRotator, FVector(0.26f, 0.24f, 0.10f), HairUse);
-		AddPart(TEXT("HairTail"), Cyl, FVector(-14.f, 0.f, 140.f), FRotator(55.f, 0.f, 0.f), FVector(0.07f, 0.07f, 0.28f), HairUse);
+		AddPart(TEXT("HairCap"), Sphere, FVector(-2.f, 0.f, 166.f), FRotator::ZeroRotator, FVector(HeadS * 0.9f, HeadS * 0.85f, 0.12f), HairUse);
+		AddPart(TEXT("HairTail"), Cyl, FVector(-16.f, 0.f, 146.f), FRotator(50.f, 0.f, 0.f), FVector(0.07f, 0.07f, 0.32f), HairUse);
 		break;
 	case 4: // thick
-		AddPart(TEXT("Hair"), Sphere, FVector(-4.f, 0.f, 160.f), FRotator::ZeroRotator, FVector(0.34f, 0.32f, 0.22f), HairUse);
+		AddPart(TEXT("Hair"), Sphere, FVector(-4.f, 0.f, 170.f), FRotator::ZeroRotator, FVector(HeadS * 1.12f, HeadS * 1.05f, 0.24f), HairUse);
 		break;
 	case 5: // streak-bun
-		AddPart(TEXT("HairCap"), Sphere, FVector(-2.f, 0.f, 158.f), FRotator::ZeroRotator, FVector(0.28f, 0.26f, 0.12f), HairUse);
-		AddPart(TEXT("Bun"), Sphere, FVector(-10.f, 0.f, 164.f), FRotator::ZeroRotator, FVector(0.18f, 0.18f, 0.16f), HairUse);
+		AddPart(TEXT("HairCap"), Sphere, FVector(-2.f, 0.f, 168.f), FRotator::ZeroRotator, FVector(HeadS * 0.95f, HeadS * 0.9f, 0.14f), HairUse);
+		AddPart(TEXT("Bun"), Sphere, FVector(-12.f, 0.f, 176.f), FRotator::ZeroRotator, FVector(0.18f, 0.18f, 0.16f), HairUse);
+		AddPart(TEXT("Streak"), Cyl, FVector(4.f, 10.f, 164.f), FRotator(70.f, 20.f, 0.f), FVector(0.04f, 0.04f, 0.16f), HairUse);
 		break;
 	default: // crop
-		AddPart(TEXT("Hair"), Sphere, FVector(-2.f, 0.f, 158.f), FRotator::ZeroRotator, FVector(0.26f, 0.24f, 0.10f), HairUse);
+		AddPart(TEXT("Hair"), Sphere, FVector(-2.f, 0.f, 168.f), FRotator::ZeroRotator, FVector(HeadS * 0.92f, HeadS * 0.86f, 0.12f), HairUse);
 		break;
 	}
 
-	if (L.bBeard)
+	if (L.Beard)
 	{
-		AddPart(TEXT("Beard"), Sphere, FVector(8.f, 0.f, 138.f), FRotator::ZeroRotator, FVector(0.16f, 0.18f, 0.14f), HairUse);
+		AddPart(TEXT("Beard"), Sphere, FVector(10.f, 0.f, 142.f), FRotator::ZeroRotator, FVector(0.16f, 0.18f, 0.14f), HairUse);
 	}
 
 	if (Cone && Sim.Role == vg::Habit::Hunter)
 	{
-		AddPart(TEXT("Spear"), Cyl, FVector(18.f, Shoulder * 42.f, 90.f), FRotator(8.f, 0.f, 12.f), FVector(0.03f, 0.03f, 1.1f), Valley::Material(TEXT("M_Wood")));
+		AddPart(TEXT("Spear"), Cyl, FVector(18.f, ArmY + 6.f, 96.f), FRotator(8.f, 0.f, 12.f), FVector(0.035f, 0.035f, 1.15f), WoodUse);
+		AddPart(TEXT("SpearTip"), Cone ? Cone : Cyl, FVector(22.f, ArmY + 8.f, 154.f), FRotator(8.f, 0.f, 12.f), FVector(0.06f, 0.06f, 0.14f), Valley::Material(TEXT("M_Stone")));
 	}
 
 	Speech = NewObject<UTextRenderComponent>(this, TEXT("Speech"));
@@ -185,7 +168,7 @@ void AValleyVillager::BuildBody(const vg::Villager& Sim)
 	Speech->SetTextRenderColor(FColor(250, 236, 210));
 	Speech->SetHorizontalAlignment(EHTA_Center);
 	Speech->SetVerticalAlignment(EVRTA_TextBottom);
-	Speech->SetRelativeLocation(FVector(0.f, 0.f, 210.f));
+	Speech->SetRelativeLocation(FVector(0.f, 0.f, 220.f));
 	Speech->SetupAttachment(GetRootComponent());
 	Speech->RegisterComponent();
 
@@ -195,7 +178,7 @@ void AValleyVillager::BuildBody(const vg::Villager& Sim)
 	Nameplate->SetTextRenderColor(FColor(210, 190, 140));
 	Nameplate->SetHorizontalAlignment(EHTA_Center);
 	Nameplate->SetVerticalAlignment(EVRTA_TextBottom);
-	Nameplate->SetRelativeLocation(FVector(0.f, 0.f, 188.f));
+	Nameplate->SetRelativeLocation(FVector(0.f, 0.f, 198.f));
 	Nameplate->SetupAttachment(GetRootComponent());
 	Nameplate->RegisterComponent();
 }
@@ -219,8 +202,13 @@ void AValleyVillager::SyncFromSim(const vg::Villager& Sim, AValleyTerrain* Terra
 		Loc.Z += FMath::Abs(FMath::Sin(WalkPhase)) * 6.f;
 		if (ArmL && ArmR)
 		{
-			ArmL->SetRelativeRotation(FRotator(18.f * FMath::Sin(WalkPhase), 0.f, 8.f));
-			ArmR->SetRelativeRotation(FRotator(-18.f * FMath::Sin(WalkPhase), 0.f, -8.f));
+			ArmL->SetRelativeRotation(FRotator(18.f * FMath::Sin(WalkPhase), 0.f, 10.f));
+			ArmR->SetRelativeRotation(FRotator(-18.f * FMath::Sin(WalkPhase), 0.f, -10.f));
+		}
+		if (ThighL && ThighR)
+		{
+			ThighL->SetRelativeRotation(FRotator(-12.f * FMath::Sin(WalkPhase), 0.f, 0.f));
+			ThighR->SetRelativeRotation(FRotator(12.f * FMath::Sin(WalkPhase), 0.f, 0.f));
 		}
 	}
 

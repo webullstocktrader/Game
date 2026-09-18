@@ -151,16 +151,16 @@ void AValleyPlayerController::SetupInputComponent()
 void AValleyPlayerController::PlayerTick(float DeltaTime)
 {
 	Super::PlayerTick(DeltaTime);
-	if (AValleyGodPawn* Pawn = Cast<AValleyGodPawn>(GetPawn()))
+	if (AValleyGodPawn* Watcher = Cast<AValleyGodPawn>(GetPawn()))
 	{
-		Pawn->SetFlyInput(ForwardAxis, RightAxis, UpAxis, bSprint);
+		Watcher->SetFlyInput(ForwardAxis, RightAxis, UpAxis, bSprint);
 		if (AValleyWorld* W = Valley())
 		{
 			if (W->GetPinnedId() >= 0)
 			{
 				if (AValleyVillager* V = W->FindVillager(W->GetPinnedId()))
 				{
-					Pawn->FollowActor(V, DeltaTime);
+					Watcher->FollowActor(V, DeltaTime);
 				}
 			}
 		}
@@ -184,31 +184,31 @@ void AValleyPlayerController::OnMoveUp(const FInputActionValue& Value)
 
 void AValleyPlayerController::OnLookYaw(const FInputActionValue& Value)
 {
-	if (AValleyGodPawn* Pawn = Cast<AValleyGodPawn>(GetPawn()))
+	if (AValleyGodPawn* Watcher = Cast<AValleyGodPawn>(GetPawn()))
 	{
-		if (!Pawn->bFollowing)
+		if (!Watcher->bFollowing)
 		{
-			Pawn->AddLook(Value.Get<float>() * 0.7f, 0.f);
+			Watcher->AddLook(Value.Get<float>() * 0.7f, 0.f);
 		}
 	}
 }
 
 void AValleyPlayerController::OnLookPitch(const FInputActionValue& Value)
 {
-	if (AValleyGodPawn* Pawn = Cast<AValleyGodPawn>(GetPawn()))
+	if (AValleyGodPawn* Watcher = Cast<AValleyGodPawn>(GetPawn()))
 	{
-		if (!Pawn->bFollowing)
+		if (!Watcher->bFollowing)
 		{
-			Pawn->AddLook(0.f, Value.Get<float>() * 0.7f);
+			Watcher->AddLook(0.f, Value.Get<float>() * 0.7f);
 		}
 	}
 }
 
 void AValleyPlayerController::OnZoom(const FInputActionValue& Value)
 {
-	if (AValleyGodPawn* Pawn = Cast<AValleyGodPawn>(GetPawn()))
+	if (AValleyGodPawn* Watcher = Cast<AValleyGodPawn>(GetPawn()))
 	{
-		Pawn->AddZoom(Value.Get<float>());
+		Watcher->AddZoom(Value.Get<float>());
 	}
 }
 
@@ -297,9 +297,9 @@ void AValleyPlayerController::OnPin()
 			{
 				W->PinVillager(V->GetVillagerId());
 			}
-			if (AValleyGodPawn* Pawn = Cast<AValleyGodPawn>(GetPawn()))
+			if (AValleyGodPawn* Watcher = Cast<AValleyGodPawn>(GetPawn()))
 			{
-				Pawn->FollowActor(V, 0.f);
+				Watcher->FollowActor(V, 0.f);
 			}
 		}
 	}
@@ -310,9 +310,9 @@ void AValleyPlayerController::OnCycle()
 	if (AValleyWorld* W = Valley())
 	{
 		const int32 Id = W->CyclePin();
-		if (AValleyGodPawn* Pawn = Cast<AValleyGodPawn>(GetPawn()))
+		if (AValleyGodPawn* Watcher = Cast<AValleyGodPawn>(GetPawn()))
 		{
-			Pawn->FollowActor(W->FindVillager(Id), 0.f);
+			Watcher->FollowActor(W->FindVillager(Id), 0.f);
 		}
 	}
 }
@@ -323,8 +323,8 @@ void AValleyPlayerController::OnOverview()
 	{
 		W->PinVillager(-1);
 	}
-	if (AValleyGodPawn* Pawn = Cast<AValleyGodPawn>(GetPawn()))
+	if (AValleyGodPawn* Watcher = Cast<AValleyGodPawn>(GetPawn()))
 	{
-		Pawn->GoOverview();
+		Watcher->GoOverview();
 	}
 }
