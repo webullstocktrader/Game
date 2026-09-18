@@ -31,9 +31,13 @@ void AValleyAnimal::BuildBody()
 
 	const vg::AnimalLook& Look = vg::AnimalLookAt(AnimalId);
 	const FLinearColor Fur(Look.FurR, Look.FurG, Look.FurB);
-	const FLinearColor Snout = Fur * 0.75f + FLinearColor(0.08f, 0.05f, 0.03f);
+	const FLinearColor BellyCol(Look.BellyR, Look.BellyG, Look.BellyB);
+	const FLinearColor Dark(Look.DarkR, Look.DarkG, Look.DarkB);
 	UMaterialInterface* FurUse = Valley::Tint(this, Valley::Material(TEXT("M_Fur")), Fur, TEXT("FurDyn"));
-	UMaterialInterface* DarkUse = Valley::Tint(this, Valley::Material(TEXT("M_Hide")), Snout, TEXT("SnoutDyn"));
+	UMaterialInterface* BellyUse = Valley::Tint(this, Valley::Material(TEXT("M_FurBelly")), BellyCol, TEXT("BellyDyn"));
+	UMaterialInterface* DarkUse = Valley::Tint(this, Valley::Material(TEXT("M_FurDark")), Dark, TEXT("DarkDyn"));
+	UMaterialInterface* EyeUse = Valley::Material(TEXT("M_Eye"));
+	UMaterialInterface* Ivory = Valley::Tint(this, Valley::Material(TEXT("M_Hide")), FLinearColor(0.82f, 0.76f, 0.62f), TEXT("IvoryDyn"));
 
 	auto Add = [&](const FName& Name, UStaticMesh* Mesh, const FVector& Loc, const FRotator& Rot, const FVector& Scale, UMaterialInterface* Mat)
 	{
@@ -60,31 +64,56 @@ void AValleyAnimal::BuildBody()
 	const float Rad = Look.BodyRad;
 	const float Leg = Look.LegLen;
 	const float Neck = Look.NeckLen;
+	const float HeadS = Look.HeadScale > 0.f ? Look.HeadScale : 0.2f;
+	const float BodyZ = 48.f + Leg * 10.f;
+	const float HeadZ = BodyZ + (Look.Tusks ? 8.f : 36.f);
+	const float NeckPitch = Look.Tusks ? 18.f : 42.f;
 
-	Add(TEXT("Chest"), Sphere, FVector(Len * 28.f, 0.f, 52.f + Leg * 8.f), FRotator::ZeroRotator, FVector(Rad * 1.15f, Rad * 1.05f, Rad * 1.1f), FurUse);
-	Add(TEXT("Body"), Cyl, FVector(0.f, 0.f, 50.f + Leg * 8.f), FRotator(90.f, 0.f, 0.f), FVector(Rad, Rad, Len), FurUse);
-	Add(TEXT("Rump"), Sphere, FVector(-Len * 32.f, 0.f, 50.f + Leg * 8.f), FRotator::ZeroRotator, FVector(Rad * 1.2f, Rad * 1.1f, Rad * 1.15f), FurUse);
-	Add(TEXT("Neck"), Cyl, FVector(Len * 42.f, 0.f, 68.f + Leg * 8.f), FRotator(38.f, 0.f, 0.f), FVector(Rad * 0.55f, Rad * 0.55f, Neck), FurUse);
-	Add(TEXT("Head"), Sphere, FVector(Len * 58.f, 0.f, 86.f + Leg * 6.f), FRotator::ZeroRotator, FVector(0.22f, 0.16f, 0.16f), FurUse);
-	Add(TEXT("Snout"), Sphere, FVector(Len * 70.f, 0.f, 82.f + Leg * 6.f), FRotator::ZeroRotator, FVector(0.16f, 0.10f, 0.10f), DarkUse);
-	Add(TEXT("EarL"), Cone ? Cone : Cyl, FVector(Len * 54.f, -8.f, 100.f + Leg * 6.f), FRotator(0.f, 0.f, -18.f), FVector(0.05f, 0.04f, 0.14f), FurUse);
-	Add(TEXT("EarR"), Cone ? Cone : Cyl, FVector(Len * 54.f, 8.f, 100.f + Leg * 6.f), FRotator(0.f, 0.f, 18.f), FVector(0.05f, 0.04f, 0.14f), FurUse);
-	Add(TEXT("EyeL"), Sphere, FVector(Len * 62.f, -6.f, 90.f + Leg * 6.f), FRotator::ZeroRotator, FVector(0.04f, 0.03f, 0.03f), Valley::Material(TEXT("M_Eye")));
-	Add(TEXT("EyeR"), Sphere, FVector(Len * 62.f, 6.f, 90.f + Leg * 6.f), FRotator::ZeroRotator, FVector(0.04f, 0.03f, 0.03f), Valley::Material(TEXT("M_Eye")));
+	Add(TEXT("Chest"), Sphere, FVector(Len * 30.f, 0.f, BodyZ + 4.f), FRotator::ZeroRotator, FVector(Rad * 1.2f, Rad * 1.08f, Rad * 1.12f), FurUse);
+	Add(TEXT("Body"), Cyl, FVector(0.f, 0.f, BodyZ), FRotator(90.f, 0.f, 0.f), FVector(Rad, Rad * 0.92f, Len), FurUse);
+	Add(TEXT("Belly"), Sphere, FVector(-Len * 4.f, 0.f, BodyZ - Rad * 28.f), FRotator::ZeroRotator, FVector(Rad * 1.05f, Rad * 0.95f, Rad * 0.7f), BellyUse);
+	Add(TEXT("Rump"), Sphere, FVector(-Len * 34.f, 0.f, BodyZ + 2.f), FRotator::ZeroRotator, FVector(Rad * 1.28f, Rad * 1.18f, Rad * 1.2f), FurUse);
+	Add(TEXT("HaunchL"), Sphere, FVector(-Len * 28.f, -Rad * 28.f, BodyZ - 6.f), FRotator::ZeroRotator, FVector(Rad * 0.7f, Rad * 0.55f, Rad * 0.75f), FurUse);
+	Add(TEXT("HaunchR"), Sphere, FVector(-Len * 28.f, Rad * 28.f, BodyZ - 6.f), FRotator::ZeroRotator, FVector(Rad * 0.7f, Rad * 0.55f, Rad * 0.75f), FurUse);
+	Add(TEXT("ShoulderL"), Sphere, FVector(Len * 24.f, -Rad * 26.f, BodyZ + 2.f), FRotator::ZeroRotator, FVector(Rad * 0.55f, Rad * 0.45f, Rad * 0.6f), FurUse);
+	Add(TEXT("ShoulderR"), Sphere, FVector(Len * 24.f, Rad * 26.f, BodyZ + 2.f), FRotator::ZeroRotator, FVector(Rad * 0.55f, Rad * 0.45f, Rad * 0.6f), FurUse);
+	Add(TEXT("Neck"), Cyl, FVector(Len * 44.f, 0.f, BodyZ + 18.f), FRotator(NeckPitch, 0.f, 0.f), FVector(Rad * 0.5f, Rad * 0.5f, Neck), FurUse);
+	Add(TEXT("Head"), Sphere, FVector(Len * 60.f, 0.f, HeadZ), FRotator::ZeroRotator, FVector(HeadS, HeadS * 0.72f, HeadS * 0.78f), FurUse);
+	Add(TEXT("Snout"), Sphere, FVector(Len * 72.f, 0.f, HeadZ - 6.f), FRotator::ZeroRotator, FVector(HeadS * 0.72f, HeadS * 0.42f, HeadS * 0.42f), DarkUse);
+	Add(TEXT("EarL"), Cone ? Cone : Cyl, FVector(Len * 56.f, -8.f, HeadZ + 14.f), FRotator(0.f, 0.f, -18.f), FVector(0.05f, 0.04f, Look.Tusks ? 0.10f : 0.16f), FurUse);
+	Add(TEXT("EarR"), Cone ? Cone : Cyl, FVector(Len * 56.f, 8.f, HeadZ + 14.f), FRotator(0.f, 0.f, 18.f), FVector(0.05f, 0.04f, Look.Tusks ? 0.10f : 0.16f), FurUse);
+	Add(TEXT("EyeL"), Sphere, FVector(Len * 64.f, -6.f, HeadZ + 4.f), FRotator::ZeroRotator, FVector(0.04f, 0.03f, 0.03f), EyeUse);
+	Add(TEXT("EyeR"), Sphere, FVector(Len * 64.f, 6.f, HeadZ + 4.f), FRotator::ZeroRotator, FVector(0.04f, 0.03f, 0.03f), EyeUse);
 
-	const float HipZ = Leg * 22.f;
-	Add(TEXT("LegFL"), Cyl, FVector(Len * 24.f, -Rad * 38.f, HipZ), FRotator::ZeroRotator, FVector(0.07f, 0.07f, Leg), DarkUse);
-	Add(TEXT("LegFR"), Cyl, FVector(Len * 24.f, Rad * 38.f, HipZ), FRotator::ZeroRotator, FVector(0.07f, 0.07f, Leg), DarkUse);
-	Add(TEXT("LegRL"), Cyl, FVector(-Len * 22.f, -Rad * 40.f, HipZ), FRotator::ZeroRotator, FVector(0.08f, 0.08f, Leg), DarkUse);
-	Add(TEXT("LegRR"), Cyl, FVector(-Len * 22.f, Rad * 40.f, HipZ), FRotator::ZeroRotator, FVector(0.08f, 0.08f, Leg), DarkUse);
-	Add(TEXT("HoofFL"), Sphere, FVector(Len * 24.f, -Rad * 38.f, 6.f), FRotator::ZeroRotator, FVector(0.08f, 0.06f, 0.05f), DarkUse);
-	Add(TEXT("HoofFR"), Sphere, FVector(Len * 24.f, Rad * 38.f, 6.f), FRotator::ZeroRotator, FVector(0.08f, 0.06f, 0.05f), DarkUse);
-	Add(TEXT("HoofRL"), Sphere, FVector(-Len * 22.f, -Rad * 40.f, 6.f), FRotator::ZeroRotator, FVector(0.08f, 0.06f, 0.05f), DarkUse);
-	Add(TEXT("HoofRR"), Sphere, FVector(-Len * 22.f, Rad * 40.f, 6.f), FRotator::ZeroRotator, FVector(0.08f, 0.06f, 0.05f), DarkUse);
-	Add(TEXT("Tail"), Cyl, FVector(-Len * 48.f, 0.f, 58.f + Leg * 6.f), FRotator(55.f, 0.f, 0.f), FVector(0.06f, 0.05f, 0.28f), FurUse);
+	const float HipZ = Leg * 28.f;
+	const float KneeZ = Leg * 14.f;
+	auto AddLeg = [&](const TCHAR* Upper, const TCHAR* Lower, const TCHAR* Hoof, float LX, float LY)
+	{
+		Add(Upper, Cyl, FVector(LX, LY, HipZ), FRotator::ZeroRotator, FVector(0.10f, 0.10f, Leg * 0.55f), FurUse);
+		Add(Lower, Cyl, FVector(LX, LY, KneeZ), FRotator::ZeroRotator, FVector(0.06f, 0.06f, Leg * 0.5f), DarkUse);
+		Add(Hoof, Sphere, FVector(LX, LY, 6.f), FRotator::ZeroRotator, FVector(0.09f, 0.07f, 0.05f), DarkUse);
+	};
+	AddLeg(TEXT("UFL"), TEXT("LFL"), TEXT("HoofFL"), Len * 26.f, -Rad * 36.f);
+	AddLeg(TEXT("UFR"), TEXT("LFR"), TEXT("HoofFR"), Len * 26.f, Rad * 36.f);
+	AddLeg(TEXT("URL"), TEXT("LRL"), TEXT("HoofRL"), -Len * 24.f, -Rad * 40.f);
+	AddLeg(TEXT("URR"), TEXT("LRR"), TEXT("HoofRR"), -Len * 24.f, Rad * 40.f);
+	Add(TEXT("Tail"), Cyl, FVector(-Len * 50.f, 0.f, BodyZ + 8.f), FRotator(Look.Tusks ? 25.f : 55.f, 0.f, 0.f),
+		FVector(0.06f, 0.05f, Look.Tusks ? 0.18f : 0.32f), FurUse);
 	if (Cube)
 	{
-		Add(TEXT("Withers"), Cube, FVector(Len * 10.f, 0.f, 62.f + Leg * 8.f), FRotator::ZeroRotator, FVector(Rad * 0.5f, Rad * 0.4f, 0.08f), FurUse);
+		Add(TEXT("Withers"), Cube, FVector(Len * 12.f, 0.f, BodyZ + 14.f), FRotator::ZeroRotator, FVector(Rad * 0.55f, Rad * 0.38f, 0.08f), FurUse);
+	}
+	if (Look.Antlers)
+	{
+		Add(TEXT("AntlerL"), Cyl, FVector(Len * 54.f, -10.f, HeadZ + 22.f), FRotator(-12.f, -18.f, -28.f), FVector(0.04f, 0.04f, 0.42f), DarkUse);
+		Add(TEXT("AntlerLT"), Cyl, FVector(Len * 50.f, -18.f, HeadZ + 42.f), FRotator(18.f, -40.f, -12.f), FVector(0.03f, 0.03f, 0.22f), DarkUse);
+		Add(TEXT("AntlerR"), Cyl, FVector(Len * 54.f, 10.f, HeadZ + 22.f), FRotator(-12.f, 18.f, 28.f), FVector(0.04f, 0.04f, 0.42f), DarkUse);
+		Add(TEXT("AntlerRT"), Cyl, FVector(Len * 50.f, 18.f, HeadZ + 42.f), FRotator(18.f, 40.f, 12.f), FVector(0.03f, 0.03f, 0.22f), DarkUse);
+	}
+	if (Look.Tusks)
+	{
+		Add(TEXT("TuskL"), Cone ? Cone : Cyl, FVector(Len * 78.f, -5.f, HeadZ - 10.f), FRotator(78.f, 0.f, -16.f), FVector(0.04f, 0.03f, 0.12f), Ivory);
+		Add(TEXT("TuskR"), Cone ? Cone : Cyl, FVector(Len * 78.f, 5.f, HeadZ - 10.f), FRotator(78.f, 0.f, 16.f), FVector(0.04f, 0.03f, 0.12f), Ivory);
 	}
 }
 

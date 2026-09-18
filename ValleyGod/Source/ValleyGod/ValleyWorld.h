@@ -81,6 +81,8 @@ private:
 	UPROPERTY()
 	TArray<TObjectPtr<UStaticMeshComponent>> Trees;
 
+	TArray<float> TreeYaw;
+
 	UPROPERTY()
 	TObjectPtr<UPointLightComponent> FireLight;
 

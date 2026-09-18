@@ -119,13 +119,13 @@ UnrealEditor.exe "ValleyGod.uproject" -run=ValleyGodEditor.ValleyPrepCommandlet 
 Open the project in the editor once (not `-game`). The editor writes `/Game/Maps/ValleySlice` and the materials on startup. Then press Play.
 
 **Looks dry / gray / checkerboard**  
-PLAY.bat now launches `-game` even when prep failed. Runtime materials should still show wet dirt, grass, bark, hide, and skin. To bake assets onto disk: run PLAY.bat once (it calls `-run=ValleyPrep`) or open the editor. After a successful prep, `Content/Materials` contains `M_Dirt`, `M_DirtWet`, `M_Grass`, `M_Water`, `M_Bark`, `M_Foliage`, `M_Wood`, `M_Hide`, `M_SkinWarm`, and the rest of the `M_*` set.
+PLAY.bat now launches `-game` even when prep failed. Runtime materials should still show wet dirt, grass, bark, hide, and skin. To bake assets onto disk: run PLAY.bat once (it calls `-run=ValleyPrep`) or open the editor. After a successful prep, `Content/Materials` contains `M_Dirt`, `M_DirtWet`, `M_Mud`, `M_Grass`, `M_GrassWet`, `M_Water`, `M_Bark`, `M_BarkDark`, `M_Foliage`, `M_FoliageSun`, `M_FoliageUnderside`, `M_Wood`, `M_WoodDark`, `M_Hide`, `M_HideDark`, `M_Fur`, `M_FurBelly`, `M_FurDark`, `M_SkinWarm`, and the rest of the `M_*` set.
 
 **How to verify this graphics pass**
 1. Double-click `PLAY.bat` (quotes handle spaces in the project path).
 2. Confirm the valley is brown dirt + green patches + dark water, not a gray grid.
-3. Fly to camp: hide roofs, wood poles, stone fire ring. Eight named adults in hide tunics. Trees have thick trunks and layered canopies.
-4. Press **1** — dirt darkens (wet). Press **0** to clear.
+3. Fly to camp: hide lean-tos, wood poles, charcoal fire ring, drying rack, spears. Trees have thick tapered trunks and layered canopies (broadleaf blobs or pine cones). Hunt animals should read as deer vs boar, not one hide lump.
+4. Press **1** — dirt and grass darken (wet). Press **0** to clear.
 
 **Sim tests (no Unreal required)**  
 From this folder: `bash Tests/run_tests.sh`

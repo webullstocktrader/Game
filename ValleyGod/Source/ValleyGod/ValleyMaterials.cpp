@@ -3,8 +3,10 @@
 #include "Materials/Material.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
+#include "Materials/MaterialExpressionMultiply.h"
 #include "Materials/MaterialExpressionScalarParameter.h"
 #include "Materials/MaterialExpressionVectorParameter.h"
+#include "Materials/MaterialExpressionVertexColor.h"
 
 namespace
 {
@@ -179,7 +181,21 @@ namespace Valley
 #endif
 
 		const FLinearColor Color = RecipeColor(Recipe);
-		ConnectProperty(Mat, AddVector(Mat, TEXT("BaseColor"), Color, 0), MP_BaseColor);
+		UMaterialExpressionVectorParameter* BaseColor = AddVector(Mat, TEXT("BaseColor"), Color, 0);
+		if (Recipe.UseVertexColor)
+		{
+			auto* Vert = NewObject<UMaterialExpressionVertexColor>(Mat);
+			PlaceExpression(Mat, Vert, -200, 40);
+			auto* Mul = NewObject<UMaterialExpressionMultiply>(Mat);
+			PlaceExpression(Mat, Mul, -40, 0);
+			Mul->A.Expression = BaseColor;
+			Mul->B.Expression = Vert;
+			ConnectProperty(Mat, Mul, MP_BaseColor);
+		}
+		else
+		{
+			ConnectProperty(Mat, BaseColor, MP_BaseColor);
+		}
 		ConnectProperty(Mat, AddScalar(Mat, TEXT("Metallic"), Recipe.Metallic, 140), MP_Metallic);
 		ConnectProperty(Mat, AddScalar(Mat, TEXT("Specular"), Recipe.Specular, 220), MP_Specular);
 		ConnectProperty(Mat, AddScalar(Mat, TEXT("Roughness"), Recipe.Roughness, 300), MP_Roughness);

@@ -59,11 +59,21 @@ bool AValleyTerrain::IsGrass(float X, float Y, float Height) const
 
 bool AValleyTerrain::IsStone(float X, float Y, float Height) const
 {
-	if (IsGrass(X, Y, Height) || RiverDistance(X, Y) < 480.f)
+	if (IsGrass(X, Y, Height) || IsMud(X, Y, Height) || RiverDistance(X, Y) < 480.f)
 	{
 		return false;
 	}
 	return FMath::PerlinNoise2D(FVector2D(X + 900.f, Y) * 0.0004f) > 0.38f;
+}
+
+bool AValleyTerrain::IsMud(float X, float Y, float Height) const
+{
+	if (IsGrass(X, Y, Height))
+	{
+		return false;
+	}
+	const float River = RiverDistance(X, Y);
+	return River >= 300.f && River < 560.f && Height < 95.f;
 }
 
 void AValleyTerrain::AddQuad(TArray<FVector>& Verts, TArray<int32>& Tris, TArray<FVector>& Norms, TArray<FVector2D>& UVs, TArray<FColor>& Colors,
@@ -73,7 +83,8 @@ void AValleyTerrain::AddQuad(TArray<FVector>& Verts, TArray<int32>& Tris, TArray
 	const FVector N = FVector::CrossProduct(B - A, D - A).GetSafeNormal();
 	Verts.Append({ A, B, C, D });
 	Norms.Append({ N, N, N, N });
-	UVs.Append({ FVector2D(0, 0), FVector2D(1, 0), FVector2D(1, 1), FVector2D(0, 1) });
+	const float UVS = 0.0022f;
+	UVs.Append({ FVector2D(A.X, A.Y) * UVS, FVector2D(B.X, B.Y) * UVS, FVector2D(C.X, C.Y) * UVS, FVector2D(D.X, D.Y) * UVS });
 	Colors.Append({ Color, Color, Color, Color });
 	Tris.Append({ Base, Base + 1, Base + 2, Base, Base + 2, Base + 3 });
 }
@@ -131,6 +142,10 @@ void AValleyTerrain::SetWet(bool bInWet)
 	{
 		GroundMesh->SetMaterial(0, Mat);
 	}
+	if (UMaterialInterface* Grass = Valley::Material(bWet ? TEXT("M_GrassWet") : TEXT("M_Grass")))
+	{
+		GroundMesh->SetMaterial(1, Grass);
+	}
 }
 
 void AValleyTerrain::SetFlood(float ExtraZ)
@@ -141,10 +156,19 @@ void AValleyTerrain::SetFlood(float ExtraZ)
 
 void AValleyTerrain::Rebuild()
 {
-	TArray<FVector> DirtV, GrassV, StoneV, WaterV, DirtN, GrassN, StoneN, WaterN;
-	TArray<int32> DirtT, GrassT, StoneT, WaterT;
-	TArray<FVector2D> DirtUV, GrassUV, StoneUV, WaterUV;
-	TArray<FColor> DirtC, GrassC, StoneC, WaterC;
+	TArray<FVector> DirtV, GrassV, StoneV, MudV, WaterV, DirtN, GrassN, StoneN, MudN, WaterN;
+	TArray<int32> DirtT, GrassT, StoneT, MudT, WaterT;
+	TArray<FVector2D> DirtUV, GrassUV, StoneUV, MudUV, WaterUV;
+	TArray<FColor> DirtC, GrassC, StoneC, MudC, WaterC;
+
+	auto Shade = [](const FColor& Base, float Amount) -> FColor
+	{
+		return FColor(
+			static_cast<uint8>(FMath::Clamp(FMath::RoundToInt(Base.R * Amount), 0, 255)),
+			static_cast<uint8>(FMath::Clamp(FMath::RoundToInt(Base.G * Amount), 0, 255)),
+			static_cast<uint8>(FMath::Clamp(FMath::RoundToInt(Base.B * Amount), 0, 255)),
+			Base.A);
+	};
 
 	for (int32 IY = 0; IY < GridN - 1; ++IY)
 	{
@@ -159,44 +183,55 @@ void AValleyTerrain::Rebuild()
 			const FVector C(X1, Y1, BaseHeight[IndexOf(IX + 1, IY + 1)]);
 			const FVector D(X0, Y1, BaseHeight[IndexOf(IX, IY + 1)]);
 
+			const float CX = (X0 + X1) * 0.5f;
+			const float CY = (Y0 + Y1) * 0.5f;
+			const float N = FMath::PerlinNoise2D(FVector2D(CX, CY) * 0.0005f);
+			const float N2 = FMath::PerlinNoise2D(FVector2D(CX + 700.f, CY - 180.f) * 0.00115f);
+			const float Amount = FMath::Clamp(0.74f + 0.22f * (0.5f + 0.5f * N) + 0.10f * N2, 0.55f, 1.15f);
+
 			const bool bGrass = IsGrass(X0, Y0, A.Z);
-			const bool bStone = !bGrass && IsStone(X0, Y0, A.Z);
-			const FColor DirtCol(92, 58, 32);
-			const FColor GrassCol(46, 78, 32);
-			const FColor StoneCol(120, 114, 104);
+			const bool bMud = !bGrass && IsMud(X0, Y0, A.Z);
+			const bool bStone = !bGrass && !bMud && IsStone(X0, Y0, A.Z);
 			if (bGrass)
 			{
-				AddQuad(GrassV, GrassT, GrassN, GrassUV, GrassC, A, B, C, D, GrassCol);
+				AddQuad(GrassV, GrassT, GrassN, GrassUV, GrassC, A, B, C, D, Shade(FColor(48, 92, 36), Amount));
+			}
+			else if (bMud)
+			{
+				AddQuad(MudV, MudT, MudN, MudUV, MudC, A, B, C, D, Shade(FColor(62, 42, 28), Amount * 0.9f));
 			}
 			else if (bStone)
 			{
-				AddQuad(StoneV, StoneT, StoneN, StoneUV, StoneC, A, B, C, D, StoneCol);
+				AddQuad(StoneV, StoneT, StoneN, StoneUV, StoneC, A, B, C, D, Shade(FColor(138, 128, 116), Amount));
 			}
 			else
 			{
-				AddQuad(DirtV, DirtT, DirtN, DirtUV, DirtC, A, B, C, D, DirtCol);
+				AddQuad(DirtV, DirtT, DirtN, DirtUV, DirtC, A, B, C, D, Shade(FColor(110, 68, 38), Amount));
 			}
 
-			if (RiverDistance(X0, Y0) < 360.f)
+			const float River = RiverDistance(X0, Y0);
+			if (River < 380.f)
 			{
-				const float WaterZ = FMath::Max3(A.Z, B.Z, FMath::Max(C.Z, D.Z)) + 14.f;
+				const float WaterZ = FMath::Max3(A.Z, B.Z, FMath::Max(C.Z, D.Z)) + 12.f;
+				const float Deep = 1.f - FMath::Clamp(River / 380.f, 0.f, 1.f);
+				const FColor WaterCol = Shade(FColor(8, 22, 26, 170), 0.7f + 0.3f * (1.f - Deep));
 				AddQuad(WaterV, WaterT, WaterN, WaterUV, WaterC,
 					FVector(X0, Y0, WaterZ), FVector(X1, Y0, WaterZ), FVector(X1, Y1, WaterZ), FVector(X0, Y1, WaterZ),
-					FColor(24, 48, 44, 150));
+					WaterCol);
 			}
 		}
 	}
 
 	GroundMesh->ClearAllMeshSections();
 	GroundMesh->CreateMeshSection(0, DirtV, DirtT, DirtN, DirtUV, DirtC, TArray<FProcMeshTangent>(), true);
-	if (UMaterialInterface* Dirt = Valley::Material(TEXT("M_Dirt")))
+	if (UMaterialInterface* Dirt = Valley::Material(bWet ? TEXT("M_DirtWet") : TEXT("M_Dirt")))
 	{
 		GroundMesh->SetMaterial(0, Dirt);
 	}
 	if (GrassV.Num() > 0)
 	{
 		GroundMesh->CreateMeshSection(1, GrassV, GrassT, GrassN, GrassUV, GrassC, TArray<FProcMeshTangent>(), true);
-		if (UMaterialInterface* Grass = Valley::Material(TEXT("M_Grass")))
+		if (UMaterialInterface* Grass = Valley::Material(bWet ? TEXT("M_GrassWet") : TEXT("M_Grass")))
 		{
 			GroundMesh->SetMaterial(1, Grass);
 		}
@@ -207,6 +242,14 @@ void AValleyTerrain::Rebuild()
 		if (UMaterialInterface* Stone = Valley::Material(TEXT("M_Stone")))
 		{
 			GroundMesh->SetMaterial(2, Stone);
+		}
+	}
+	if (MudV.Num() > 0)
+	{
+		GroundMesh->CreateMeshSection(3, MudV, MudT, MudN, MudUV, MudC, TArray<FProcMeshTangent>(), true);
+		if (UMaterialInterface* Mud = Valley::Material(TEXT("M_Mud")))
+		{
+			GroundMesh->SetMaterial(3, Mud);
 		}
 	}
 

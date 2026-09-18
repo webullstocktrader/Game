@@ -297,7 +297,7 @@ int main()
 	}
 
 	{
-		CHECK(MaterialRecipeCount() >= 13, "wet-look recipe table is populated");
+		CHECK(MaterialRecipeCount() >= 24, "wet-look recipe table includes layered env materials");
 		CHECK(FindMaterialRecipe("M_Dirt") != nullptr, "dirt recipe");
 		CHECK(FindMaterialRecipe("M_DirtWet") != nullptr, "wet dirt recipe");
 		CHECK(FindMaterialRecipe("M_Grass") != nullptr, "grass recipe");
@@ -312,22 +312,72 @@ int main()
 		CHECK(FindMaterialRecipe("M_Stone") != nullptr, "stone recipe");
 		CHECK(FindMaterialRecipe("M_Fire") != nullptr, "fire recipe");
 		CHECK(FindMaterialRecipe("M_Fur") != nullptr, "fur recipe");
+		CHECK(FindMaterialRecipe("M_Mud") != nullptr, "river-bank mud recipe");
+		CHECK(FindMaterialRecipe("M_GrassWet") != nullptr, "wet grass recipe");
+		CHECK(FindMaterialRecipe("M_BarkDark") != nullptr, "dark bark recipe");
+		CHECK(FindMaterialRecipe("M_FoliageSun") != nullptr, "sunlit foliage recipe");
+		CHECK(FindMaterialRecipe("M_FoliageUnderside") != nullptr, "canopy underside recipe");
+		CHECK(FindMaterialRecipe("M_WoodDark") != nullptr, "aged wood recipe");
+		CHECK(FindMaterialRecipe("M_HideDark") != nullptr, "dark hide recipe");
+		CHECK(FindMaterialRecipe("M_Moss") != nullptr, "moss recipe");
+		CHECK(FindMaterialRecipe("M_Charcoal") != nullptr, "charcoal recipe");
+		CHECK(FindMaterialRecipe("M_FurBelly") != nullptr, "belly fur recipe");
+		CHECK(FindMaterialRecipe("M_FurDark") != nullptr, "dark fur recipe");
 		CHECK(FindMaterialRecipe("WorldGrid") == nullptr, "no engine placeholder in the palette");
 
 		const MaterialRecipe* Dirt = FindMaterialRecipe("M_Dirt");
 		const MaterialRecipe* Wet = FindMaterialRecipe("M_DirtWet");
+		const MaterialRecipe* Mud = FindMaterialRecipe("M_Mud");
+		const MaterialRecipe* Grass = FindMaterialRecipe("M_Grass");
+		const MaterialRecipe* GrassWet = FindMaterialRecipe("M_GrassWet");
 		const MaterialRecipe* Water = FindMaterialRecipe("M_Water");
+		const MaterialRecipe* Bark = FindMaterialRecipe("M_Bark");
+		const MaterialRecipe* Foliage = FindMaterialRecipe("M_Foliage");
+		const MaterialRecipe* Fur = FindMaterialRecipe("M_Fur");
+		const MaterialRecipe* FurBelly = FindMaterialRecipe("M_FurBelly");
+		const MaterialRecipe* FurDark = FindMaterialRecipe("M_FurDark");
 		const MaterialRecipe* Skin = FindMaterialRecipe("M_SkinWarm");
 		if (Dirt && Wet)
 		{
 			CHECK(Wet->Roughness < Dirt->Roughness, "wet dirt is glossier than dry dirt");
 			CHECK(Wet->R + Wet->G + Wet->B < Dirt->R + Dirt->G + Dirt->B, "wet dirt is darker");
+			CHECK(Dirt->UseVertexColor && Wet->UseVertexColor, "dirt shaders accept ground vertex shade");
+		}
+		if (Dirt && Mud)
+		{
+			CHECK(Mud->R + Mud->G + Mud->B < Dirt->R + Dirt->G + Dirt->B, "mud is darker than dry dirt");
+			CHECK(Mud->Roughness < Dirt->Roughness, "mud is wetter than dry dirt");
+		}
+		if (Grass && GrassWet)
+		{
+			CHECK(GrassWet->Roughness < Grass->Roughness, "wet grass is glossier than dry grass");
+			CHECK(GrassWet->R + GrassWet->G + GrassWet->B < Grass->R + Grass->G + Grass->B, "wet grass is darker");
+		}
+		if (Dirt && Grass)
+		{
+			CHECK(ColorDistance(Dirt->R, Dirt->G, Dirt->B, Grass->R, Grass->G, Grass->B) > 0.06f,
+				"dirt and grass are distinct hues");
+			CHECK(Grass->G > Dirt->G, "grass reads greener than dirt");
+		}
+		if (Bark && Foliage)
+		{
+			CHECK(ColorDistance(Bark->R, Bark->G, Bark->B, Foliage->R, Foliage->G, Foliage->B) > 0.06f,
+				"bark and foliage are clearly distinct");
+			CHECK(Foliage->G > Bark->G * 1.4f, "foliage is greener than bark");
+			CHECK(Bark->Roughness > Foliage->Roughness, "bark is rougher than waxy leaves");
+			CHECK(!Bark->UseVertexColor, "bark does not depend on mesh vertex colors");
+		}
+		if (Fur && FurBelly && FurDark)
+		{
+			CHECK(FurBelly->R + FurBelly->G + FurBelly->B > Fur->R + Fur->G + Fur->B, "belly fur is lighter");
+			CHECK(FurDark->R + FurDark->G + FurDark->B < Fur->R + Fur->G + Fur->B, "point fur is darker");
+			CHECK(Fur->Roughness >= 0.74f, "fur stays matte, not hide-shiny");
 		}
 		if (Water)
 		{
 			CHECK(Water->Kind == SurfaceKind::Translucent, "water is translucent");
-			CHECK(Water->Roughness <= 0.08f, "water is reflective");
-			CHECK(Water->R < 0.05f && Water->G < 0.08f, "water is dark");
+			CHECK(Water->Roughness <= 0.04f, "water is highly reflective");
+			CHECK(Water->R < 0.02f && Water->G < 0.05f, "water is dark");
 		}
 		if (Skin)
 		{
@@ -389,13 +439,36 @@ int main()
 
 	{
 		CHECK(AnimalLookCount() >= 4, "each hunt animal has a fur look");
+		int Antlered = 0;
+		int Tusked = 0;
 		for (int I = 0; I < AnimalLookCount(); ++I)
 		{
 			const AnimalLook& A = AnimalLookAt(I);
 			CHECK(A.BodyLen > A.BodyRad * 2.f, "animals are long quadrupeds, not lumps");
 			CHECK(A.LegLen > 0.35f, "legs long enough to read as deer/boar");
 			CHECK(A.NeckLen > 0.15f, "neck/snout present");
+			CHECK(A.HeadScale > 0.14f && A.HeadScale < 0.32f, "head scale reads as an animal skull, not a blob");
+			CHECK(ColorDistance(A.FurR, A.FurG, A.FurB, A.BellyR, A.BellyG, A.BellyB) > 0.04f,
+				"belly fur is a different tone than the back");
+			CHECK(ColorDistance(A.FurR, A.FurG, A.FurB, A.DarkR, A.DarkG, A.DarkB) > 0.04f,
+				"legs/points are darker than the back");
+			if (A.Antlers)
+			{
+				++Antlered;
+				CHECK(A.LegLen > 0.58f, "deer keep long legs");
+				CHECK(A.NeckLen > 0.32f, "deer keep a readable neck");
+				CHECK(!A.Tusks, "antlered deer are not boars");
+			}
+			if (A.Tusks)
+			{
+				++Tusked;
+				CHECK(A.BodyRad > 0.28f, "boar body is thicker");
+				CHECK(A.LegLen < 0.55f, "boar legs are shorter than deer");
+				CHECK(A.NeckLen < 0.28f, "boar snout sits on a short neck");
+			}
 		}
+		CHECK(Antlered >= 1, "at least one deer has antlers");
+		CHECK(Tusked >= 1, "at least one animal is a boar");
 		CHECK(ColorDistance(AnimalLookAt(0).FurR, AnimalLookAt(0).FurG, AnimalLookAt(0).FurB,
 				  AnimalLookAt(1).FurR, AnimalLookAt(1).FurG, AnimalLookAt(1).FurB)
 				> 0.03f,

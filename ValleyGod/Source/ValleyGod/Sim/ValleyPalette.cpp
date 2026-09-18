@@ -8,21 +8,32 @@ namespace vg
 	namespace
 	{
 		const MaterialRecipe kMaterials[] = {
-			// name, R G B A, metallic, roughness, specular, emissive, opacity, subRGB, kind, twoSided
-			{"M_Dirt", 0.16f, 0.09f, 0.045f, 1.f, 0.03f, 0.46f, 0.38f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
-			{"M_DirtWet", 0.055f, 0.032f, 0.016f, 1.f, 0.07f, 0.14f, 0.72f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
-			{"M_Grass", 0.055f, 0.11f, 0.032f, 1.f, 0.f, 0.58f, 0.32f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
-			{"M_Water", 0.012f, 0.035f, 0.042f, 0.58f, 0.08f, 0.045f, 0.85f, 0.f, 0.58f, 0.f, 0.f, 0.f, SurfaceKind::Translucent, false},
-			{"M_Bark", 0.075f, 0.042f, 0.024f, 1.f, 0.f, 0.84f, 0.28f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
-			{"M_Foliage", 0.038f, 0.095f, 0.022f, 1.f, 0.f, 0.48f, 0.3f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, true},
-			{"M_FoliageDark", 0.022f, 0.06f, 0.016f, 1.f, 0.f, 0.52f, 0.28f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, true},
-			{"M_Wood", 0.13f, 0.07f, 0.028f, 1.f, 0.f, 0.56f, 0.34f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
-			{"M_Hide", 0.2f, 0.12f, 0.055f, 1.f, 0.f, 0.64f, 0.3f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
-			{"M_Fur", 0.24f, 0.15f, 0.07f, 1.f, 0.f, 0.78f, 0.22f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
+			// name, R G B A, metallic, roughness, specular, emissive, opacity, subRGB, kind, twoSided, useVertexColor
+			{"M_Dirt", 0.18f, 0.095f, 0.042f, 1.f, 0.04f, 0.52f, 0.36f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false, true},
+			{"M_DirtWet", 0.048f, 0.028f, 0.014f, 1.f, 0.08f, 0.11f, 0.78f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false, true},
+			{"M_Mud", 0.07f, 0.045f, 0.025f, 1.f, 0.06f, 0.22f, 0.55f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false, true},
+			{"M_Grass", 0.048f, 0.125f, 0.028f, 1.f, 0.f, 0.62f, 0.28f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false, true},
+			{"M_GrassWet", 0.022f, 0.07f, 0.018f, 1.f, 0.f, 0.28f, 0.42f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false, true},
+			{"M_Water", 0.008f, 0.022f, 0.028f, 0.62f, 0.12f, 0.028f, 0.92f, 0.f, 0.62f, 0.f, 0.f, 0.f, SurfaceKind::Translucent, false},
+			{"M_Bark", 0.09f, 0.048f, 0.028f, 1.f, 0.f, 0.88f, 0.22f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
+			{"M_BarkDark", 0.045f, 0.028f, 0.018f, 1.f, 0.f, 0.90f, 0.20f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
+			{"M_Foliage", 0.032f, 0.11f, 0.024f, 1.f, 0.f, 0.42f, 0.32f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, true},
+			{"M_FoliageDark", 0.018f, 0.055f, 0.014f, 1.f, 0.f, 0.50f, 0.26f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, true},
+			{"M_FoliageSun", 0.07f, 0.16f, 0.035f, 1.f, 0.f, 0.38f, 0.34f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, true},
+			{"M_FoliageUnderside", 0.03f, 0.06f, 0.028f, 1.f, 0.f, 0.55f, 0.24f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, true},
+			{"M_Wood", 0.16f, 0.085f, 0.035f, 1.f, 0.f, 0.58f, 0.32f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
+			{"M_WoodDark", 0.07f, 0.04f, 0.02f, 1.f, 0.f, 0.70f, 0.26f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
+			{"M_Hide", 0.22f, 0.13f, 0.06f, 1.f, 0.f, 0.66f, 0.28f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
+			{"M_HideDark", 0.10f, 0.06f, 0.03f, 1.f, 0.f, 0.72f, 0.24f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
+			{"M_Fur", 0.26f, 0.16f, 0.08f, 1.f, 0.f, 0.86f, 0.18f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
+			{"M_FurBelly", 0.38f, 0.28f, 0.16f, 1.f, 0.f, 0.84f, 0.18f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
+			{"M_FurDark", 0.10f, 0.06f, 0.035f, 1.f, 0.f, 0.88f, 0.16f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
+			{"M_Moss", 0.04f, 0.09f, 0.03f, 1.f, 0.f, 0.78f, 0.22f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
+			{"M_Charcoal", 0.04f, 0.035f, 0.03f, 1.f, 0.02f, 0.92f, 0.18f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
 			{"M_SkinWarm", 0.46f, 0.3f, 0.2f, 1.f, 0.f, 0.74f, 0.26f, 0.f, 0.42f, 0.42f, 0.12f, 0.08f, SurfaceKind::Subsurface, false},
 			{"M_ClothOchre", 0.26f, 0.14f, 0.055f, 1.f, 0.f, 0.7f, 0.28f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
 			{"M_Hair", 0.045f, 0.028f, 0.016f, 1.f, 0.04f, 0.52f, 0.36f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
-			{"M_Stone", 0.17f, 0.155f, 0.13f, 1.f, 0.05f, 0.58f, 0.4f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
+			{"M_Stone", 0.20f, 0.18f, 0.15f, 1.f, 0.06f, 0.64f, 0.38f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false, true},
 			{"M_Fire", 1.f, 0.42f, 0.08f, 1.f, 0.f, 1.f, 0.f, 18.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Emissive, false},
 			{"M_Eye", 0.04f, 0.03f, 0.025f, 1.f, 0.05f, 0.28f, 0.45f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
 		};
@@ -39,10 +50,11 @@ namespace vg
 		};
 
 		const AnimalLook kAnimals[] = {
-			{1.15f, 0.24f, 0.62f, 0.36f, 0.32f, 0.20f, 0.10f}, // tan deer
-			{1.05f, 0.26f, 0.58f, 0.30f, 0.16f, 0.10f, 0.06f}, // dark brown
-			{0.95f, 0.30f, 0.48f, 0.22f, 0.28f, 0.22f, 0.16f}, // dusty gray-brown
-			{1.20f, 0.22f, 0.66f, 0.40f, 0.42f, 0.28f, 0.12f}, // pale ochre
+			// len rad leg neck  fur            belly           dark            head antler tusk
+			{1.18f, 0.22f, 0.72f, 0.42f, 0.34f, 0.22f, 0.10f, 0.48f, 0.38f, 0.22f, 0.16f, 0.09f, 0.04f, 0.20f, true, false},  // tan stag
+			{1.08f, 0.24f, 0.66f, 0.38f, 0.16f, 0.10f, 0.06f, 0.28f, 0.20f, 0.12f, 0.08f, 0.05f, 0.03f, 0.19f, false, false}, // dark doe
+			{0.92f, 0.34f, 0.44f, 0.20f, 0.28f, 0.20f, 0.14f, 0.40f, 0.32f, 0.22f, 0.12f, 0.08f, 0.05f, 0.24f, false, true},  // boar
+			{1.22f, 0.20f, 0.70f, 0.44f, 0.44f, 0.30f, 0.14f, 0.56f, 0.46f, 0.28f, 0.22f, 0.12f, 0.06f, 0.21f, true, false},  // pale stag
 		};
 	}
 

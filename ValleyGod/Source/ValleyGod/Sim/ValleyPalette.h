@@ -31,6 +31,7 @@ namespace vg
 		float SubB = 0.f;
 		SurfaceKind Kind = SurfaceKind::Opaque;
 		bool TwoSided = false;
+		bool UseVertexColor = false;
 	};
 
 	struct PersonLook
@@ -64,6 +65,15 @@ namespace vg
 		float FurR = 0.22f;
 		float FurG = 0.14f;
 		float FurB = 0.08f;
+		float BellyR = 0.f;
+		float BellyG = 0.f;
+		float BellyB = 0.f;
+		float DarkR = 0.f;
+		float DarkG = 0.f;
+		float DarkB = 0.f;
+		float HeadScale = 0.f;
+		bool Antlers = false;
+		bool Tusks = false;
 	};
 
 	int MaterialRecipeCount();

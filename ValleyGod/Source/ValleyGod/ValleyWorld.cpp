@@ -194,71 +194,155 @@ void AValleyWorld::SpawnTreesAndRocks()
 	UStaticMesh* Sphere = Valley::SphereMesh();
 	UStaticMesh* Cone = Valley::ConeMesh();
 	UMaterialInterface* Bark = Valley::Material(TEXT("M_Bark"));
+	UMaterialInterface* BarkDark = Valley::Material(TEXT("M_BarkDark"));
 	UMaterialInterface* Leaf = Valley::Material(TEXT("M_Foliage"));
 	UMaterialInterface* LeafDark = Valley::Material(TEXT("M_FoliageDark"));
+	UMaterialInterface* LeafSun = Valley::Material(TEXT("M_FoliageSun"));
+	UMaterialInterface* LeafUnder = Valley::Material(TEXT("M_FoliageUnderside"));
 	UMaterialInterface* Stone = Valley::Material(TEXT("M_Stone"));
+	UMaterialInterface* Moss = Valley::Material(TEXT("M_Moss"));
+	UMaterialInterface* Wood = Valley::Material(TEXT("M_Wood"));
 	if (!Cyl || !Sphere || !Terrain)
 	{
 		return;
 	}
 
+	auto Attach = [&](UStaticMeshComponent* Parent, UStaticMesh* Mesh, const FName& Name, const FVector& Rel, const FRotator& Rot,
+					  const FVector& WorldScale, UMaterialInterface* Mat)
+	{
+		if (!Parent || !Mesh)
+		{
+			return;
+		}
+		const FVector PS = Parent->GetRelativeScale3D();
+		UStaticMeshComponent* Comp = NewObject<UStaticMeshComponent>(this, Name);
+		Comp->SetStaticMesh(Mesh);
+		Comp->SetRelativeLocation(Rel);
+		Comp->SetRelativeRotation(Rot);
+		Comp->SetRelativeScale3D(FVector(WorldScale.X / FMath::Max(FMath::Abs(PS.X), 0.01f), WorldScale.Y / FMath::Max(FMath::Abs(PS.Y), 0.01f),
+			WorldScale.Z / FMath::Max(FMath::Abs(PS.Z), 0.01f)));
+		Comp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		if (Mat)
+		{
+			Comp->SetMaterial(0, Mat);
+		}
+		Comp->SetupAttachment(Parent);
+		Comp->RegisterComponent();
+	};
+
 	FRandomStream Rng(19);
 	int32 TreeN = 0;
-	for (int32 I = 0; I < 48; ++I)
+	for (int32 I = 0; I < 52; ++I)
 	{
-		const float X = Rng.FRandRange(-5200.f, 5200.f);
-		const float Y = Rng.FRandRange(-5200.f, 5200.f);
-		if (FVector2D::Distance(FVector2D(X, Y), FVector2D(0.f, 700.f)) < 700.f)
+		const float X = Rng.FRandRange(-5400.f, 5400.f);
+		const float Y = Rng.FRandRange(-5400.f, 5400.f);
+		if (FVector2D::Distance(FVector2D(X, Y), FVector2D(0.f, 700.f)) < 720.f)
 		{
 			continue;
 		}
-		if (FMath::Abs(X) < 500.f && FMath::Abs(Y) < 400.f)
+		if (FMath::Abs(X) < 520.f && FMath::Abs(Y) < 420.f)
 		{
 			continue;
 		}
 		const FVector G = Terrain->GroundAt(FVector(X, Y, 0.f));
-		const float H = Rng.FRandRange(2.8f, 5.2f);
-		const float TrunkR = Rng.FRandRange(0.42f, 0.7f);
-		UStaticMeshComponent* Trunk = Place(Cyl, G + FVector(0.f, 0.f, H * 48.f), FRotator::ZeroRotator, FVector(TrunkR, TrunkR, H), Bark,
+		const bool bPine = Rng.FRand() > 0.74f;
+		const float H = bPine ? Rng.FRandRange(3.6f, 6.2f) : Rng.FRandRange(2.9f, 5.4f);
+		const float TrunkR = bPine ? Rng.FRandRange(0.38f, 0.58f) : Rng.FRandRange(0.58f, 0.98f);
+		const float Yaw = Rng.FRandRange(0.f, 360.f);
+		UMaterialInterface* TrunkMat = (I % 3 == 0) ? BarkDark : Bark;
+		UStaticMeshComponent* Trunk = Place(Cyl, G + FVector(0.f, 0.f, H * 48.f), FRotator(0.f, Yaw, 0.f), FVector(TrunkR, TrunkR, H), TrunkMat,
 			FName(*FString::Printf(TEXT("Trunk%d"), TreeN)));
 		Trees.Add(Trunk);
+		TreeYaw.Add(Yaw);
 
-		auto LeafOn = [&](const FName& Name, const FVector& Rel, const FVector& Scale, UMaterialInterface* Mat)
-		{
-			UStaticMeshComponent* Comp = NewObject<UStaticMeshComponent>(this, Name);
-			Comp->SetStaticMesh(Sphere);
-			Comp->SetRelativeLocation(Rel);
-			Comp->SetRelativeScale3D(Scale);
-			Comp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-			if (Mat)
-			{
-				Comp->SetMaterial(0, Mat);
-			}
-			Comp->SetupAttachment(Trunk);
-			Comp->RegisterComponent();
-		};
+		Attach(Trunk, Sphere, FName(*FString::Printf(TEXT("Root%d"), TreeN)), FVector(0.f, 0.f, -46.f), FRotator::ZeroRotator,
+			FVector(TrunkR * 2.15f, TrunkR * 2.05f, 0.42f), TrunkMat);
+		Attach(Trunk, Cyl, FName(*FString::Printf(TEXT("Upper%d"), TreeN)), FVector(0.f, 0.f, 28.f), FRotator::ZeroRotator,
+			FVector(TrunkR * 0.72f, TrunkR * 0.72f, H * 0.55f), TrunkMat);
 
-		LeafOn(FName(*FString::Printf(TEXT("CanopyA%d"), TreeN)), FVector(0.f, 0.f, 48.f), FVector(2.2f, 2.1f, 1.5f) / FVector(TrunkR, TrunkR, H) * Rng.FRandRange(0.9f, 1.15f), Leaf);
-		LeafOn(FName(*FString::Printf(TEXT("CanopyB%d"), TreeN)), FVector(Rng.FRandRange(-18.f, 18.f), Rng.FRandRange(-18.f, 18.f), 68.f), FVector(1.6f, 1.7f, 1.1f) / FVector(TrunkR, TrunkR, H), LeafDark);
-		LeafOn(FName(*FString::Printf(TEXT("CanopyC%d"), TreeN)), FVector(Rng.FRandRange(-12.f, 12.f), Rng.FRandRange(-12.f, 12.f), 36.f), FVector(1.4f, 1.5f, 1.0f) / FVector(TrunkR, TrunkR, H), Leaf);
-		Place(Sphere, G + FVector(0.f, 0.f, 18.f), FRotator::ZeroRotator, FVector(TrunkR * 1.8f, TrunkR * 1.8f, 0.35f), Bark,
-			FName(*FString::Printf(TEXT("Root%d"), TreeN)));
-		if (Cone)
+		if (bPine && Cone)
 		{
-			Place(Cyl, G + FVector(Rng.FRandRange(-20.f, 20.f), Rng.FRandRange(-20.f, 20.f), H * 70.f), FRotator(Rng.FRandRange(20.f, 55.f), Rng.FRandRange(0.f, 180.f), 0.f),
-				FVector(0.12f, 0.12f, H * 0.35f), Bark, FName(*FString::Printf(TEXT("Branch%d"), TreeN)));
+			Attach(Trunk, Cone, FName(*FString::Printf(TEXT("PineA%d"), TreeN)), FVector(0.f, 0.f, 8.f), FRotator::ZeroRotator,
+				FVector(1.7f, 1.7f, 1.1f), LeafUnder);
+			Attach(Trunk, Cone, FName(*FString::Printf(TEXT("PineB%d"), TreeN)), FVector(0.f, 0.f, 24.f), FRotator::ZeroRotator,
+				FVector(2.0f, 2.0f, 1.7f), LeafDark);
+			Attach(Trunk, Cone, FName(*FString::Printf(TEXT("PineC%d"), TreeN)), FVector(0.f, 0.f, 46.f), FRotator::ZeroRotator,
+				FVector(1.55f, 1.55f, 1.5f), Leaf);
+			Attach(Trunk, Cone, FName(*FString::Printf(TEXT("PineD%d"), TreeN)), FVector(0.f, 0.f, 66.f), FRotator::ZeroRotator,
+				FVector(1.05f, 1.05f, 1.25f), LeafSun);
+		}
+		else
+		{
+			const float Spread = Rng.FRandRange(0.92f, 1.12f);
+			Attach(Trunk, Sphere, FName(*FString::Printf(TEXT("CanopyA%d"), TreeN)), FVector(0.f, 0.f, 48.f), FRotator::ZeroRotator,
+				FVector(2.35f, 2.2f, 1.55f) * Spread, Leaf);
+			Attach(Trunk, Sphere, FName(*FString::Printf(TEXT("CanopyB%d"), TreeN)),
+				FVector(Rng.FRandRange(-22.f, 22.f), Rng.FRandRange(-22.f, 22.f), 70.f), FRotator::ZeroRotator, FVector(1.75f, 1.85f, 1.15f), LeafDark);
+			Attach(Trunk, Sphere, FName(*FString::Printf(TEXT("CanopyC%d"), TreeN)),
+				FVector(Rng.FRandRange(-16.f, 16.f), Rng.FRandRange(-16.f, 16.f), 34.f), FRotator::ZeroRotator, FVector(1.55f, 1.6f, 1.05f), LeafUnder);
+			Attach(Trunk, Sphere, FName(*FString::Printf(TEXT("CanopyD%d"), TreeN)),
+				FVector(Rng.FRandRange(-14.f, 14.f), Rng.FRandRange(-10.f, 10.f), 58.f), FRotator::ZeroRotator, FVector(1.35f, 1.4f, 0.95f), LeafSun);
+			Attach(Trunk, Sphere, FName(*FString::Printf(TEXT("CanopyE%d"), TreeN)),
+				FVector(Rng.FRandRange(-10.f, 10.f), Rng.FRandRange(-18.f, 18.f), 42.f), FRotator::ZeroRotator, FVector(1.2f, 1.35f, 0.9f), Leaf);
+			Attach(Trunk, Sphere, FName(*FString::Printf(TEXT("CanopyF%d"), TreeN)), FVector(0.f, 0.f, 22.f), FRotator::ZeroRotator,
+				FVector(1.15f, 1.2f, 0.7f), LeafDark);
+		}
+
+		Attach(Trunk, Cyl, FName(*FString::Printf(TEXT("BranchA%d"), TreeN)), FVector(Rng.FRandRange(-8.f, 8.f), 6.f, 18.f),
+			FRotator(Rng.FRandRange(22.f, 58.f), Rng.FRandRange(20.f, 80.f), 0.f), FVector(0.14f, 0.14f, H * 0.42f), TrunkMat);
+		Attach(Trunk, Cyl, FName(*FString::Printf(TEXT("BranchB%d"), TreeN)), FVector(Rng.FRandRange(-6.f, 6.f), -8.f, 12.f),
+			FRotator(Rng.FRandRange(18.f, 50.f), Rng.FRandRange(160.f, 240.f), 0.f), FVector(0.11f, 0.11f, H * 0.32f), BarkDark);
+		if (Moss)
+		{
+			Attach(Trunk, Sphere, FName(*FString::Printf(TEXT("Moss%d"), TreeN)), FVector(18.f, 0.f, -20.f), FRotator::ZeroRotator,
+				FVector(0.22f, 0.16f, 0.12f), Moss);
 		}
 		++TreeN;
 	}
 
-	for (int32 I = 0; I < 18; ++I)
+	for (int32 I = 0; I < 22; ++I)
 	{
-		const float X = Rng.FRandRange(-4000.f, 4000.f);
-		const float Y = Rng.FRandRange(-2000.f, 2200.f);
+		const float X = Rng.FRandRange(-4200.f, 4200.f);
+		const float Y = Rng.FRandRange(-2200.f, 2400.f);
 		const FVector G = Terrain->GroundAt(FVector(X, Y, 0.f));
-		Place(Sphere, G + FVector(0.f, 0.f, 18.f), FRotator(Rng.FRandRange(0.f, 40.f), Rng.FRandRange(0.f, 180.f), 0.f),
-			FVector(Rng.FRandRange(0.4f, 1.1f), Rng.FRandRange(0.3f, 0.8f), Rng.FRandRange(0.25f, 0.5f)), Stone,
+		const FVector RockScale(Rng.FRandRange(0.45f, 1.35f), Rng.FRandRange(0.32f, 0.95f), Rng.FRandRange(0.22f, 0.58f));
+		Place(Sphere, G + FVector(0.f, 0.f, RockScale.Z * 42.f),
+			FRotator(Rng.FRandRange(0.f, 50.f), Rng.FRandRange(0.f, 180.f), Rng.FRandRange(-12.f, 12.f)), RockScale, Stone,
 			FName(*FString::Printf(TEXT("Rock%d"), I)));
+		if (I % 4 == 0 && Moss)
+		{
+			Place(Sphere, G + FVector(Rng.FRandRange(-18.f, 18.f), Rng.FRandRange(-12.f, 12.f), 22.f), FRotator::ZeroRotator,
+				FVector(0.22f, 0.18f, 0.08f), Moss, FName(*FString::Printf(TEXT("RockMoss%d"), I)));
+		}
+	}
+
+	if (Cone)
+	{
+		for (int32 I = 0; I < 28; ++I)
+		{
+			const float X = Rng.FRandRange(-1800.f, 1800.f);
+			const float Y = Rng.FRandRange(-400.f, 2200.f);
+			if (FVector2D::Distance(FVector2D(X, Y), FVector2D(0.f, 700.f)) < 180.f)
+			{
+				continue;
+			}
+			const FVector G = Terrain->GroundAt(FVector(X, Y, 0.f));
+			Place(Cone, G + FVector(0.f, 0.f, 14.f), FRotator(Rng.FRandRange(-8.f, 8.f), Rng.FRandRange(0.f, 180.f), 0.f),
+				FVector(Rng.FRandRange(0.18f, 0.32f), Rng.FRandRange(0.16f, 0.28f), Rng.FRandRange(0.22f, 0.4f)), (I % 3 == 0) ? LeafDark : Leaf,
+				FName(*FString::Printf(TEXT("Tuft%d"), I)));
+		}
+	}
+
+	if (Wood)
+	{
+		for (int32 I = 0; I < 5; ++I)
+		{
+			const float X = Rng.FRandRange(-2400.f, 2400.f);
+			const float Y = Rng.FRandRange(-800.f, 2000.f);
+			const FVector G = Terrain->GroundAt(FVector(X, Y, 0.f));
+			Place(Cyl, G + FVector(0.f, 0.f, 16.f), FRotator(6.f, Rng.FRandRange(0.f, 180.f), 82.f), FVector(0.18f, 0.16f, 1.4f), Wood,
+				FName(*FString::Printf(TEXT("Fallen%d"), I)));
+		}
 	}
 }
 
@@ -267,10 +351,15 @@ void AValleyWorld::SpawnSheltersAndFire()
 	UStaticMesh* Cyl = Valley::CylinderMesh();
 	UStaticMesh* Cube = Valley::CubeMesh();
 	UStaticMesh* Sphere = Valley::SphereMesh();
+	UStaticMesh* Cone = Valley::ConeMesh();
+	UStaticMesh* Plane = Valley::PlaneMesh();
 	UMaterialInterface* Wood = Valley::Material(TEXT("M_Wood"));
+	UMaterialInterface* WoodDark = Valley::Material(TEXT("M_WoodDark"));
 	UMaterialInterface* Hide = Valley::Material(TEXT("M_Hide"));
+	UMaterialInterface* HideDark = Valley::Material(TEXT("M_HideDark"));
 	UMaterialInterface* Fire = Valley::Material(TEXT("M_Fire"));
 	UMaterialInterface* Stone = Valley::Material(TEXT("M_Stone"));
+	UMaterialInterface* Charcoal = Valley::Material(TEXT("M_Charcoal"));
 	if (!Cyl || !Terrain)
 	{
 		return;
@@ -279,37 +368,89 @@ void AValleyWorld::SpawnSheltersAndFire()
 	for (int32 I = 0; I < Brain.ShelterCount; ++I)
 	{
 		const FVector G = Terrain->GroundAt(FVector(Brain.ShelterX[I], Brain.ShelterY[I], 0.f));
-		Place(Cyl, G + FVector(-70.f, -40.f, 80.f), FRotator::ZeroRotator, FVector(0.14f, 0.14f, 1.55f), Wood, FName(*FString::Printf(TEXT("PoleA%d"), I)));
-		Place(Cyl, G + FVector(70.f, -40.f, 80.f), FRotator::ZeroRotator, FVector(0.14f, 0.14f, 1.55f), Wood, FName(*FString::Printf(TEXT("PoleB%d"), I)));
-		Place(Cyl, G + FVector(0.f, 55.f, 50.f), FRotator(0.f, 0.f, 55.f), FVector(0.12f, 0.12f, 1.7f), Wood, FName(*FString::Printf(TEXT("PoleC%d"), I)));
-		Place(Cyl, G + FVector(-40.f, 20.f, 110.f), FRotator(0.f, 90.f, 18.f), FVector(0.08f, 0.08f, 1.4f), Wood, FName(*FString::Printf(TEXT("Ridge%d"), I)));
+		const float Yaw = I * 18.f - 30.f;
+		const FRotator Facing(0.f, Yaw, 0.f);
+		auto Local = [&](const FVector& Offset) { return G + Facing.RotateVector(Offset); };
+
+		Place(Cyl, Local(FVector(-78.f, -48.f, 86.f)), FRotator(4.f, Yaw, 0.f), FVector(0.16f, 0.16f, 1.7f), Wood,
+			FName(*FString::Printf(TEXT("PoleA%d"), I)));
+		Place(Cyl, Local(FVector(78.f, -48.f, 86.f)), FRotator(-4.f, Yaw, 0.f), FVector(0.16f, 0.16f, 1.7f), Wood,
+			FName(*FString::Printf(TEXT("PoleB%d"), I)));
+		Place(Cyl, Local(FVector(-50.f, 62.f, 58.f)), FRotator(12.f, Yaw, 28.f), FVector(0.13f, 0.13f, 1.55f), WoodDark,
+			FName(*FString::Printf(TEXT("PoleC%d"), I)));
+		Place(Cyl, Local(FVector(50.f, 62.f, 58.f)), FRotator(12.f, Yaw, -28.f), FVector(0.13f, 0.13f, 1.55f), WoodDark,
+			FName(*FString::Printf(TEXT("PoleD%d"), I)));
+		Place(Cyl, Local(FVector(0.f, 8.f, 148.f)), FRotator(0.f, Yaw + 90.f, 10.f), FVector(0.09f, 0.09f, 1.65f), Wood,
+			FName(*FString::Printf(TEXT("Ridge%d"), I)));
+		Place(Cyl, Local(FVector(-40.f, -10.f, 132.f)), FRotator(8.f, Yaw + 90.f, 0.f), FVector(0.07f, 0.07f, 1.2f), WoodDark,
+			FName(*FString::Printf(TEXT("Rafter%d"), I)));
 		if (Cube)
 		{
-			Place(Cube, G + FVector(0.f, 8.f, 128.f), FRotator(-30.f, 0.f, 0.f), FVector(2.3f, 2.1f, 0.07f), Hide, FName(*FString::Printf(TEXT("Roof%d"), I)));
-			Place(Cube, G + FVector(0.f, -20.f, 70.f), FRotator(0.f, 0.f, 8.f), FVector(1.6f, 0.08f, 1.1f), Hide, FName(*FString::Printf(TEXT("Wall%d"), I)));
+			Place(Cube, Local(FVector(0.f, 12.f, 138.f)), FRotator(-28.f, Yaw, 0.f), FVector(2.45f, 2.2f, 0.055f), Hide,
+				FName(*FString::Printf(TEXT("Roof%d"), I)));
+			Place(Cube, Local(FVector(0.f, 28.f, 118.f)), FRotator(-38.f, Yaw, 4.f), FVector(2.2f, 1.6f, 0.04f), HideDark,
+				FName(*FString::Printf(TEXT("RoofUnder%d"), I)));
+			Place(Cube, Local(FVector(0.f, -32.f, 72.f)), FRotator(6.f, Yaw, 0.f), FVector(1.85f, 0.06f, 1.15f), Hide,
+				FName(*FString::Printf(TEXT("Wall%d"), I)));
+			Place(Cube, Local(FVector(-88.f, 8.f, 64.f)), FRotator(0.f, Yaw + 82.f, 8.f), FVector(1.4f, 0.05f, 1.0f), HideDark,
+				FName(*FString::Printf(TEXT("WallSide%d"), I)));
+			Place(Cube, Local(FVector(0.f, 10.f, 8.f)), FRotator(0.f, Yaw, 0.f), FVector(1.1f, 1.3f, 0.05f), HideDark,
+				FName(*FString::Printf(TEXT("Bedding%d"), I)));
+		}
+		if (Plane)
+		{
+			Place(Plane, Local(FVector(70.f, -20.f, 90.f)), FRotator(80.f, Yaw + 20.f, 12.f), FVector(0.9f, 1.1f, 1.f), Hide,
+				FName(*FString::Printf(TEXT("Flap%d"), I)));
 		}
 	}
 
 	const FVector FireG = Terrain->GroundAt(FVector(Brain.FireX, Brain.FireY, 0.f));
-	Place(Cyl, FireG + FVector(0.f, 0.f, 10.f), FRotator::ZeroRotator, FVector(0.85f, 0.85f, 0.08f), Stone, TEXT("Hearth"));
-	for (int32 S = 0; S < 7; ++S)
+	Place(Cyl, FireG + FVector(0.f, 0.f, 8.f), FRotator::ZeroRotator, FVector(0.95f, 0.95f, 0.06f), Charcoal ? Charcoal : Stone, TEXT("Hearth"));
+	if (Sphere)
 	{
-		const float Ang = S * 51.4f;
-		const FVector Ring = FRotator(0.f, Ang, 0.f).RotateVector(FVector(42.f, 0.f, 8.f));
-		Place(Sphere ? Sphere : Cyl, FireG + Ring, FRotator(20.f, Ang, 0.f), FVector(0.18f, 0.14f, 0.12f), Stone, FName(*FString::Printf(TEXT("Ring%d"), S)));
+		Place(Sphere, FireG + FVector(0.f, 0.f, 10.f), FRotator::ZeroRotator, FVector(0.55f, 0.5f, 0.12f), Charcoal ? Charcoal : Stone, TEXT("Ash"));
 	}
+	for (int32 S = 0; S < 9; ++S)
+	{
+		const float Ang = S * 40.f + (S % 2) * 8.f;
+		const float Rad = 40.f + (S % 3) * 6.f;
+		const FVector Ring = FRotator(0.f, Ang, 0.f).RotateVector(FVector(Rad, 0.f, 7.f + (S % 2) * 3.f));
+		Place(Sphere ? Sphere : Cyl, FireG + Ring, FRotator(18.f + S * 7.f, Ang, S * 11.f),
+			FVector(0.20f + (S % 3) * 0.04f, 0.15f, 0.11f + (S % 2) * 0.03f), Stone, FName(*FString::Printf(TEXT("Ring%d"), S)));
+	}
+	Place(Cyl, FireG + FVector(-10.f, 6.f, 32.f), FRotator(18.f, 20.f, 0.f), FVector(0.07f, 0.07f, 0.55f), WoodDark, TEXT("StickA"));
+	Place(Cyl, FireG + FVector(12.f, -4.f, 34.f), FRotator(-16.f, 70.f, 0.f), FVector(0.065f, 0.065f, 0.58f), Wood, TEXT("StickB"));
+	Place(Cyl, FireG + FVector(2.f, 12.f, 30.f), FRotator(14.f, -40.f, 8.f), FVector(0.06f, 0.06f, 0.5f), WoodDark, TEXT("StickC"));
 	if (Cube)
 	{
-		Place(Cube, FireG + FVector(0.f, 0.f, 28.f), FRotator::ZeroRotator, FVector(0.32f, 0.32f, 0.42f), Fire, TEXT("Flame"));
-		Place(Cube, FireG + FVector(6.f, -5.f, 50.f), FRotator(12.f, 20.f, 0.f), FVector(0.14f, 0.14f, 0.38f), Fire, TEXT("FlameTip"));
-		Place(Cyl, FireG + FVector(90.f, 40.f, 12.f), FRotator(0.f, 20.f, 90.f), FVector(0.12f, 0.12f, 0.7f), Wood, TEXT("LogA"));
-		Place(Cyl, FireG + FVector(105.f, 55.f, 18.f), FRotator(0.f, -15.f, 82.f), FVector(0.11f, 0.11f, 0.62f), Wood, TEXT("LogB"));
-		Place(Cyl, FireG + FVector(88.f, 62.f, 10.f), FRotator(0.f, 70.f, 90.f), FVector(0.1f, 0.1f, 0.55f), Wood, TEXT("LogC"));
-		Place(Cyl, FireG + FVector(-110.f, 30.f, 55.f), FRotator::ZeroRotator, FVector(0.08f, 0.08f, 1.1f), Wood, TEXT("RackL"));
-		Place(Cyl, FireG + FVector(-70.f, 30.f, 55.f), FRotator::ZeroRotator, FVector(0.08f, 0.08f, 1.1f), Wood, TEXT("RackR"));
-		Place(Cube, FireG + FVector(-90.f, 30.f, 100.f), FRotator::ZeroRotator, FVector(0.7f, 0.08f, 0.55f), Hide, TEXT("RackHide"));
-		Place(Sphere ? Sphere : Cyl, FireG + FVector(40.f, -80.f, 10.f), FRotator(12.f, 30.f, 0.f), FVector(0.28f, 0.22f, 0.1f), Stone, TEXT("GrindStone"));
+		Place(Cube, FireG + FVector(0.f, 0.f, 28.f), FRotator::ZeroRotator, FVector(0.28f, 0.28f, 0.38f), Fire, TEXT("Flame"));
+		Place(Cube, FireG + FVector(4.f, -3.f, 52.f), FRotator(10.f, 25.f, 0.f), FVector(0.12f, 0.12f, 0.34f), Fire, TEXT("FlameTip"));
+		Place(Cyl, FireG + FVector(108.f, 48.f, 14.f), FRotator(0.f, 22.f, 88.f), FVector(0.13f, 0.13f, 0.78f), Wood, TEXT("LogA"));
+		Place(Cyl, FireG + FVector(122.f, 62.f, 20.f), FRotator(0.f, -18.f, 80.f), FVector(0.12f, 0.12f, 0.68f), WoodDark, TEXT("LogB"));
+		Place(Cyl, FireG + FVector(100.f, 70.f, 12.f), FRotator(0.f, 72.f, 90.f), FVector(0.11f, 0.11f, 0.6f), Wood, TEXT("LogC"));
+		Place(Cyl, FireG + FVector(-120.f, 36.f, 62.f), FRotator::ZeroRotator, FVector(0.09f, 0.09f, 1.22f), Wood, TEXT("RackL"));
+		Place(Cyl, FireG + FVector(-72.f, 36.f, 62.f), FRotator::ZeroRotator, FVector(0.09f, 0.09f, 1.22f), Wood, TEXT("RackR"));
+		Place(Cyl, FireG + FVector(-96.f, 36.f, 118.f), FRotator(0.f, 0.f, 90.f), FVector(0.07f, 0.07f, 0.55f), WoodDark, TEXT("RackBar"));
+		Place(Cube, FireG + FVector(-96.f, 36.f, 102.f), FRotator(8.f, 6.f, 0.f), FVector(0.72f, 0.07f, 0.52f), Hide, TEXT("RackHide"));
+		Place(Cube, FireG + FVector(-96.f, 48.f, 88.f), FRotator(-6.f, -8.f, 0.f), FVector(0.55f, 0.06f, 0.4f), HideDark, TEXT("RackHideB"));
+		Place(Cyl, FireG + FVector(40.f, -110.f, 22.f), FRotator(0.f, 12.f, 90.f), FVector(0.18f, 0.18f, 1.05f), Wood, TEXT("Bench"));
+		Place(Cyl, FireG + FVector(8.f, -118.f, 10.f), FRotator::ZeroRotator, FVector(0.1f, 0.1f, 0.18f), WoodDark, TEXT("BenchLegA"));
+		Place(Cyl, FireG + FVector(72.f, -102.f, 10.f), FRotator::ZeroRotator, FVector(0.1f, 0.1f, 0.18f), WoodDark, TEXT("BenchLegB"));
+		Place(Sphere ? Sphere : Cyl, FireG + FVector(48.f, -86.f, 10.f), FRotator(12.f, 30.f, 0.f), FVector(0.32f, 0.24f, 0.1f), Stone, TEXT("GrindStone"));
 	}
+
+	Place(Cyl, FireG + FVector(-40.f, 90.f, 70.f), FRotator(12.f, 8.f, 0.f), FVector(0.045f, 0.045f, 1.35f), Wood, TEXT("SpearA"));
+	if (Cone)
+	{
+		Place(Cone, FireG + FVector(-40.f, 90.f, 142.f), FRotator(12.f, 8.f, 0.f), FVector(0.07f, 0.07f, 0.16f), Stone, TEXT("SpearTipA"));
+	}
+	Place(Cyl, FireG + FVector(-28.f, 98.f, 62.f), FRotator(18.f, -6.f, 4.f), FVector(0.04f, 0.04f, 1.2f), WoodDark, TEXT("SpearB"));
+	if (Cone)
+	{
+		Place(Cone, FireG + FVector(-28.f, 98.f, 128.f), FRotator(18.f, -6.f, 4.f), FVector(0.065f, 0.065f, 0.14f), Stone, TEXT("SpearTipB"));
+	}
+	Place(Cyl, FireG + FVector(70.f, 88.f, 38.f), FRotator(0.f, 30.f, 18.f), FVector(0.055f, 0.055f, 0.7f), Wood, TEXT("AxeHaft"));
+	Place(Sphere ? Sphere : Cyl, FireG + FVector(70.f, 88.f, 72.f), FRotator(0.f, 30.f, 0.f), FVector(0.16f, 0.10f, 0.08f), Stone, TEXT("AxeHead"));
 
 	FireLight = NewObject<UPointLightComponent>(this, TEXT("FireLight"));
 	FireLight->SetWorldLocation(FireG + FVector(0.f, 0.f, 70.f));
@@ -372,7 +513,11 @@ void AValleyWorld::SpawnRain()
 void AValleyWorld::SpawnTornado()
 {
 	UStaticMesh* Cyl = Valley::CylinderMesh();
-	UMaterialInterface* Dust = Valley::Material(TEXT("M_Dirt"));
+		UMaterialInterface* Dust = Valley::Material(TEXT("M_Charcoal"));
+		if (!Dust)
+		{
+			Dust = Valley::Material(TEXT("M_Dirt"));
+		}
 	if (!Cyl)
 	{
 		return;
@@ -491,11 +636,12 @@ void AValleyWorld::UpdateWeatherVisuals(float DeltaSeconds)
 	}
 
 	const float Lean = FMath::Clamp(Brain.WindX * 12.f + (Brain.Sky == vg::Weather::Hurricane ? 14.f : 0.f), 0.f, 22.f);
-	for (UStaticMeshComponent* Trunk : Trees)
+	const int32 TreeCount = FMath::Min(Trees.Num(), TreeYaw.Num());
+	for (int32 I = 0; I < TreeCount; ++I)
 	{
-		if (Trunk)
+		if (UStaticMeshComponent* Trunk = Trees[I])
 		{
-			Trunk->SetWorldRotation(FRotator(Lean, 18.f, 0.f));
+			Trunk->SetWorldRotation(FRotator(Lean, TreeYaw[I], 0.f));
 		}
 	}
 }
