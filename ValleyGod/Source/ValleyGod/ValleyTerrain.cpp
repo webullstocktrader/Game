@@ -11,6 +11,8 @@ AValleyTerrain::AValleyTerrain()
 	GroundMesh->bUseAsyncCooking = true;
 	GroundMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	GroundMesh->SetCollisionResponseToAllChannels(ECR_Block);
+	GroundMesh->SetCastShadow(true);
+	GroundMesh->bAffectDistanceFieldLighting = true;
 
 	WaterMesh = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("Water"));
 	WaterMesh->SetupAttachment(GroundMesh);
@@ -50,11 +52,16 @@ float AValleyTerrain::ComputeBaseHeight(float X, float Y) const
 
 bool AValleyTerrain::IsGrass(float X, float Y, float Height) const
 {
-	if (RiverDistance(X, Y) < 420.f)
+	if (RiverDistance(X, Y) < 280.f)
 	{
 		return false;
 	}
-	return Height > 70.f && FMath::PerlinNoise2D(FVector2D(X, Y) * 0.00022f) > -0.05f;
+	const float Camp = FVector2D::Distance(FVector2D(X, Y), FVector2D(0.f, 700.f));
+	if (Camp < 380.f)
+	{
+		return false;
+	}
+	return Height > 36.f && FMath::PerlinNoise2D(FVector2D(X, Y) * 0.00022f) > -0.28f;
 }
 
 bool AValleyTerrain::IsStone(float X, float Y, float Height) const
@@ -70,10 +77,21 @@ void AValleyTerrain::AddQuad(TArray<FVector>& Verts, TArray<int32>& Tris, TArray
 	const FVector& A, const FVector& B, const FVector& C, const FVector& D, const FColor& Color)
 {
 	const int32 Base = Verts.Num();
-	const FVector N = FVector::CrossProduct(B - A, D - A).GetSafeNormal();
+	auto UV = [](const FVector& P)
+	{
+		constexpr float Scale = 380.f;
+		return FVector2D(P.X / Scale, P.Y / Scale);
+	};
+	auto SmoothN = [this](const FVector& P)
+	{
+		const float E = CellCm;
+		const float Hx = HeightAt(P.X + E, P.Y) - HeightAt(P.X - E, P.Y);
+		const float Hy = HeightAt(P.X, P.Y + E) - HeightAt(P.X, P.Y - E);
+		return FVector(-Hx, -Hy, 2.f * E).GetSafeNormal();
+	};
 	Verts.Append({ A, B, C, D });
-	Norms.Append({ N, N, N, N });
-	UVs.Append({ FVector2D(0, 0), FVector2D(1, 0), FVector2D(1, 1), FVector2D(0, 1) });
+	Norms.Append({ SmoothN(A), SmoothN(B), SmoothN(C), SmoothN(D) });
+	UVs.Append({ UV(A), UV(B), UV(C), UV(D) });
 	Colors.Append({ Color, Color, Color, Color });
 	Tris.Append({ Base, Base + 1, Base + 2, Base, Base + 2, Base + 3 });
 }

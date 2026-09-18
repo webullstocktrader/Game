@@ -423,6 +423,7 @@ int main()
 		CHECK(!UsesMetaHumanSlot(-1) && !UsesMetaHumanSlot(8), "out of range slots stay procedural");
 
 		CHECK(std::strcmp(MetaHumanContentFolder(), "/Game/MetaHumans/Mara") == 0, "Mara assemble folder");
+		CHECK(std::strcmp(PNGrassLibraryContentFolder(), "/Game/PN_GrassLibrary") == 0, "PN grass pack folder");
 		CHECK(std::strcmp(MegascansContentFolder(), "/Game/Megascans") == 0, "Fab/Quixel default folder");
 		CHECK(std::strcmp(ValleySliceContentFolder(), "/Game/ValleySlice") == 0, "optional alias folder");
 		CHECK(std::strcmp(ValleySliceMapPath(), "/Game/Maps/ValleySlice") == 0, "playable slice map");
@@ -446,11 +447,26 @@ int main()
 		CHECK(bHasMaraFolder, "candidates include Content/MetaHumans/Mara");
 		CHECK(bHasAlias, "candidates include Content/ValleySlice alias");
 
-		CHECK(DirtMaterialPathCount() >= 1 && GrassMaterialPathCount() >= 1, "ground material aliases exist");
-		CHECK(TreeMeshPathCount() >= 1 && GrassMeshPathCount() >= 1 && RockMeshPathCount() >= 1,
+		CHECK(DirtMaterialPathCount() >= 2 && GrassMaterialPathCount() >= 2, "ground material aliases exist");
+		CHECK(TreeMeshPathCount() >= 2 && GrassMeshPathCount() >= 2 && RockMeshPathCount() >= 1,
 			"foliage mesh aliases exist");
 		CHECK(std::strstr(DirtMaterialPathAt(0), "/Game/") == DirtMaterialPathAt(0), "dirt alias is /Game");
 		CHECK(std::strstr(TreeMeshPathAt(0), "/Game/") == TreeMeshPathAt(0), "tree alias is /Game");
+
+		bool bHasPNGrass = false;
+		for (int I = 0; I < GrassMeshPathCount(); ++I)
+		{
+			if (std::strstr(GrassMeshPathAt(I), "/Game/PN_GrassLibrary/"))
+			{
+				bHasPNGrass = true;
+			}
+		}
+		CHECK(bHasPNGrass, "grass aliases include PN_GrassLibrary");
+
+		CHECK(PreferredTreeScatterCount() >= 110, "Quixel trees fill a forest, not a thin ring");
+		CHECK(PreferredGrassScatterCount() >= 900, "grass instances are dense enough to read as a meadow");
+		CHECK(PreferredRockScatterCount() >= 60, "rocks fill the valley floor");
+		CHECK(ProceduralGrassTuftCount() >= 160, "empty-folder valley still gets cheap grass tufts");
 
 		CHECK(ClassifyContentPath("/Game/Megascans/Surfaces/Forest_Dirt_01/MI_Forest_Dirt_01", ScanKind::DirtMaterial),
 			"Quixel dirt surface classifies as dirt");
@@ -458,6 +474,10 @@ int main()
 			"a beech mesh is not dirt");
 		CHECK(ClassifyContentPath("/Game/Megascans/Surfaces/Wild_Grass/MI_Wild_Grass", ScanKind::GrassMaterial),
 			"Quixel grass surface classifies as grass");
+		CHECK(ClassifyContentPath("/Game/PN_GrassLibrary/Materials/MI_Grass_01", ScanKind::GrassMaterial),
+			"PN grass library material classifies as grass");
+		CHECK(ClassifyContentPath("/Game/PN_GrassLibrary/Meshes/SM_Grass_01", ScanKind::GrassMesh),
+			"PN grass library mesh classifies as grass");
 		CHECK(ClassifyContentPath("/Game/Megascans/3D_Plants/European_Beech/SM_European_Beech_Var1", ScanKind::TreeMesh),
 			"beech plant classifies as a tree");
 		CHECK(ClassifyContentPath("/Game/Fab/ForestPack/SM_European_Beech_Var1", ScanKind::TreeMesh),
@@ -471,6 +491,14 @@ int main()
 		CHECK(ClassifyContentPath("/Game/Megascans/Surfaces/Wet_Mud/MI_Wet_Mud", ScanKind::WetDirtMaterial),
 			"wet mud classifies as wet dirt");
 		CHECK(!ClassifyContentPath("/Game/Materials/M_Dirt", ScanKind::TreeMesh), "baked M_Dirt is not a tree");
+		CHECK(!ClassifyContentPath("/Game/Megascans/3D_Assets/Fire_Pit/SM_Fire_Pit", ScanKind::TreeMesh),
+			"fire pit is not a tree");
+		CHECK(!ClassifyContentPath("/Game/Megascans/3D_Assets/Rock_Clump/SM_Rock_Clump", ScanKind::GrassMesh),
+			"rock clump is not grass");
+		CHECK(ClassifyContentPath("/Game/Megascans/3D_Assets/Rock_Clump/SM_Rock_Clump", ScanKind::RockMesh),
+			"rock clump is a rock");
+		CHECK(!ClassifyContentPath("/Game/PN_GrassLibrary/Meshes/SM_GroundPlane", ScanKind::GrassMesh),
+			"PN ground plane is not a grass clump");
 		CHECK(!ClassifyContentPath(nullptr, ScanKind::DirtMaterial), "null path is not a match");
 	}
 

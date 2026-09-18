@@ -1,6 +1,6 @@
 #pragma once
 
-// Engine-free path table for MetaHuman + Quixel milestone 1.
+// Engine-free path table for MetaHuman + Quixel/PN foliage.
 // Unreal loaders and host tests share this so documented folders cannot drift.
 
 namespace vg
@@ -20,10 +20,16 @@ namespace vg
 	bool UsesMetaHumanSlot(int Slot);
 
 	const char* MetaHumanContentFolder();
+	const char* PNGrassLibraryContentFolder();
 	const char* MegascansContentFolder();
 	const char* FabContentFolder();
 	const char* ValleySliceContentFolder();
 	const char* ValleySliceMapPath();
+
+	int PreferredTreeScatterCount();
+	int PreferredGrassScatterCount();
+	int PreferredRockScatterCount();
+	int ProceduralGrassTuftCount();
 
 	int MetaHumanClassPathCount();
 	const char* MetaHumanClassPathAt(int Index);

@@ -13,10 +13,15 @@ If the folders below are empty, PLAY.bat still runs: Mara falls back to the proc
 | Disk | Unreal path | Put this here |
 |---|---|---|
 | `Content/MetaHumans/Mara/` | `/Game/MetaHumans/Mara/` | Assemble MetaHuman **Mara** (Blueprint + body/face/grooms) |
+| `Content/PN_GrassLibrary/` | `/Game/PN_GrassLibrary/` | Grass clump meshes / grass materials |
 | `Content/Megascans/` | `/Game/Megascans/` | Fab/Quixel default download root |
 | `Content/Fab/` | `/Game/Fab/` | Alternate Fab drop folder (also scanned) |
+| `Content/MSPresets/` | `/Game/MSPresets/` | Quixel/Megascans preset materials |
+| `Content/Quixel/` | `/Game/Quixel/` | Alternate Quixel drop folder |
 | `Content/ValleySlice/` | `/Game/ValleySlice/` | Optional aliases if you want to pick exact assets |
 | `Content/Maps/ValleySlice` | `/Game/Maps/ValleySlice` | Playable map (ValleyPrep still creates this empty map) |
+
+Downloaded `.uasset` trees under those folders are gitignored. Keep the `.gitkeep` files.
 
 ### Optional aliases (rename/copy after download)
 
@@ -25,8 +30,9 @@ These are checked first, so you can pin a specific pack:
 - `/Game/ValleySlice/BP_Mara` — Mara Actor Blueprint
 - `/Game/ValleySlice/MI_Dirt`, `MI_Grass`, `MI_DirtWet`
 - `/Game/ValleySlice/SM_Tree`, `SM_Grass`, `SM_Rock`
+- `/Game/PN_GrassLibrary/Meshes/SM_Grass` (and `Materials/MI_Grass`)
 
-If aliases are missing, the game scans `Content/Megascans` and `Content/Fab` and classifies names (`dirt`, `beech`, `grass`, `rock`, …).
+If aliases are missing, the game also scans `Content/PN_GrassLibrary`, `Content/Megascans`, `Content/Fab`, `Content/MSPresets`, and `Content/Quixel` and classifies names (`dirt`, `beech`, `grass`, `rock`, `pine`, `tuft`, …). Documented aliases merge with the scan so extra trees/grass/rocks still load. Real static meshes are preferred over capsule trees. Grass, saplings, and rocks instance densely (HISM). The camp clearing stays open.
 
 Mara Blueprint candidates (first file that exists wins):
 
@@ -64,7 +70,8 @@ Install Visual Studio 2022 with **Game development with C++** if you have not al
    - a **grass** surface and/or grass clump 3D plant
    - at least one **tree** 3D plant (beech, pine, oak, willow — any temperate tree)
 4. **Add to project** / download into **this** ValleyGod project. Fab should land files under `Content/Megascans/` (that is the path we scan).
-5. Do not need to place them in the level by hand. Play will scatter trees/grass/rocks and swap ground materials if it finds them.
+5. If you have **PN_GrassLibrary**, add it under `Content/PN_GrassLibrary/`.
+6. Do not need to place them in the level by hand. Play will scatter trees/grass/rocks densely and swap ground materials if it finds them.
 
 If Fab puts meshes in a differently named folder, either move/copy the pack into `Content/Megascans/` or copy the ones you want to the `Content/ValleySlice/SM_*` / `MI_*` aliases above.
 
@@ -106,7 +113,7 @@ Mara may idle-slide until you assign a walk AnimBP. That is expected for this sc
 The Blueprint is not at a candidate path. Move/assemble it to `Content/MetaHumans/Mara/` or copy the Actor Blueprint to `Content/ValleySlice/BP_Mara`. Watch the Output Log for `Mara MetaHuman class`.
 
 **HUD still says foliage procedural after Fab download**  
-Files are not under `Content/Megascans` or `Content/Fab`, or names do not contain dirt/grass/tree/rock keywords. Copy chosen meshes to `Content/ValleySlice/SM_Tree` (and `SM_Grass`, `MI_Dirt`, …).
+Files are not under `Content/Megascans`, `Content/Fab`, `Content/PN_GrassLibrary`, `Content/MSPresets`, or `Content/Quixel`, or names do not contain dirt/grass/tree/rock keywords. Copy chosen meshes to `Content/ValleySlice/SM_Tree` (and `SM_Grass`, `MI_Dirt`, …).
 
 **Plugin missing on project open**  
 Install 5.8.2 with MetaHuman extras. Enable the plugin from the warning dialog. Do not remove ProceduralMeshComponent or EnhancedInput.

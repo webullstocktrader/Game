@@ -19,7 +19,8 @@ namespace Valley
 		TArray<UStaticMesh*> Rocks;
 	};
 
-	// Loads documented aliases, then scans Content/Megascans and Content/Fab.
-	// Missing downloads yield empty fields so callers keep procedural art.
+	// Loads documented aliases, then scans Content/PN_GrassLibrary, Megascans,
+	// Fab, MSPresets, Quixel, and ValleySlice. Missing downloads yield empty
+	// fields so callers keep procedural art.
 	FOptionalAssets DiscoverOptionalAssets();
 }

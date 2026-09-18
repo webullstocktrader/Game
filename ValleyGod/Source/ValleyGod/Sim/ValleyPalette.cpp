@@ -10,9 +10,9 @@ namespace vg
 		const MaterialRecipe kMaterials[] = {
 			// name, R G B A, metallic, roughness, specular, emissive, opacity, subRGB, kind, twoSided
 			{"M_Dirt", 0.16f, 0.09f, 0.045f, 1.f, 0.03f, 0.46f, 0.38f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
-			{"M_DirtWet", 0.055f, 0.032f, 0.016f, 1.f, 0.07f, 0.14f, 0.72f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
-			{"M_Grass", 0.055f, 0.11f, 0.032f, 1.f, 0.f, 0.58f, 0.32f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
-			{"M_Water", 0.012f, 0.035f, 0.042f, 0.58f, 0.08f, 0.045f, 0.85f, 0.f, 0.58f, 0.f, 0.f, 0.f, SurfaceKind::Translucent, false},
+			{"M_DirtWet", 0.048f, 0.028f, 0.014f, 1.f, 0.08f, 0.10f, 0.82f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
+			{"M_Grass", 0.048f, 0.12f, 0.034f, 1.f, 0.f, 0.52f, 0.36f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
+			{"M_Water", 0.010f, 0.038f, 0.048f, 0.62f, 0.04f, 0.035f, 0.92f, 0.f, 0.62f, 0.f, 0.f, 0.f, SurfaceKind::Translucent, false},
 			{"M_Bark", 0.075f, 0.042f, 0.024f, 1.f, 0.f, 0.84f, 0.28f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
 			{"M_Foliage", 0.038f, 0.095f, 0.022f, 1.f, 0.f, 0.48f, 0.3f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, true},
 			{"M_FoliageDark", 0.022f, 0.06f, 0.016f, 1.f, 0.f, 0.52f, 0.28f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, true},

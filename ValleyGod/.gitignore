@@ -27,9 +27,15 @@ Content/MetaHumans/**
 !Content/MetaHumans/.gitkeep
 !Content/MetaHumans/Mara/
 !Content/MetaHumans/Mara/.gitkeep
+Content/PN_GrassLibrary/**
+!Content/PN_GrassLibrary/.gitkeep
 Content/Megascans/**
 !Content/Megascans/.gitkeep
 Content/Fab/**
 !Content/Fab/.gitkeep
+Content/MSPresets/**
+!Content/MSPresets/.gitkeep
+Content/Quixel/**
+!Content/Quixel/.gitkeep
 Content/ValleySlice/**
 !Content/ValleySlice/.gitkeep

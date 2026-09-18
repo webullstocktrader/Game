@@ -16,32 +16,56 @@ namespace vg
 
 		const char* kDirtMaterials[] = {
 			"/Game/ValleySlice/MI_Dirt",
-			"/Game/Megascans/Surfaces/Dirt/MI_Dirt"
+			"/Game/Megascans/Surfaces/Dirt/MI_Dirt",
+			"/Game/Megascans/Surfaces/Forest_Dirt/MI_Forest_Dirt",
+			"/Game/Megascans/Surfaces/Forest_Floor/MI_Forest_Floor",
+			"/Game/Megascans/Surfaces/Soil/MI_Soil",
+			"/Game/Megascans/Surfaces/Ground/MI_Ground"
 		};
 
 		const char* kGrassMaterials[] = {
 			"/Game/ValleySlice/MI_Grass",
-			"/Game/Megascans/Surfaces/Grass/MI_Grass"
+			"/Game/Megascans/Surfaces/Grass/MI_Grass",
+			"/Game/PN_GrassLibrary/Materials/MI_Grass",
+			"/Game/PN_GrassLibrary/MI_Grass",
+			"/Game/Megascans/Surfaces/Wild_Grass/MI_Wild_Grass",
+			"/Game/Megascans/Surfaces/Meadow/MI_Meadow"
 		};
 
 		const char* kWetDirtMaterials[] = {
 			"/Game/ValleySlice/MI_DirtWet",
-			"/Game/Megascans/Surfaces/DirtWet/MI_DirtWet"
+			"/Game/Megascans/Surfaces/DirtWet/MI_DirtWet",
+			"/Game/Megascans/Surfaces/Wet_Mud/MI_Wet_Mud",
+			"/Game/Megascans/Surfaces/Wet_Ground/MI_Wet_Ground"
 		};
 
 		const char* kTreeMeshes[] = {
 			"/Game/ValleySlice/SM_Tree",
-			"/Game/Megascans/3D_Plants/Tree/SM_Tree"
+			"/Game/Megascans/3D_Plants/Tree/SM_Tree",
+			"/Game/Megascans/3D_Plants/European_Beech/SM_European_Beech",
+			"/Game/Megascans/3D_Plants/Pine/SM_Pine",
+			"/Game/Megascans/3D_Plants/Oak/SM_Oak",
+			"/Game/Megascans/3D_Plants/Silver_Birch/SM_Silver_Birch",
+			"/Game/Megascans/3D_Plants/Scots_Pine/SM_Scots_Pine",
+			"/Game/Fab/ForestPack/SM_Tree"
 		};
 
 		const char* kGrassMeshes[] = {
 			"/Game/ValleySlice/SM_Grass",
-			"/Game/Megascans/3D_Plants/Grass/SM_Grass"
+			"/Game/PN_GrassLibrary/Meshes/SM_Grass",
+			"/Game/PN_GrassLibrary/Meshes/SM_Grass_01",
+			"/Game/PN_GrassLibrary/Foliage/SM_Grass",
+			"/Game/Megascans/3D_Plants/Grass/SM_Grass",
+			"/Game/Megascans/3D_Plants/Wild_Grass_Clump/SM_Wild_Grass_Clump",
+			"/Game/Megascans/3D_Plants/Meadow_Grass/SM_Meadow_Grass"
 		};
 
 		const char* kRockMeshes[] = {
 			"/Game/ValleySlice/SM_Rock",
-			"/Game/Megascans/3D_Assets/Rock/SM_Rock"
+			"/Game/Megascans/3D_Assets/Rock/SM_Rock",
+			"/Game/Megascans/3D_Assets/Cliff_Rock/SM_Cliff_Rock",
+			"/Game/Megascans/3D_Assets/Forest_Rock/SM_Forest_Rock",
+			"/Game/Megascans/3D_Assets/Mossy_Rock/SM_Mossy_Rock"
 		};
 
 		bool ContainsFold(const char* Hay, const char* Needle)
@@ -72,6 +96,46 @@ namespace vg
 			return false;
 		}
 
+		bool ContainsWord(const char* Hay, const char* Needle)
+		{
+			if (!Hay || !Needle || !Needle[0])
+			{
+				return false;
+			}
+			const size_t N = std::strlen(Needle);
+			for (const char* P = Hay; *P; ++P)
+			{
+				if (P != Hay)
+				{
+					const unsigned char Prev = static_cast<unsigned char>(*(P - 1));
+					if (std::isalnum(Prev))
+					{
+						continue;
+					}
+				}
+				size_t I = 0;
+				while (I < N)
+				{
+					const unsigned char A = static_cast<unsigned char>(P[I]);
+					const unsigned char B = static_cast<unsigned char>(Needle[I]);
+					if (!P[I] || std::tolower(A) != std::tolower(B))
+					{
+						break;
+					}
+					++I;
+				}
+				if (I == N)
+				{
+					const unsigned char Next = static_cast<unsigned char>(P[N]);
+					if (!Next || !std::isalnum(Next))
+					{
+						return true;
+					}
+				}
+			}
+			return false;
+		}
+
 		bool InPlantFolder(const char* Path)
 		{
 			return ContainsFold(Path, "/3D_Plants") || ContainsFold(Path, "/Foliage") || ContainsFold(Path, "/3D_Assets");
@@ -94,10 +158,16 @@ namespace vg
 	}
 
 	const char* MetaHumanContentFolder() { return "/Game/MetaHumans/Mara"; }
+	const char* PNGrassLibraryContentFolder() { return "/Game/PN_GrassLibrary"; }
 	const char* MegascansContentFolder() { return "/Game/Megascans"; }
 	const char* FabContentFolder() { return "/Game/Fab"; }
 	const char* ValleySliceContentFolder() { return "/Game/ValleySlice"; }
 	const char* ValleySliceMapPath() { return "/Game/Maps/ValleySlice"; }
+
+	int PreferredTreeScatterCount() { return 140; }
+	int PreferredGrassScatterCount() { return 1600; }
+	int PreferredRockScatterCount() { return 90; }
+	int ProceduralGrassTuftCount() { return 400; }
 
 	int MetaHumanClassPathCount() { return static_cast<int>(sizeof(kMetaHumanClassPaths) / sizeof(kMetaHumanClassPaths[0])); }
 	const char* MetaHumanClassPathAt(int Index) { return AtOrEmpty(kMetaHumanClassPaths, Index); }
@@ -128,30 +198,40 @@ namespace vg
 		}
 
 		const bool bPlant = InPlantFolder(Path);
-		const bool bDirtWord = ContainsFold(Path, "dirt") || ContainsFold(Path, "soil") || ContainsFold(Path, "mud")
-			|| ContainsFold(Path, "ground");
-		const bool bGrassWord = ContainsFold(Path, "grass") || ContainsFold(Path, "meadow") || ContainsFold(Path, "lawn");
-		const bool bWetWord = ContainsFold(Path, "wet") || ContainsFold(Path, "damp") || ContainsFold(Path, "moist");
-		const bool bTreeWord = ContainsFold(Path, "tree") || ContainsFold(Path, "pine") || ContainsFold(Path, "oak")
-			|| ContainsFold(Path, "beech") || ContainsFold(Path, "birch") || ContainsFold(Path, "spruce")
-			|| ContainsFold(Path, "fir") || ContainsFold(Path, "willow") || ContainsFold(Path, "cedar");
-		const bool bRockWord = ContainsFold(Path, "rock") || ContainsFold(Path, "stone") || ContainsFold(Path, "boulder")
-			|| ContainsFold(Path, "cliff");
+		const bool bPNGrass = ContainsFold(Path, "PN_GrassLibrary");
+		const bool bDirtWord = ContainsWord(Path, "dirt") || ContainsWord(Path, "soil") || ContainsWord(Path, "mud")
+			|| ContainsWord(Path, "ground") || ContainsWord(Path, "forest_floor");
+		const bool bGrassWord = ContainsWord(Path, "grass") || ContainsWord(Path, "meadow") || ContainsWord(Path, "lawn")
+			|| ContainsWord(Path, "tuft") || ContainsWord(Path, "weed") || ContainsWord(Path, "fern");
+		const bool bWetWord = ContainsWord(Path, "wet") || ContainsWord(Path, "damp") || ContainsWord(Path, "moist");
+		const bool bTreeWord = ContainsWord(Path, "tree") || ContainsWord(Path, "pine") || ContainsWord(Path, "oak")
+			|| ContainsWord(Path, "beech") || ContainsWord(Path, "birch") || ContainsWord(Path, "spruce")
+			|| ContainsWord(Path, "fir") || ContainsWord(Path, "willow") || ContainsWord(Path, "cedar")
+			|| ContainsWord(Path, "aspen") || ContainsWord(Path, "maple") || ContainsWord(Path, "poplar")
+			|| ContainsWord(Path, "larch") || ContainsWord(Path, "elm") || ContainsWord(Path, "hemlock")
+			|| ContainsWord(Path, "sycamore") || ContainsWord(Path, "cypress");
+		const bool bRockWord = ContainsWord(Path, "rock") || ContainsWord(Path, "stone") || ContainsWord(Path, "boulder")
+			|| ContainsWord(Path, "cliff");
+		const bool bMaterialToken = ContainsFold(Path, "MI_") || ContainsFold(Path, "/Materials");
+		const bool bSurface = ContainsFold(Path, "/Surfaces");
+		const bool bPNGrassNamed = bPNGrass
+			&& (ContainsWord(Path, "grass") || ContainsWord(Path, "tuft") || ContainsWord(Path, "lawn")
+				|| ContainsWord(Path, "meadow"));
 
 		switch (Kind)
 		{
 		case ScanKind::DirtMaterial:
 			return bDirtWord && !bGrassWord && !bPlant;
 		case ScanKind::GrassMaterial:
-			return bGrassWord && !bPlant;
+			return (bGrassWord || (bPNGrassNamed && bMaterialToken)) && !bPlant;
 		case ScanKind::WetDirtMaterial:
-			return (bDirtWord || ContainsFold(Path, "mud")) && bWetWord && !bPlant;
+			return (bDirtWord || ContainsWord(Path, "mud")) && bWetWord && !bPlant;
 		case ScanKind::TreeMesh:
-			return bTreeWord && !ContainsFold(Path, "/Surfaces") && !ContainsFold(Path, "MI_");
+			return bTreeWord && !bSurface && !bMaterialToken && !bGrassWord && !bRockWord;
 		case ScanKind::GrassMesh:
-			return bGrassWord && !ContainsFold(Path, "/Surfaces") && !ContainsFold(Path, "MI_");
+			return (bGrassWord || (bPNGrassNamed && !bMaterialToken)) && !bSurface && !bMaterialToken && !bRockWord;
 		case ScanKind::RockMesh:
-			return bRockWord && !bTreeWord && !bGrassWord && !ContainsFold(Path, "/Surfaces") && !ContainsFold(Path, "MI_");
+			return bRockWord && !bTreeWord && !bGrassWord && !bSurface && !bMaterialToken;
 		default:
 			return false;
 		}
