@@ -13,8 +13,10 @@ If the folders below are empty, PLAY.bat still runs: Mara falls back to the proc
 | Disk | Unreal path | Put this here |
 |---|---|---|
 | `Content/MetaHumans/Mara/` | `/Game/MetaHumans/Mara/` | Assemble MetaHuman **Mara** (Blueprint + body/face/grooms) |
-| `Content/Megascans/` | `/Game/Megascans/` | Fab/Quixel default download root |
-| `Content/Fab/` | `/Game/Fab/` | Alternate Fab drop folder (also scanned) |
+| `Content/Materials/` | `/Game/Materials/` | Baked `M_Dirt`, `M_DirtWet`, `M_Grass` (PLAY.bat / ValleyPrep). Checked **first**. |
+| `Content/PN_GrassLibrary/` | `/Game/PN_GrassLibrary/` | Desktop PN grass pack (scanned for static meshes; no binaries in git) |
+| `Content/Megascans/` | `/Game/Megascans/` | Fab/Quixel default download root (trees/rocks when present; often empty) |
+| `Content/Fab/` | `/Game/Fab/` | Alternate Fab drop folder (also scanned, including Quixel master mats) |
 | `Content/ValleySlice/` | `/Game/ValleySlice/` | Optional aliases if you want to pick exact assets |
 | `Content/Maps/ValleySlice` | `/Game/Maps/ValleySlice` | Playable map (ValleyPrep still creates this empty map) |
 
@@ -23,10 +25,12 @@ If the folders below are empty, PLAY.bat still runs: Mara falls back to the proc
 These are checked first, so you can pin a specific pack:
 
 - `/Game/ValleySlice/BP_Mara` — Mara Actor Blueprint
+- `/Game/Materials/M_Dirt`, `M_Grass`, `M_DirtWet` — baked wet-look materials (Desktop already has these)
 - `/Game/ValleySlice/MI_Dirt`, `MI_Grass`, `MI_DirtWet`
 - `/Game/ValleySlice/SM_Tree`, `SM_Grass`, `SM_Rock`
+- `/Game/PN_GrassLibrary/SM_Grass` — optional pin; the folder is also scanned for every grass static mesh
 
-If aliases are missing, the game scans `Content/Megascans` and `Content/Fab` and classifies names (`dirt`, `beech`, `grass`, `rock`, …).
+If aliases are missing, the game scans `Content/Materials`, `Content/PN_GrassLibrary`, `Content/Megascans`, and `Content/Fab` and classifies names (`dirt`, `beech`, `grass`, `rock`, `PN_GrassLibrary`, …). Megascans may be empty; that is fine. This repo does not invent those uassets.
 
 Mara Blueprint candidates (first file that exists wins):
 
@@ -105,8 +109,8 @@ Mara may idle-slide until you assign a walk AnimBP. That is expected for this sc
 **HUD still says Mara procedural after assemble**  
 The Blueprint is not at a candidate path. Move/assemble it to `Content/MetaHumans/Mara/` or copy the Actor Blueprint to `Content/ValleySlice/BP_Mara`. Watch the Output Log for `Mara MetaHuman class`.
 
-**HUD still says foliage procedural after Fab download**  
-Files are not under `Content/Megascans` or `Content/Fab`, or names do not contain dirt/grass/tree/rock keywords. Copy chosen meshes to `Content/ValleySlice/SM_Tree` (and `SM_Grass`, `MI_Dirt`, …).
+**HUD still says foliage procedural after Fab / PN grass is on disk**  
+Files must be under `Content/PN_GrassLibrary`, `Content/Megascans`, or `Content/Fab`, or copied to `Content/ValleySlice/SM_Grass`. Baked ground mats live in `Content/Materials/M_Dirt` (and `M_Grass`, `M_DirtWet`). Empty `Content/Megascans` is expected until tree/rock packs are added — grass can still come from PN_GrassLibrary.
 
 **Plugin missing on project open**  
 Install 5.8.2 with MetaHuman extras. Enable the plugin from the warning dialog. Do not remove ProceduralMeshComponent or EnhancedInput.

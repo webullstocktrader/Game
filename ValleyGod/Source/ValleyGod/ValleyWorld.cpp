@@ -314,22 +314,7 @@ void AValleyWorld::SpawnTreesAndRocks(const Valley::FOptionalAssets& Assets)
 		}
 	}
 
-	if (Assets.GrassMeshes.Num() > 0)
-	{
-		for (int32 I = 0; I < 70; ++I)
-		{
-			const float X = Rng.FRandRange(-2400.f, 2400.f);
-			const float Y = Rng.FRandRange(-800.f, 3200.f);
-			if (InClearing(X, Y))
-			{
-				continue;
-			}
-			UStaticMesh* Mesh = Assets.GrassMeshes[I % Assets.GrassMeshes.Num()];
-			const FVector G = Terrain->GroundAt(FVector(X, Y, 0.f));
-			PlaceSized(Mesh, G, FRotator(0.f, Rng.FRandRange(0.f, 360.f), 0.f), Rng.FRandRange(45.f, 110.f),
-				FName(*FString::Printf(TEXT("QGrass%d"), I)));
-		}
-	}
+	SpawnGrassClumps(Assets, Rng);
 
 	if (Assets.Rocks.Num() > 0)
 	{
@@ -354,6 +339,27 @@ void AValleyWorld::SpawnTreesAndRocks(const Valley::FOptionalAssets& Assets)
 				FVector(Rng.FRandRange(0.4f, 1.1f), Rng.FRandRange(0.3f, 0.8f), Rng.FRandRange(0.25f, 0.5f)), Stone,
 				FName(*FString::Printf(TEXT("Rock%d"), I)));
 		}
+	}
+}
+
+void AValleyWorld::SpawnGrassClumps(const Valley::FOptionalAssets& Assets, FRandomStream& Rng)
+{
+	if (Assets.GrassMeshes.Num() <= 0 || !Terrain)
+	{
+		return;
+	}
+	for (int32 I = 0; I < vg::kGrassSpawnCount; ++I)
+	{
+		const float X = Rng.FRandRange(-3600.f, 3600.f);
+		const float Y = Rng.FRandRange(-1400.f, 3600.f);
+		if (FVector2D::Distance(FVector2D(X, Y), FVector2D(0.f, 700.f)) < 280.f)
+		{
+			continue;
+		}
+		UStaticMesh* Mesh = Assets.GrassMeshes[I % Assets.GrassMeshes.Num()];
+		const FVector G = Terrain->GroundAt(FVector(X, Y, 0.f));
+		PlaceSized(Mesh, G, FRotator(0.f, Rng.FRandRange(0.f, 360.f), 0.f), Rng.FRandRange(40.f, 95.f),
+			FName(*FString::Printf(TEXT("QGrass%d"), I)));
 	}
 }
 

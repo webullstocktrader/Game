@@ -6,6 +6,8 @@
 namespace vg
 {
 	constexpr int kMetaHumanMilestoneSlot = 0; // Mara
+	constexpr int kGrassMeshLoadLimit = 48;
+	constexpr int kGrassSpawnCount = 280;
 
 	enum class ScanKind
 	{
@@ -22,6 +24,8 @@ namespace vg
 	const char* MetaHumanContentFolder();
 	const char* MegascansContentFolder();
 	const char* FabContentFolder();
+	const char* MaterialsContentFolder();
+	const char* PnGrassLibraryFolder();
 	const char* ValleySliceContentFolder();
 	const char* ValleySliceMapPath();
 

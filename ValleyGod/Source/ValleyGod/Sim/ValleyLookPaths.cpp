@@ -15,16 +15,19 @@ namespace vg
 		};
 
 		const char* kDirtMaterials[] = {
+			"/Game/Materials/M_Dirt",
 			"/Game/ValleySlice/MI_Dirt",
 			"/Game/Megascans/Surfaces/Dirt/MI_Dirt"
 		};
 
 		const char* kGrassMaterials[] = {
+			"/Game/Materials/M_Grass",
 			"/Game/ValleySlice/MI_Grass",
 			"/Game/Megascans/Surfaces/Grass/MI_Grass"
 		};
 
 		const char* kWetDirtMaterials[] = {
+			"/Game/Materials/M_DirtWet",
 			"/Game/ValleySlice/MI_DirtWet",
 			"/Game/Megascans/Surfaces/DirtWet/MI_DirtWet"
 		};
@@ -35,6 +38,7 @@ namespace vg
 		};
 
 		const char* kGrassMeshes[] = {
+			"/Game/PN_GrassLibrary/SM_Grass",
 			"/Game/ValleySlice/SM_Grass",
 			"/Game/Megascans/3D_Plants/Grass/SM_Grass"
 		};
@@ -96,6 +100,8 @@ namespace vg
 	const char* MetaHumanContentFolder() { return "/Game/MetaHumans/Mara"; }
 	const char* MegascansContentFolder() { return "/Game/Megascans"; }
 	const char* FabContentFolder() { return "/Game/Fab"; }
+	const char* MaterialsContentFolder() { return "/Game/Materials"; }
+	const char* PnGrassLibraryFolder() { return "/Game/PN_GrassLibrary"; }
 	const char* ValleySliceContentFolder() { return "/Game/ValleySlice"; }
 	const char* ValleySliceMapPath() { return "/Game/Maps/ValleySlice"; }
 
@@ -149,7 +155,8 @@ namespace vg
 		case ScanKind::TreeMesh:
 			return bTreeWord && !ContainsFold(Path, "/Surfaces") && !ContainsFold(Path, "MI_");
 		case ScanKind::GrassMesh:
-			return bGrassWord && !ContainsFold(Path, "/Surfaces") && !ContainsFold(Path, "MI_");
+			return (bGrassWord || ContainsFold(Path, "/PN_GrassLibrary") || ContainsFold(Path, "GrassLibrary"))
+				&& !ContainsFold(Path, "/Surfaces") && !ContainsFold(Path, "MI_");
 		case ScanKind::RockMesh:
 			return bRockWord && !bTreeWord && !bGrassWord && !ContainsFold(Path, "/Surfaces") && !ContainsFold(Path, "MI_");
 		default:
