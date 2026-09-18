@@ -1,6 +1,8 @@
 # First-slice cast
 
-Exactly **8 adults**. Four women, four men. All 21 or older. No children.
+These **8 adults are the entire human population on Earth** in this slice. Four women, four men. All 21 or older. No children. No other tribes, villages, or background humans.
+
+Later slices may grow the population through children. Not this pass.
 
 Hide tunics and wraps cover the torso. This pass has no nudity.
 

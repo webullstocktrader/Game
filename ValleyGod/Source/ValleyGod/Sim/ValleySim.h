@@ -5,6 +5,10 @@
 
 namespace vg
 {
+	// Entire human population on Earth for this first slice. Do not raise this
+	// to spawn other tribes. Later slices grow people through children.
+	constexpr int kEarthHumans = 8;
+
 	enum class Activity
 	{
 		Idle,
@@ -91,7 +95,7 @@ namespace vg
 		float TornadoY = 1800.f;
 		float TornadoAngle = 0.f;
 
-		Villager Villagers[8];
+		Villager Villagers[kEarthHumans];
 		int VillagerCount = 0;
 		Animal Animals[6];
 		int AnimalCount = 0;

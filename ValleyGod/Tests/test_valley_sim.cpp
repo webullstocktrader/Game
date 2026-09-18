@@ -56,7 +56,8 @@ static bool SpeechForbidden(const char* Line)
 		|| ContainsFold(Line, "planet") || ContainsFold(Line, "mars") || ContainsFold(Line, "venus")
 		|| ContainsFold(Line, "jupiter") || ContainsFold(Line, "galaxy") || ContainsFold(Line, "milky")
 		|| ContainsFold(Line, "orbit") || ContainsFold(Line, "spaceship") || ContainsFold(Line, "cosmos")
-		|| ContainsFold(Line, "solar") || ContainsFold(Line, "alien");
+		|| ContainsFold(Line, "solar") || ContainsFold(Line, "alien") || ContainsFold(Line, "tribe")
+		|| ContainsFold(Line, "village") || ContainsFold(Line, "stranger") || ContainsFold(Line, "clan");
 }
 
 int main()
@@ -67,6 +68,8 @@ int main()
 		World W;
 		InitWorld(W);
 		CHECK(W.VillagerCount == 8, "exactly 8 villagers");
+		CHECK(W.VillagerCount == kEarthHumans, "8 is the whole Earth population");
+		CHECK(static_cast<int>(sizeof(W.Villagers) / sizeof(W.Villagers[0])) == kEarthHumans, "no spare human slots");
 		CHECK(W.AnimalCount >= 3, "a few hunt animals");
 		CHECK(W.ShelterCount >= 4, "a few shelters");
 		int Adults = 0;
@@ -100,6 +103,11 @@ int main()
 		CHECK(Adults == 8, "every villager is an adult");
 		CHECK(Women == 4 && Men == 4, "four women and four men");
 		CHECK(W.DayLengthSeconds > 30.f && W.DayLengthSeconds < 240.f, "compressed day");
+		for (int Step = 0; Step < 80; ++Step)
+		{
+			TickWorld(W, 0.25f);
+		}
+		CHECK(W.VillagerCount == kEarthHumans, "time does not invent more humans");
 	}
 
 	{

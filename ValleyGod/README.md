@@ -2,7 +2,7 @@
 
 Spectator god-mode. Stone-age valley **on Earth** — our sun, our sky, the planet that will later be called Earth. You are invisible. The villagers never know a watcher exists. Weather is weather.
 
-This is the **first watchable slice** — one valley, a compressed day, **eight adults** (four women, four men), four weather commands. No space. No other worlds. See `docs/WORLD-LORE.md`.
+This is the **first watchable slice** — one valley, a compressed day, **eight adults** (four women, four men) who are **every human on Earth**, four weather commands. No other tribes. No space. No other worlds. See `docs/WORLD-LORE.md` and `docs/CAST.md`.
 
 You do not need to write any game code.
 
@@ -11,12 +11,12 @@ You do not need to write any game code.
 ## What you can do in this slice
 
 1. Free-fly an invisible camera (WASD, Q/E up/down, mouse look). There is no in-world body for them to see.
-2. Watch **8 adults** (4 women, 4 men) walk, talk in English, hunt, eat, and sleep. Each has a name, look, and habit. Hunger and energy drive it.
+2. Watch **8 adults** (4 women, 4 men) — the whole human population — walk, talk in English, hunt, eat, and sleep. Each has a name, look, and habit. Hunger and energy drive it.
 3. Fire weather: **1 Rain**, **2 Tornado**, **3 Hurricane**, **4 Flood**. They seek shelter, panic, or climb. **0** clears the sky.
 4. Watch the day turn. Default is a **75 second day**. `[` / `]` stretch or compress it.
 5. Pin a villager (left click / Tab) and read their name, habit, and the countdown panel (meal / sleep / dawn).
 
-**Cast (all 21+):** Mara, Nima, Lira, Sable · Flint, Oak, Reed, Bram. No children.
+**Cast (all 21+):** Mara, Nima, Lira, Sable · Flint, Oak, Reed, Bram. They are everyone. No children. No other villages.
 
 No marriage, no children, no later tech, no myths about you.
 
@@ -88,6 +88,7 @@ The valley is built when the game starts. You do not place anything in the level
 
 - Not a full calendar of lives.
 - Not marriage, pregnancy, or children.
+- Not other tribes, villages, or background humans. These eight are everyone.
 - Not bronze, iron, or anything past knapped stone.
 - Not a visible god, a cult, or villager awareness of the camera.
 - Not space, planet travel, or a fantasy planet. Same solar system, later — not here.

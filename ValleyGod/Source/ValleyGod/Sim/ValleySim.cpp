@@ -493,7 +493,7 @@ namespace vg
 		W.ShelterX[4] = 40.f;
 		W.ShelterY[4] = 980.f;
 
-		W.VillagerCount = 8;
+		W.VillagerCount = kEarthHumans;
 		for (int I = 0; I < W.VillagerCount; ++I)
 		{
 			Villager& V = W.Villagers[I];
@@ -636,6 +636,10 @@ namespace vg
 		}
 		TickAnimals(W, Dt);
 		RefreshCountdowns(W);
+		if (W.VillagerCount != kEarthHumans)
+		{
+			W.VillagerCount = kEarthHumans;
+		}
 	}
 
 	const char* ActivityName(Activity A)

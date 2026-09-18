@@ -273,7 +273,10 @@ void AValleyWorld::SpawnSheltersAndFire()
 
 void AValleyWorld::SpawnPeople()
 {
-	for (int32 I = 0; I < Brain.VillagerCount; ++I)
+	// These eight adults are the entire human population on Earth this slice.
+	// Do not spawn extra tribes, camps, or background people.
+	const int32 Humans = FMath::Min(Brain.VillagerCount, vg::kEarthHumans);
+	for (int32 I = 0; I < Humans; ++I)
 	{
 		AValleyVillager* V = GetWorld()->SpawnActor<AValleyVillager>();
 		V->Arm(Brain.Villagers[I]);
