@@ -106,6 +106,15 @@ Install 5.8 from the Epic launcher. Run `PLAY.bat` again.
 **Compile errors / “missing modules”**  
 Install Visual Studio 2022 with **Game development with C++**. Open `ValleyGod.uproject` and let Unreal rebuild.
 
+**LNK2005 `Valley::Material` / `FallbackMaterial` already defined**  
+Those functions live only in `ValleyMaterials.cpp` now. A stale `ValleyTypes.cpp.obj` (unity/incremental) still has the old copies. Delete `ValleyGod\Intermediate` and rebuild, or run PLAY.bat again after this pull (the module definition bump forces a recompile).
+
+**“ValleyPrepCommandlet looked like a commandlet, but we could not find the class”**  
+The editor module must load at Default (not PostEngineInit) so `-run=` can find the class. PLAY.bat calls `-run=ValleyGodEditor.ValleyPrepCommandlet` to load the module by name. If you invoke Unreal yourself:
+```
+UnrealEditor.exe "ValleyGod.uproject" -run=ValleyGodEditor.ValleyPrepCommandlet -unattended -nopause -nosplash -log
+```
+
 **Black level / missing map**  
 Open the project in the editor once (not `-game`). The editor writes `/Game/Maps/ValleySlice` and the materials on startup. Then press Play.
 

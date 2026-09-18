@@ -5,7 +5,7 @@
 #include "ValleyPrepCommandlet.generated.h"
 
 UCLASS()
-class UValleyPrepCommandlet : public UCommandlet
+class VALLEYGODEDITOR_API UValleyPrepCommandlet : public UCommandlet
 {
 	GENERATED_BODY()
 

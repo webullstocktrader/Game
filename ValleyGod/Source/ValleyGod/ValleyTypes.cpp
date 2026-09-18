@@ -1,6 +1,9 @@
 #include "ValleyTypes.h"
 #include "Engine/StaticMesh.h"
 
+// Mesh helpers only. Valley::Material / FallbackMaterial live in ValleyMaterials.cpp.
+// Putting them back here LNK2005s against a stale ValleyTypes.cpp.obj (unity/incremental).
+
 namespace
 {
 	UStaticMesh* LoadMesh(const TCHAR* Path)

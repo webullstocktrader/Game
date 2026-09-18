@@ -62,7 +62,11 @@ if errorlevel 1 (
 )
 
 echo Preparing wet dirt materials and the empty valley map...
-"%UEEDITOR%" "%~dp0ValleyGod.uproject" -run=ValleyPrep -unattended -nopause -nosplash -log
+"%UEEDITOR%" "%~dp0ValleyGod.uproject" -run=ValleyGodEditor.ValleyPrepCommandlet -unattended -nopause -nosplash -log
+if errorlevel 1 (
+	echo Qualified prep name failed, trying -run=ValleyPrep...
+	"%UEEDITOR%" "%~dp0ValleyGod.uproject" -run=ValleyPrep -unattended -nopause -nosplash -log
+)
 if errorlevel 1 (
 	echo Prep commandlet reported an error. Launching anyway — runtime materials cover missing Content.
 )
