@@ -8,6 +8,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Components/TextRenderComponent.h"
 #include "Camera/PlayerCameraManager.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
@@ -100,6 +101,18 @@ void AValleyVillager::SpawnPresentation(UClass* PresentationClass)
 		if (Prim)
 		{
 			Prim->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			Prim->SetCastShadow(true);
+			Prim->bAffectDynamicIndirectLighting = true;
+		}
+	}
+
+	if (Character)
+	{
+		if (USkeletalMeshComponent* Skel = Character->GetMesh())
+		{
+			Skel->SetCastShadow(true);
+			Skel->bCastDynamicShadow = true;
+			Skel->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
 		}
 	}
 

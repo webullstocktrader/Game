@@ -521,10 +521,10 @@ int main()
 		}
 		CHECK(bHasPNGrass, "grass aliases include PN_GrassLibrary");
 
-		CHECK(PreferredTreeScatterCount() >= 56, "Quixel trees scatter denser than a thin ring");
-		CHECK(PreferredGrassScatterCount() >= 140, "grass clumps are dense enough to read as a meadow");
-		CHECK(PreferredRockScatterCount() >= 24, "rocks fill the valley floor");
-		CHECK(ProceduralGrassTuftCount() >= 70, "empty-folder valley still gets cheap grass tufts");
+		CHECK(PreferredTreeScatterCount() >= 110, "Quixel trees fill a forest, not a thin ring");
+		CHECK(PreferredGrassScatterCount() >= 900, "grass instances are dense enough to read as a meadow");
+		CHECK(PreferredRockScatterCount() >= 60, "rocks fill the valley floor");
+		CHECK(ProceduralGrassTuftCount() >= 160, "empty-folder valley still gets cheap grass tufts");
 
 		CHECK(ClassifyContentPath("/Game/Megascans/Surfaces/Forest_Dirt_01/MI_Forest_Dirt_01", ScanKind::DirtMaterial),
 			"Quixel dirt surface classifies as dirt");

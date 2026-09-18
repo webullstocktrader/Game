@@ -26,7 +26,9 @@ namespace vg
 			"/Game/ValleySlice/MI_Dirt",
 			"/Game/Megascans/Surfaces/Dirt/MI_Dirt",
 			"/Game/Megascans/Surfaces/Forest_Dirt/MI_Forest_Dirt",
-			"/Game/Megascans/Surfaces/Forest_Floor/MI_Forest_Floor"
+			"/Game/Megascans/Surfaces/Forest_Floor/MI_Forest_Floor",
+			"/Game/Megascans/Surfaces/Soil/MI_Soil",
+			"/Game/Megascans/Surfaces/Ground/MI_Ground"
 		};
 
 		const char* kGrassMaterials[] = {
@@ -34,13 +36,15 @@ namespace vg
 			"/Game/Megascans/Surfaces/Grass/MI_Grass",
 			"/Game/PN_GrassLibrary/Materials/MI_Grass",
 			"/Game/PN_GrassLibrary/MI_Grass",
-			"/Game/Megascans/Surfaces/Wild_Grass/MI_Wild_Grass"
+			"/Game/Megascans/Surfaces/Wild_Grass/MI_Wild_Grass",
+			"/Game/Megascans/Surfaces/Meadow/MI_Meadow"
 		};
 
 		const char* kWetDirtMaterials[] = {
 			"/Game/ValleySlice/MI_DirtWet",
 			"/Game/Megascans/Surfaces/DirtWet/MI_DirtWet",
-			"/Game/Megascans/Surfaces/Wet_Mud/MI_Wet_Mud"
+			"/Game/Megascans/Surfaces/Wet_Mud/MI_Wet_Mud",
+			"/Game/Megascans/Surfaces/Wet_Ground/MI_Wet_Ground"
 		};
 
 		const char* kTreeMeshes[] = {
@@ -48,21 +52,28 @@ namespace vg
 			"/Game/Megascans/3D_Plants/Tree/SM_Tree",
 			"/Game/Megascans/3D_Plants/European_Beech/SM_European_Beech",
 			"/Game/Megascans/3D_Plants/Pine/SM_Pine",
+			"/Game/Megascans/3D_Plants/Oak/SM_Oak",
+			"/Game/Megascans/3D_Plants/Silver_Birch/SM_Silver_Birch",
+			"/Game/Megascans/3D_Plants/Scots_Pine/SM_Scots_Pine",
 			"/Game/Fab/ForestPack/SM_Tree"
 		};
 
 		const char* kGrassMeshes[] = {
 			"/Game/ValleySlice/SM_Grass",
 			"/Game/PN_GrassLibrary/Meshes/SM_Grass",
+			"/Game/PN_GrassLibrary/Meshes/SM_Grass_01",
 			"/Game/PN_GrassLibrary/Foliage/SM_Grass",
 			"/Game/Megascans/3D_Plants/Grass/SM_Grass",
-			"/Game/Megascans/3D_Plants/Wild_Grass_Clump/SM_Wild_Grass_Clump"
+			"/Game/Megascans/3D_Plants/Wild_Grass_Clump/SM_Wild_Grass_Clump",
+			"/Game/Megascans/3D_Plants/Meadow_Grass/SM_Meadow_Grass"
 		};
 
 		const char* kRockMeshes[] = {
 			"/Game/ValleySlice/SM_Rock",
 			"/Game/Megascans/3D_Assets/Rock/SM_Rock",
-			"/Game/Megascans/3D_Assets/Cliff_Rock/SM_Cliff_Rock"
+			"/Game/Megascans/3D_Assets/Cliff_Rock/SM_Cliff_Rock",
+			"/Game/Megascans/3D_Assets/Forest_Rock/SM_Forest_Rock",
+			"/Game/Megascans/3D_Assets/Mossy_Rock/SM_Mossy_Rock"
 		};
 
 		bool ContainsFold(const char* Hay, const char* Needle)
@@ -372,10 +383,10 @@ namespace vg
 		return true;
 	}
 
-	int PreferredTreeScatterCount() { return 64; }
-	int PreferredGrassScatterCount() { return 160; }
-	int PreferredRockScatterCount() { return 28; }
-	int ProceduralGrassTuftCount() { return 90; }
+	int PreferredTreeScatterCount() { return 140; }
+	int PreferredGrassScatterCount() { return 1600; }
+	int PreferredRockScatterCount() { return 90; }
+	int ProceduralGrassTuftCount() { return 400; }
 
 	int DirtMaterialPathCount() { return static_cast<int>(sizeof(kDirtMaterials) / sizeof(kDirtMaterials[0])); }
 	const char* DirtMaterialPathAt(int Index) { return AtOrEmpty(kDirtMaterials, Index); }

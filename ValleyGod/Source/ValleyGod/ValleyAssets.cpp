@@ -311,48 +311,32 @@ namespace Valley
 		CollectPackages(TEXT("Fab"), Downloaded, true);
 		CollectPackages(TEXT("PN_GrassLibrary"), Downloaded, true);
 		CollectPackages(TEXT("ValleySlice"), Downloaded, true);
+		CollectPackages(TEXT("MSPresets"), Downloaded, true);
+		CollectPackages(TEXT("Quixel"), Downloaded, true);
 
 		TArray<UMaterialInterface*> Dirts;
-		LoadDocumented<UMaterialInterface>(vg::DirtMaterialPathCount(), &vg::DirtMaterialPathAt, Dirts, 1);
-		if (Dirts.Num() == 0)
-		{
-			ScanKindIntoMaterials(vg::ScanKind::DirtMaterial, Downloaded, Dirts, 1);
-		}
+		LoadDocumented<UMaterialInterface>(vg::DirtMaterialPathCount(), &vg::DirtMaterialPathAt, Dirts, 4);
+		ScanKindIntoMaterials(vg::ScanKind::DirtMaterial, Downloaded, Dirts, 4);
 		Found.Dirt = Dirts.Num() > 0 ? Dirts[0] : nullptr;
 
 		TArray<UMaterialInterface*> Grasses;
-		LoadDocumented<UMaterialInterface>(vg::GrassMaterialPathCount(), &vg::GrassMaterialPathAt, Grasses, 1);
-		if (Grasses.Num() == 0)
-		{
-			ScanKindIntoMaterials(vg::ScanKind::GrassMaterial, Downloaded, Grasses, 1);
-		}
+		LoadDocumented<UMaterialInterface>(vg::GrassMaterialPathCount(), &vg::GrassMaterialPathAt, Grasses, 4);
+		ScanKindIntoMaterials(vg::ScanKind::GrassMaterial, Downloaded, Grasses, 4);
 		Found.Grass = Grasses.Num() > 0 ? Grasses[0] : nullptr;
 
 		TArray<UMaterialInterface*> Wets;
-		LoadDocumented<UMaterialInterface>(vg::WetDirtMaterialPathCount(), &vg::WetDirtMaterialPathAt, Wets, 1);
-		if (Wets.Num() == 0)
-		{
-			ScanKindIntoMaterials(vg::ScanKind::WetDirtMaterial, Downloaded, Wets, 1);
-		}
+		LoadDocumented<UMaterialInterface>(vg::WetDirtMaterialPathCount(), &vg::WetDirtMaterialPathAt, Wets, 4);
+		ScanKindIntoMaterials(vg::ScanKind::WetDirtMaterial, Downloaded, Wets, 4);
 		Found.WetDirt = Wets.Num() > 0 ? Wets[0] : nullptr;
 
-		LoadDocumented<UStaticMesh>(vg::TreeMeshPathCount(), &vg::TreeMeshPathAt, Found.Trees, 16);
-		if (Found.Trees.Num() == 0)
-		{
-			ScanKindIntoMeshes(vg::ScanKind::TreeMesh, Downloaded, Found.Trees, 16);
-		}
+		LoadDocumented<UStaticMesh>(vg::TreeMeshPathCount(), &vg::TreeMeshPathAt, Found.Trees, 32);
+		ScanKindIntoMeshes(vg::ScanKind::TreeMesh, Downloaded, Found.Trees, 32);
 
-		LoadDocumented<UStaticMesh>(vg::GrassMeshPathCount(), &vg::GrassMeshPathAt, Found.GrassMeshes, 16);
-		if (Found.GrassMeshes.Num() == 0)
-		{
-			ScanKindIntoMeshes(vg::ScanKind::GrassMesh, Downloaded, Found.GrassMeshes, 16);
-		}
+		LoadDocumented<UStaticMesh>(vg::GrassMeshPathCount(), &vg::GrassMeshPathAt, Found.GrassMeshes, 32);
+		ScanKindIntoMeshes(vg::ScanKind::GrassMesh, Downloaded, Found.GrassMeshes, 32);
 
-		LoadDocumented<UStaticMesh>(vg::RockMeshPathCount(), &vg::RockMeshPathAt, Found.Rocks, 12);
-		if (Found.Rocks.Num() == 0)
-		{
-			ScanKindIntoMeshes(vg::ScanKind::RockMesh, Downloaded, Found.Rocks, 12);
-		}
+		LoadDocumented<UStaticMesh>(vg::RockMeshPathCount(), &vg::RockMeshPathAt, Found.Rocks, 24);
+		ScanKindIntoMeshes(vg::ScanKind::RockMesh, Downloaded, Found.Rocks, 24);
 
 		int32 NamedMH = 0;
 		for (UClass* Class : Found.VillagerClasses)

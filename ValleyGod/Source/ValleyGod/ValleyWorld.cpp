@@ -12,6 +12,7 @@
 #include "Components/SkyAtmosphereComponent.h"
 #include "Components/SkyLightComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "Components/VolumetricCloudComponent.h"
 #include "Engine/DirectionalLight.h"
 #include "Engine/ExponentialHeightFog.h"
@@ -145,6 +146,8 @@ UStaticMeshComponent* AValleyWorld::Place(UStaticMesh* Mesh, const FVector& Loc,
 	Comp->SetWorldRotation(Rot);
 	Comp->SetWorldScale3D(Scale);
 	Comp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Comp->SetCastShadow(true);
+	Comp->bAffectDistanceFieldLighting = true;
 	if (Mat)
 	{
 		Comp->SetMaterial(0, Mat);
@@ -165,6 +168,46 @@ UStaticMeshComponent* AValleyWorld::PlaceSized(UStaticMesh* Mesh, const FVector&
 	const float S = TargetHeightCm / Height;
 	const float BottomZ = Bounds.Origin.Z - Bounds.BoxExtent.Z;
 	return Place(Mesh, Loc - FVector(0.f, 0.f, BottomZ * S), Rot, FVector(S), nullptr, Name);
+}
+
+UHierarchicalInstancedStaticMeshComponent* AValleyWorld::FoliagePool(UStaticMesh* Mesh, const FName& Name)
+{
+	if (!Mesh)
+	{
+		return nullptr;
+	}
+	for (UHierarchicalInstancedStaticMeshComponent* Existing : FoliagePools)
+	{
+		if (Existing && Existing->GetStaticMesh() == Mesh)
+		{
+			return Existing;
+		}
+	}
+	UHierarchicalInstancedStaticMeshComponent* Pool = NewObject<UHierarchicalInstancedStaticMeshComponent>(this, Name);
+	Pool->SetStaticMesh(Mesh);
+	Pool->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Pool->SetCastShadow(true);
+	Pool->bAffectDistanceFieldLighting = true;
+	Pool->InstanceStartCullDistance = 7000.f;
+	Pool->InstanceEndCullDistance = 16000.f;
+	Pool->SetupAttachment(GetRootComponent());
+	Pool->RegisterComponent();
+	FoliagePools.Add(Pool);
+	return Pool;
+}
+
+void AValleyWorld::AddSizedInstance(UHierarchicalInstancedStaticMeshComponent* Pool, const FVector& Loc, const FRotator& Rot, float TargetHeightCm)
+{
+	if (!Pool || !Pool->GetStaticMesh())
+	{
+		return;
+	}
+	const FBoxSphereBounds Bounds = Pool->GetStaticMesh()->GetBounds();
+	const float Height = FMath::Max(Bounds.BoxExtent.Z * 2.f, 1.f);
+	const float S = TargetHeightCm / Height;
+	const float BottomZ = Bounds.Origin.Z - Bounds.BoxExtent.Z;
+	const FTransform Xform(Rot, Loc - FVector(0.f, 0.f, BottomZ * S), FVector(S));
+	Pool->AddInstance(Xform, true);
 }
 
 FString AValleyWorld::GraphicsStatusLine() const
@@ -194,32 +237,40 @@ void AValleyWorld::SpawnAtmosphere()
 	Sun = GetWorld()->SpawnActor<ADirectionalLight>(FVector::ZeroVector, FRotator(-42.f, 200.f, 0.f));
 	if (UDirectionalLightComponent* L = Cast<UDirectionalLightComponent>(Sun->GetLightComponent()))
 	{
-		L->SetIntensity(14.f);
+		L->SetIntensity(16.f);
 		L->SetLightColor(FLinearColor(1.f, 0.94f, 0.82f));
 		L->SetAtmosphereSunLight(true);
-		L->SetDynamicShadowDistanceMovableLight(40000.f);
+		L->SetDynamicShadowDistanceMovableLight(50000.f);
 		L->SetUseTemperature(true);
-		L->SetTemperature(5200.f);
+		L->SetTemperature(5300.f);
+		L->bEnableLightShaftBloom = true;
+		L->LightShaftBloomScale = 0.35f;
+		L->ContactShadowLength = 0.12f;
 	}
 
 	Sky = GetWorld()->SpawnActor<ASkyLight>();
 	if (USkyLightComponent* S = Sky->GetLightComponent())
 	{
-		S->SetIntensity(0.85f);
+		S->SetIntensity(1.05f);
 		S->bRealTimeCapture = true;
 		S->SetLightColor(FLinearColor(0.78f, 0.86f, 0.95f));
+		S->OcclusionMaxDistance = 1200.f;
+		S->OcclusionExponent = 1.4f;
 	}
 
 	GetWorld()->SpawnActor<ASkyAtmosphere>();
 	GetWorld()->SpawnActor<AVolumetricCloud>();
 
-	Fog = GetWorld()->SpawnActor<AExponentialHeightFog>(FVector(0.f, 0.f, 200.f), FRotator::ZeroRotator);
+	Fog = GetWorld()->SpawnActor<AExponentialHeightFog>(FVector(0.f, 0.f, 180.f), FRotator::ZeroRotator);
 	if (UExponentialHeightFogComponent* FogComp = Fog->GetComponent())
 	{
-		FogComp->SetFogDensity(0.012f);
-		FogComp->FogHeightFalloff = 0.16f;
-		FogComp->SetVolumetricFog(false);
-		FogComp->SetFogInscatteringColor(FLinearColor(0.55f, 0.62f, 0.58f));
+		FogComp->SetFogDensity(0.018f);
+		FogComp->FogHeightFalloff = 0.14f;
+		FogComp->SetVolumetricFog(true);
+		FogComp->VolumetricFogScatteringDistribution = 0.72f;
+		FogComp->VolumetricFogExtinctionScale = 0.85f;
+		FogComp->VolumetricFogAlbedo = FColor(186, 194, 188);
+		FogComp->SetFogInscatteringColor(FLinearColor(0.58f, 0.64f, 0.60f));
 	}
 
 	Post = GetWorld()->SpawnActor<APostProcessVolume>();
@@ -228,19 +279,29 @@ void AValleyWorld::SpawnAtmosphere()
 	P.bOverride_AutoExposureMethod = true;
 	P.AutoExposureMethod = AEM_Histogram;
 	P.bOverride_AutoExposureBias = true;
-	P.AutoExposureBias = 0.35f;
+	P.AutoExposureBias = 0.28f;
 	P.bOverride_AutoExposureMinBrightness = true;
-	P.AutoExposureMinBrightness = -2.0f;
+	P.AutoExposureMinBrightness = -1.6f;
 	P.bOverride_AutoExposureMaxBrightness = true;
-	P.AutoExposureMaxBrightness = 2.0f;
+	P.AutoExposureMaxBrightness = 1.6f;
 	P.bOverride_ColorSaturation = true;
-	P.ColorSaturation = FVector4(0.94f, 0.92f, 0.86f, 1.f);
+	P.ColorSaturation = FVector4(0.96f, 0.94f, 0.88f, 1.f);
 	P.bOverride_ColorContrast = true;
-	P.ColorContrast = FVector4(1.1f, 1.07f, 1.04f, 1.f);
+	P.ColorContrast = FVector4(1.12f, 1.08f, 1.04f, 1.f);
+	P.bOverride_ColorGamma = true;
+	P.ColorGamma = FVector4(1.02f, 1.0f, 0.96f, 1.f);
 	P.bOverride_VignetteIntensity = true;
-	P.VignetteIntensity = 0.22f;
+	P.VignetteIntensity = 0.28f;
 	P.bOverride_BloomIntensity = true;
-	P.BloomIntensity = 0.38f;
+	P.BloomIntensity = 0.52f;
+	P.bOverride_AmbientOcclusionIntensity = true;
+	P.AmbientOcclusionIntensity = 0.7f;
+	P.bOverride_AmbientOcclusionRadius = true;
+	P.AmbientOcclusionRadius = 52.f;
+	P.bOverride_IndirectLightingColor = true;
+	P.IndirectLightingColor = FLinearColor(1.02f, 0.98f, 0.92f);
+	P.bOverride_MotionBlurAmount = true;
+	P.MotionBlurAmount = 0.22f;
 	P.bOverride_AmbientCubemapIntensity = false;
 }
 
@@ -306,7 +367,7 @@ void AValleyWorld::SpawnTreesAndRocks(const Valley::FOptionalAssets& Assets)
 	}
 	else if (Cyl && Sphere)
 	{
-		const int32 Want = FMath::Max(48, vg::PreferredTreeScatterCount() - 8);
+		const int32 Want = 56;
 		ScatterUntil(Want, Want * 4, [&](int32 /*Attempt*/, int32 /*Placed*/)
 		{
 			const float X = Rng.FRandRange(-5200.f, 5200.f);
@@ -353,73 +414,95 @@ void AValleyWorld::SpawnTreesAndRocks(const Valley::FOptionalAssets& Assets)
 		});
 	}
 
+	if (Assets.Trees.Num() > 0)
+	{
+		int32 SaplingN = 0;
+		ScatterUntil(80, 240, [&](int32 Attempt, int32 /*Placed*/)
+		{
+			const float X = Rng.FRandRange(-4800.f, 4800.f);
+			const float Y = Rng.FRandRange(-4800.f, 4800.f);
+			if (InClearing(X, Y))
+			{
+				return false;
+			}
+			UStaticMesh* Mesh = Assets.Trees[Attempt % Assets.Trees.Num()];
+			if (UHierarchicalInstancedStaticMeshComponent* Pool = FoliagePool(Mesh, FName(*FString::Printf(TEXT("SaplingPool%d"), Attempt % Assets.Trees.Num()))))
+			{
+				const FVector G = Terrain->GroundAt(FVector(X, Y, 0.f));
+				AddSizedInstance(Pool, G, FRotator(0.f, Rng.FRandRange(0.f, 360.f), 0.f), Rng.FRandRange(90.f, 220.f));
+				++SaplingN;
+				return true;
+			}
+			return false;
+		});
+	}
+
 	if (Assets.GrassMeshes.Num() > 0)
 	{
 		const int32 Want = vg::PreferredGrassScatterCount();
-		int32 GrassN = 0;
 		ScatterUntil(Want, Want * 3, [&](int32 Attempt, int32 /*Placed*/)
 		{
-			const float X = Rng.FRandRange(-2800.f, 2800.f);
-			const float Y = Rng.FRandRange(-1200.f, 3600.f);
+			const float X = Rng.FRandRange(-4200.f, 4200.f);
+			const float Y = Rng.FRandRange(-2200.f, 4200.f);
 			if (InClearing(X, Y))
 			{
 				return false;
 			}
 			UStaticMesh* Mesh = Assets.GrassMeshes[Attempt % Assets.GrassMeshes.Num()];
-			const FVector G = Terrain->GroundAt(FVector(X, Y, 0.f));
-			PlaceSized(Mesh, G, FRotator(0.f, Rng.FRandRange(0.f, 360.f), 0.f), Rng.FRandRange(45.f, 110.f),
-				FName(*FString::Printf(TEXT("QGrass%d"), GrassN)));
-			++GrassN;
-			return true;
+			if (UHierarchicalInstancedStaticMeshComponent* Pool = FoliagePool(Mesh, FName(*FString::Printf(TEXT("GrassPool%d"), Attempt % Assets.GrassMeshes.Num()))))
+			{
+				const FVector G = Terrain->GroundAt(FVector(X, Y, 0.f));
+				AddSizedInstance(Pool, G, FRotator(0.f, Rng.FRandRange(0.f, 360.f), 0.f), Rng.FRandRange(40.f, 120.f));
+				return true;
+			}
+			return false;
 		});
 	}
-	else if (Sphere && Cone)
+	else if (Cone)
 	{
 		const int32 Want = vg::ProceduralGrassTuftCount();
-		int32 GrassN = 0;
-		ScatterUntil(Want, Want * 3, [&](int32 /*Attempt*/, int32 /*Placed*/)
+		if (UHierarchicalInstancedStaticMeshComponent* Pool = FoliagePool(Cone, TEXT("TuftPool")))
 		{
-			const float X = Rng.FRandRange(-2800.f, 2800.f);
-			const float Y = Rng.FRandRange(-1200.f, 3600.f);
-			if (InClearing(X, Y))
+			if (Leaf)
 			{
-				return false;
+				Pool->SetMaterial(0, Leaf);
 			}
-			const FVector G = Terrain->GroundAt(FVector(X, Y, 0.f));
-			const float S = Rng.FRandRange(0.18f, 0.42f);
-			Place(Cone, G + FVector(0.f, 0.f, S * 22.f), FRotator(0.f, Rng.FRandRange(0.f, 180.f), 0.f),
-				FVector(S, S, Rng.FRandRange(0.35f, 0.7f)), Leaf,
-				FName(*FString::Printf(TEXT("Tuft%d"), GrassN)));
-			if ((GrassN % 3) == 0)
+			ScatterUntil(Want, Want * 3, [&](int32 /*Attempt*/, int32 /*Placed*/)
 			{
-				Place(Sphere, G + FVector(Rng.FRandRange(-8.f, 8.f), Rng.FRandRange(-8.f, 8.f), 10.f),
-					FRotator::ZeroRotator, FVector(S * 1.4f, S * 1.3f, 0.12f), LeafDark,
-					FName(*FString::Printf(TEXT("TuftPad%d"), GrassN)));
-			}
-			++GrassN;
-			return true;
-		});
+				const float X = Rng.FRandRange(-4200.f, 4200.f);
+				const float Y = Rng.FRandRange(-2200.f, 4200.f);
+				if (InClearing(X, Y))
+				{
+					return false;
+				}
+				const FVector G = Terrain->GroundAt(FVector(X, Y, 0.f));
+				const float S = Rng.FRandRange(28.f, 70.f);
+				AddSizedInstance(Pool, G, FRotator(0.f, Rng.FRandRange(0.f, 180.f), 0.f), S);
+				return true;
+			});
+		}
 	}
 
 	if (Assets.Rocks.Num() > 0)
 	{
 		const int32 Want = vg::PreferredRockScatterCount();
-		int32 RockN = 0;
 		ScatterUntil(Want, Want * 3, [&](int32 Attempt, int32 /*Placed*/)
 		{
 			const float X = Rng.FRandRange(-4000.f, 4000.f);
 			const float Y = Rng.FRandRange(-2000.f, 2200.f);
 			UStaticMesh* Mesh = Assets.Rocks[Attempt % Assets.Rocks.Num()];
-			const FVector G = Terrain->GroundAt(FVector(X, Y, 0.f));
-			PlaceSized(Mesh, G, FRotator(Rng.FRandRange(0.f, 25.f), Rng.FRandRange(0.f, 180.f), 0.f), Rng.FRandRange(40.f, 120.f),
-				FName(*FString::Printf(TEXT("QRock%d"), RockN)));
-			++RockN;
-			return true;
+			if (UHierarchicalInstancedStaticMeshComponent* Pool = FoliagePool(Mesh, FName(*FString::Printf(TEXT("RockPool%d"), Attempt % Assets.Rocks.Num()))))
+			{
+				const FVector G = Terrain->GroundAt(FVector(X, Y, 0.f));
+				AddSizedInstance(Pool, G, FRotator(Rng.FRandRange(0.f, 25.f), Rng.FRandRange(0.f, 180.f), 0.f), Rng.FRandRange(35.f, 140.f));
+				return true;
+			}
+			return false;
 		});
 	}
 	else if (Sphere)
 	{
-		for (int32 I = 0; I < FMath::Max(18, vg::PreferredRockScatterCount() - 6); ++I)
+		for (int32 I = 0; I < 36; ++I)
 		{
 			const float X = Rng.FRandRange(-4000.f, 4000.f);
 			const float Y = Rng.FRandRange(-2000.f, 2200.f);
@@ -590,7 +673,7 @@ void AValleyWorld::UpdateSky()
 			const float Dusk = FMath::Clamp(1.f - FMath::Abs(Hours - 18.f) / 2.5f, 0.f, 1.f);
 			const float Dawn = FMath::Clamp(1.f - FMath::Abs(Hours - 6.f) / 2.5f, 0.f, 1.f);
 			const float Gold = FMath::Max(Dusk, Dawn);
-			L->SetIntensity(bNight ? 0.45f : FMath::Lerp(13.5f, 6.5f, Gold));
+			L->SetIntensity(bNight ? 0.55f : FMath::Lerp(16.f, 7.5f, Gold));
 			L->SetLightColor(bNight ? FLinearColor(0.28f, 0.36f, 0.58f) : FMath::Lerp(FLinearColor(1.f, 0.96f, 0.86f), FLinearColor(1.f, 0.58f, 0.3f), Gold));
 		}
 	}
@@ -598,7 +681,7 @@ void AValleyWorld::UpdateSky()
 	{
 		if (USkyLightComponent* S = Sky->GetLightComponent())
 		{
-			S->SetIntensity(vg::IsNight(Hours) ? 0.22f : 0.9f);
+			S->SetIntensity(vg::IsNight(Hours) ? 0.28f : 1.05f);
 		}
 	}
 	if (Fog)
@@ -606,13 +689,13 @@ void AValleyWorld::UpdateSky()
 		if (UExponentialHeightFogComponent* F = Fog->GetComponent())
 		{
 			const bool bStorm = Brain.Sky != vg::Weather::Clear;
-			F->SetFogDensity(vg::IsNight(Hours) ? 0.022f : (bStorm ? 0.028f : 0.012f));
+			F->SetFogDensity(vg::IsNight(Hours) ? 0.028f : (bStorm ? 0.034f : 0.018f));
 		}
 	}
 	if (Post)
 	{
 		const bool bNight = vg::IsNight(Hours);
-		Post->Settings.AutoExposureBias = bNight ? 0.05f : 0.4f;
+		Post->Settings.AutoExposureBias = bNight ? 0.08f : 0.28f;
 	}
 	if (FireLight)
 	{

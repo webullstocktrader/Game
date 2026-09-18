@@ -35,5 +35,9 @@ Content/Megascans/**
 !Content/Megascans/.gitkeep
 Content/Fab/**
 !Content/Fab/.gitkeep
+Content/MSPresets/**
+!Content/MSPresets/.gitkeep
+Content/Quixel/**
+!Content/Quixel/.gitkeep
 Content/ValleySlice/**
 !Content/ValleySlice/.gitkeep

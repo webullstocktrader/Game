@@ -1,6 +1,6 @@
 # MetaHuman + valley art (all eight adults)
 
-Code-capsule bodies are the fallback, not the hero look. This slice prefers **assembled MetaHuman Actor Blueprints for every starting adult** (Mara, Nima, Lira, Sable, Flint, Oak, Reed, Bram) and denser **Quixel / Fab / PN_GrassLibrary** ground and foliage when those downloads exist.
+Code-capsule bodies are the fallback, not the hero look. This slice aims for **photoreal MetaHuman adults** and a **Quixel-level wet cinematic valley** (Lumen, volumetric fog, dense instanced grass/trees) when those downloads exist.
 
 God camera, weather, and “they never look at you” are unchanged. Intimate content is out of scope. PLAY.bat / `-game` still run if the folders below are empty: missing Blueprints fall back to the procedural body, and the valley keeps procedural dirt, tufts, and trees.
 
@@ -53,7 +53,7 @@ Checked first so you can pin a pack:
 - `/Game/ValleySlice/SM_Tree`, `SM_Grass`, `SM_Rock`
 - `/Game/PN_GrassLibrary/Meshes/SM_Grass` (and `Materials/MI_Grass`)
 
-If aliases are missing, the game scans `Content/PN_GrassLibrary`, `Content/Megascans`, and `Content/Fab` and classifies names (`dirt`, `beech`, `grass`, `rock`, `pine`, `tuft`, …). Real static meshes are preferred over capsule trees. Scatter is denser than the previous thin ring; the camp clearing stays open.
+If aliases are missing, the game scans `Content/PN_GrassLibrary`, `Content/Megascans`, `Content/Fab`, `Content/MSPresets`, and `Content/Quixel` and classifies names (`dirt`, `beech`, `grass`, `rock`, `pine`, `tuft`, …). Real static meshes are preferred over capsule trees. Grass and rocks instance densely (HISM). The camp clearing stays open.
 
 ---
 

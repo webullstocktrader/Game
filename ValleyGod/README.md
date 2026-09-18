@@ -94,7 +94,7 @@ The valley is built when the game starts. You do not place anything in the level
 - Not space, planet travel, or a fantasy planet. Same solar system, later — not here.
 - Characters wear hide tunics. No intimate content.
 
-Meshes are built in-engine (cylinders, spheres, layered canopies) **until** you drop MetaHuman + Quixel downloads into the folders in `docs/METAHUMAN-QUIXEL.md`. Lighting is Lumen with a stronger sun, soft sky, light fog, and histogram exposure. Dirt goes wet when it rains. PLAY.bat bakes `Content/Materials/M_*` when Unreal prep succeeds; if Content materials are empty, the game module builds the same wet materials at runtime so `-game` does not fall back to WorldGrid or BasicShape.
+Meshes are built in-engine (cylinders, spheres, layered canopies) **until** you drop MetaHuman + Quixel downloads into the folders in `docs/METAHUMAN-QUIXEL.md`. Lighting is Lumen with volumetric fog, virtual shadows, TSR, and cinematic post. Dirt goes wet when it rains. PLAY.bat bakes `Content/Materials/M_*` when Unreal prep succeeds; if Content materials are empty, the game module builds the same wet materials at runtime so `-game` does not fall back to WorldGrid or BasicShape.
 
 ---
 

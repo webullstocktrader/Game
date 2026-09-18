@@ -11,9 +11,11 @@ Raise visual fidelity of the first watchable slice so all eight starting adults 
 
 ## Valley
 - Path tables include `PN_GrassLibrary`, extra Megascans/Fab aliases, and broader name classification.
-- `SpawnTreesAndRocks` prefers real meshes and scatters denser (retry until the wanted count, skip the camp clearing).
-- Procedural grass tufts when no grass meshes exist.
-- Modest camp props (seats, hide pile, bowl) and animal antlers/tusks from existing primitive meshes.
+- `DiscoverOptionalAssets` always merges documented aliases with a recursive scan so one pin does not hide pack variety.
+- `SpawnTreesAndRocks` prefers real meshes, instances grass/rocks/saplings with HISM (1600 grass / 90 rocks / 140 trees), and keeps unique tree components for wind.
+- Ground uses world-space UVs and smooth height-field normals so Quixel surfaces light correctly.
+- Cinematic UE5: volumetric fog, Lumen, virtual shadows, TSR, epic scalability, wet dirt.
+- Modest camp props and animal antlers/tusks from existing primitive meshes.
 
 ## Out of scope
 Intimate content. Inventing binary MetaHuman/Quixel assets. Changing sim day length or population growth rules.
