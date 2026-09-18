@@ -461,8 +461,16 @@ int main()
 			"generic BP_MetaHuman can fill an unmatched adult");
 		CHECK(!LooksLikeGenericMetaHumanBlueprint("/Game/EditableMetahumans/Mara/BP_Mara"),
 			"named villager Blueprint is not generic");
-		CHECK(!LooksLikeGenericMetaHumanBlueprint("/Game/EditableMetahumans/Mara/Groom_Hair"),
-			"groom assets are not presentation Blueprints");
+		CHECK(PackageMatchesVillager("/Game/MetaHumans/Mara/BP_MetaHuman", "Mara"),
+			"BP_MetaHuman in Mara folder still matches Mara");
+		CHECK(!PackageMatchesVillager("/Game/EditableMetahumans/Mara/BP_Body", "Mara"),
+			"body Blueprint in Mara folder is not the villager presentation");
+		CHECK(!PackageMatchesVillager("/Game/EditableMetahumans/Mara/BP_Face", "Mara"),
+			"face Blueprint in Mara folder is not the villager presentation");
+		CHECK(!LooksLikeGenericMetaHumanBlueprint("/Game/EditableMetahumans/MHC_Hannah/BP_MHC_Hannah"),
+			"MHC preview Blueprint is not a generic adult fill");
+		CHECK(!LooksLikeGenericMetaHumanBlueprint("/Game/EditableMetahumans/Shared/BP_MHC_Taro"),
+			"MHC character product is not a generic adult fill");
 
 		CHECK(std::strcmp(EditableMetahumansContentFolder(), "/Game/EditableMetahumans") == 0,
 			"MetaHuman Creator assemble root");
@@ -541,6 +549,14 @@ int main()
 		CHECK(ClassifyContentPath("/Game/Megascans/Surfaces/Wet_Mud/MI_Wet_Mud", ScanKind::WetDirtMaterial),
 			"wet mud classifies as wet dirt");
 		CHECK(!ClassifyContentPath("/Game/Materials/M_Dirt", ScanKind::TreeMesh), "baked M_Dirt is not a tree");
+		CHECK(!ClassifyContentPath("/Game/Megascans/3D_Assets/Fire_Pit/SM_Fire_Pit", ScanKind::TreeMesh),
+			"fire pit is not a tree");
+		CHECK(!ClassifyContentPath("/Game/Megascans/3D_Assets/Rock_Clump/SM_Rock_Clump", ScanKind::GrassMesh),
+			"rock clump is not grass");
+		CHECK(ClassifyContentPath("/Game/Megascans/3D_Assets/Rock_Clump/SM_Rock_Clump", ScanKind::RockMesh),
+			"rock clump is a rock");
+		CHECK(!ClassifyContentPath("/Game/PN_GrassLibrary/Meshes/SM_GroundPlane", ScanKind::GrassMesh),
+			"PN ground plane is not a grass clump");
 		CHECK(!ClassifyContentPath(nullptr, ScanKind::DirtMaterial), "null path is not a match");
 	}
 

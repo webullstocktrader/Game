@@ -179,6 +179,46 @@ namespace vg
 			return false;
 		}
 
+		bool ContainsWord(const char* Hay, const char* Needle)
+		{
+			if (!Hay || !Needle || !Needle[0])
+			{
+				return false;
+			}
+			const size_t N = std::strlen(Needle);
+			for (const char* P = Hay; *P; ++P)
+			{
+				if (P != Hay)
+				{
+					const unsigned char Prev = static_cast<unsigned char>(*(P - 1));
+					if (std::isalnum(Prev))
+					{
+						continue;
+					}
+				}
+				size_t I = 0;
+				while (I < N)
+				{
+					const unsigned char A = static_cast<unsigned char>(P[I]);
+					const unsigned char B = static_cast<unsigned char>(Needle[I]);
+					if (!P[I] || std::tolower(A) != std::tolower(B))
+					{
+						break;
+					}
+					++I;
+				}
+				if (I == N)
+				{
+					const unsigned char Next = static_cast<unsigned char>(P[N]);
+					if (!Next || !std::isalnum(Next))
+					{
+						return true;
+					}
+				}
+			}
+			return false;
+		}
+
 		bool InPlantFolder(const char* Path)
 		{
 			return ContainsFold(Path, "/3D_Plants") || ContainsFold(Path, "/Foliage") || ContainsFold(Path, "/3D_Assets");
@@ -241,9 +281,9 @@ namespace vg
 
 	const char* VillagerMetaHumanPathAt(int Slot, int Index)
 	{
-		static char Cache[8][8][256];
+		static char Cache[16][8][256];
 		const int Count = VillagerMetaHumanPathCount(Slot);
-		if (Slot < 0 || Slot >= 8 || Index < 0 || Index >= Count || Index >= 8)
+		if (Slot < 0 || Slot >= PersonLookCount() || Slot >= 16 || Index < 0 || Index >= Count || Index >= 8)
 		{
 			return "";
 		}
@@ -282,11 +322,14 @@ namespace vg
 		const bool bBP = StartsWithFold(Short, "BP_");
 		const bool bNamedShort = EqualsFold(Short, VillagerName);
 		const bool bBPNamed = bBP && EqualsFold(Short + 3, VillagerName);
+		const bool bGenericInNamedFolder = bBP
+			&& (EqualsFold(Short, "BP_MetaHuman") || EqualsFold(Short, "BP_MH"))
+			&& PathHasSegment(Path, VillagerName);
 		if (!bBP && !bNamedShort)
 		{
 			return false;
 		}
-		return bBPNamed || bNamedShort || PathHasSegment(Path, VillagerName);
+		return bBPNamed || bNamedShort || bGenericInNamedFolder;
 	}
 
 	bool LooksLikeGenericMetaHumanBlueprint(const char* Path)
@@ -309,7 +352,13 @@ namespace vg
 		{
 			return false;
 		}
-		if (!ContainsFold(Short, "MetaHuman") && !ContainsFold(Short, "MH"))
+		if (ContainsFold(Short, "MHC") || ContainsFold(Short, "Groom") || ContainsFold(Short, "Face")
+			|| ContainsFold(Short, "Body") || ContainsFold(Short, "Hair"))
+		{
+			return false;
+		}
+		if (!EqualsFold(Short, "BP_MetaHuman") && !EqualsFold(Short, "BP_MH")
+			&& !StartsWithFold(Short, "BP_MetaHuman_"))
 		{
 			return false;
 		}
@@ -355,36 +404,37 @@ namespace vg
 
 		const bool bPlant = InPlantFolder(Path);
 		const bool bPNGrass = ContainsFold(Path, "PN_GrassLibrary");
-		const bool bDirtWord = ContainsFold(Path, "dirt") || ContainsFold(Path, "soil") || ContainsFold(Path, "mud")
-			|| ContainsFold(Path, "ground") || ContainsFold(Path, "forest_floor");
-		const bool bGrassWord = ContainsFold(Path, "grass") || ContainsFold(Path, "meadow") || ContainsFold(Path, "lawn")
-			|| ContainsFold(Path, "tuft") || ContainsFold(Path, "clump") || ContainsFold(Path, "weed")
-			|| ContainsFold(Path, "fern");
-		const bool bWetWord = ContainsFold(Path, "wet") || ContainsFold(Path, "damp") || ContainsFold(Path, "moist");
-		const bool bTreeWord = ContainsFold(Path, "tree") || ContainsFold(Path, "pine") || ContainsFold(Path, "oak")
-			|| ContainsFold(Path, "beech") || ContainsFold(Path, "birch") || ContainsFold(Path, "spruce")
-			|| ContainsFold(Path, "fir") || ContainsFold(Path, "willow") || ContainsFold(Path, "cedar")
-			|| ContainsFold(Path, "aspen") || ContainsFold(Path, "maple") || ContainsFold(Path, "poplar")
-			|| ContainsFold(Path, "larch") || ContainsFold(Path, "elm") || ContainsFold(Path, "hemlock")
-			|| ContainsFold(Path, "sycamore") || ContainsFold(Path, "cypress") || ContainsFold(Path, "bush")
-			|| ContainsFold(Path, "shrub");
-		const bool bRockWord = ContainsFold(Path, "rock") || ContainsFold(Path, "stone") || ContainsFold(Path, "boulder")
-			|| ContainsFold(Path, "cliff");
+		const bool bDirtWord = ContainsWord(Path, "dirt") || ContainsWord(Path, "soil") || ContainsWord(Path, "mud")
+			|| ContainsWord(Path, "ground") || ContainsWord(Path, "forest_floor");
+		const bool bGrassWord = ContainsWord(Path, "grass") || ContainsWord(Path, "meadow") || ContainsWord(Path, "lawn")
+			|| ContainsWord(Path, "tuft") || ContainsWord(Path, "weed") || ContainsWord(Path, "fern");
+		const bool bWetWord = ContainsWord(Path, "wet") || ContainsWord(Path, "damp") || ContainsWord(Path, "moist");
+		const bool bTreeWord = ContainsWord(Path, "tree") || ContainsWord(Path, "pine") || ContainsWord(Path, "oak")
+			|| ContainsWord(Path, "beech") || ContainsWord(Path, "birch") || ContainsWord(Path, "spruce")
+			|| ContainsWord(Path, "fir") || ContainsWord(Path, "willow") || ContainsWord(Path, "cedar")
+			|| ContainsWord(Path, "aspen") || ContainsWord(Path, "maple") || ContainsWord(Path, "poplar")
+			|| ContainsWord(Path, "larch") || ContainsWord(Path, "elm") || ContainsWord(Path, "hemlock")
+			|| ContainsWord(Path, "sycamore") || ContainsWord(Path, "cypress");
+		const bool bRockWord = ContainsWord(Path, "rock") || ContainsWord(Path, "stone") || ContainsWord(Path, "boulder")
+			|| ContainsWord(Path, "cliff");
 		const bool bMaterialToken = ContainsFold(Path, "MI_") || ContainsFold(Path, "/Materials");
 		const bool bSurface = ContainsFold(Path, "/Surfaces");
+		const bool bPNGrassNamed = bPNGrass
+			&& (ContainsWord(Path, "grass") || ContainsWord(Path, "tuft") || ContainsWord(Path, "lawn")
+				|| ContainsWord(Path, "meadow"));
 
 		switch (Kind)
 		{
 		case ScanKind::DirtMaterial:
 			return bDirtWord && !bGrassWord && !bPlant;
 		case ScanKind::GrassMaterial:
-			return (bGrassWord || (bPNGrass && bMaterialToken)) && !bPlant;
+			return (bGrassWord || (bPNGrassNamed && bMaterialToken)) && !bPlant;
 		case ScanKind::WetDirtMaterial:
-			return (bDirtWord || ContainsFold(Path, "mud")) && bWetWord && !bPlant;
+			return (bDirtWord || ContainsWord(Path, "mud")) && bWetWord && !bPlant;
 		case ScanKind::TreeMesh:
-			return bTreeWord && !bSurface && !bMaterialToken;
+			return bTreeWord && !bSurface && !bMaterialToken && !bGrassWord && !bRockWord;
 		case ScanKind::GrassMesh:
-			return (bGrassWord || (bPNGrass && !bMaterialToken)) && !bSurface && !bMaterialToken;
+			return (bGrassWord || (bPNGrassNamed && !bMaterialToken)) && !bSurface && !bMaterialToken && !bRockWord;
 		case ScanKind::RockMesh:
 			return bRockWord && !bTreeWord && !bGrassWord && !bSurface && !bMaterialToken;
 		default:

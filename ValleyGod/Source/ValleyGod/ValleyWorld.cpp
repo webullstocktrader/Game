@@ -507,6 +507,10 @@ void AValleyWorld::SpawnPeople()
 	for (int32 I = 0; I < Humans; ++I)
 	{
 		AValleyVillager* V = GetWorld()->SpawnActor<AValleyVillager>();
+		if (!V)
+		{
+			continue;
+		}
 		UClass* Presentation = nullptr;
 		if (vg::UsesMetaHumanSlot(I) && VillagerMetaHumanClasses.IsValidIndex(I))
 		{

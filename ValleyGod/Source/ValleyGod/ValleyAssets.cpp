@@ -236,7 +236,7 @@ namespace
 
 	void DiscoverVillagerClasses(TArray<UClass*>& OutClasses, const TArray<FString>& MetaPackages)
 	{
-		const int32 AdultCount = FMath::Max(vg::PersonLookCount(), 8);
+		const int32 AdultCount = vg::PersonLookCount();
 		OutClasses.SetNum(AdultCount);
 		TSet<UClass*> Claimed;
 
