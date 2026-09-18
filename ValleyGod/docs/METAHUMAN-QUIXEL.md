@@ -1,0 +1,116 @@
+# MetaHuman + Quixel (milestone 1)
+
+Code-capsule bodies are no longer the hero look. This slice prefers **one assembled MetaHuman (Mara)** and a **Quixel/FAB grass–trees–dirt patch**. Downloads happen on your Windows PC. This repo never ships those binaries.
+
+God camera, the eight adults, weather, and “they never look at you” are unchanged. Intimate content is out of scope.
+
+If the folders below are empty, PLAY.bat still runs: Mara falls back to the procedural villager, and the valley keeps the current procedural dirt bowl and trees.
+
+---
+
+## Folders (put downloads here)
+
+| Disk | Unreal path | Put this here |
+|---|---|---|
+| `Content/MetaHumans/Mara/` | `/Game/MetaHumans/Mara/` | Assemble MetaHuman **Mara** (Blueprint + body/face/grooms) |
+| `Content/Megascans/` | `/Game/Megascans/` | Fab/Quixel default download root |
+| `Content/Fab/` | `/Game/Fab/` | Alternate Fab drop folder (also scanned) |
+| `Content/ValleySlice/` | `/Game/ValleySlice/` | Optional aliases if you want to pick exact assets |
+| `Content/Maps/ValleySlice` | `/Game/Maps/ValleySlice` | Playable map (ValleyPrep still creates this empty map) |
+
+### Optional aliases (rename/copy after download)
+
+These are checked first, so you can pin a specific pack:
+
+- `/Game/ValleySlice/BP_Mara` — Mara Actor Blueprint
+- `/Game/ValleySlice/MI_Dirt`, `MI_Grass`, `MI_DirtWet`
+- `/Game/ValleySlice/SM_Tree`, `SM_Grass`, `SM_Rock`
+
+If aliases are missing, the game scans `Content/Megascans` and `Content/Fab` and classifies names (`dirt`, `beech`, `grass`, `rock`, …).
+
+Mara Blueprint candidates (first file that exists wins):
+
+1. `/Game/MetaHumans/Mara/BP_Mara`
+2. `/Game/MetaHumans/Mara/Mara`
+3. `/Game/MetaHumans/Mara/BP_MetaHuman`
+4. `/Game/ValleySlice/BP_Mara`
+5. Any top-level Blueprint under `Content/MetaHumans/Mara/`
+
+Only **Mara** (cast slot 0) uses a MetaHuman this milestone. Nima, Lira, Sable, Flint, Oak, Reed, and Bram stay procedural until a later pass.
+
+---
+
+## Exact steps on Windows (UE 5.8.2)
+
+### 0. Engine extras
+
+In Epic Games Launcher, Unreal Engine 5.8 → **Options**, enable **MetaHuman Creator Core Data** (or the similarly named MetaHuman core pack). Without it, Creator opens but cannot finish a character.
+
+Install Visual Studio 2022 with **Game development with C++** if you have not already.
+
+### 1. Open the project
+
+1. Double-click `ValleyGod.uproject` (or `PLAY.bat` once so it compiles).
+2. If Unreal asks to rebuild modules, **Yes**.
+3. If it warns that Fab / MetaHuman / Bridge / MegascansPlugin / HairStrands need enabling, **Enable**. Those names are already on in `ValleyGod.uproject`.
+4. Sign in with your Epic account when the editor asks.
+
+### 2. Fab sign-in and Quixel valley pack
+
+1. Window → **Fab** (or the Fab button in the toolbar).
+2. Sign in.
+3. Search Quixel Megascans for a **forest / grassland** set that includes:
+   - a **dirt** or forest-floor surface
+   - a **grass** surface and/or grass clump 3D plant
+   - at least one **tree** 3D plant (beech, pine, oak, willow — any temperate tree)
+4. **Add to project** / download into **this** ValleyGod project. Fab should land files under `Content/Megascans/` (that is the path we scan).
+5. Do not need to place them in the level by hand. Play will scatter trees/grass/rocks and swap ground materials if it finds them.
+
+If Fab puts meshes in a differently named folder, either move/copy the pack into `Content/Megascans/` or copy the ones you want to the `Content/ValleySlice/SM_*` / `MI_*` aliases above.
+
+### 3. MetaHuman Creator → Mara
+
+1. Enable plugins if prompted: **MetaHuman Character**, **MetaHuman SDK**, **HairStrands**.
+2. Create a MetaHuman Character asset. Name the character **Mara** (adult woman, stone-age hide clothing — covered torso, no intimate content).
+3. Use the Creator **Assemble** tab (not DCC-only export). Assemble into **`Content/MetaHumans/Mara`**.
+4. Confirm a Blueprint appears in that folder (`BP_Mara`, `Mara`, or similar).
+
+Hide clothing: use any fully covering hide/leather wardrobe item you have in Fab, or assemble in a closed tunic and ignore fashion polish for this milestone.
+
+### 4. PLAY
+
+1. Double-click `PLAY.bat`, or in the editor press **Alt+P**.
+2. Bottom-left HUD line should read something like:
+   - `Look  Mara MetaHuman  ·  ground Quixel  ·  foliage Quixel` when downloads are present
+   - `Look  Mara procedural  ·  ground procedural  ·  foliage procedural` when folders are still empty
+3. Output Log (`Window → Developer Tools → Output Log`) also prints `Valley God assets: Mara=...`.
+
+Mara may idle-slide until you assign a walk AnimBP. That is expected for this scaffolding milestone. Click-to-pin still works (capsule on the villager actor).
+
+---
+
+## What this does **not** change
+
+- Invisible god camera (WASD, Q/E, mouse look).
+- Eight adults only: Mara, Nima, Lira, Sable, Flint, Oak, Reed, Bram.
+- Weather keys 1–4 / 0 clear.
+- Villagers never acknowledge the watcher.
+
+---
+
+## Troubleshooting
+
+**HUD still says Mara procedural after assemble**  
+The Blueprint is not at a candidate path. Move/assemble it to `Content/MetaHumans/Mara/` or copy the Actor Blueprint to `Content/ValleySlice/BP_Mara`. Watch the Output Log for `Mara MetaHuman class`.
+
+**HUD still says foliage procedural after Fab download**  
+Files are not under `Content/Megascans` or `Content/Fab`, or names do not contain dirt/grass/tree/rock keywords. Copy chosen meshes to `Content/ValleySlice/SM_Tree` (and `SM_Grass`, `MI_Dirt`, …).
+
+**Plugin missing on project open**  
+Install 5.8.2 with MetaHuman extras. Enable the plugin from the warning dialog. Do not remove ProceduralMeshComponent or EnhancedInput.
+
+**Hair missing on Mara**  
+HairStrands is enabled in the `.uproject`. Also enable **Groom** / **Alembic Groom Importer** in the Plugins window if the editor lists them separately, and confirm MetaHuman Core Data is installed.
+
+**`-game` / PLAY.bat with empty Content**  
+This is supported. Procedural terrain and villagers spawn as before.

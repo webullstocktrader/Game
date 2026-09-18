@@ -107,5 +107,6 @@ void AValleyHUD::DrawHUD()
 		DrawBar(W - 344.f, H - 34.f, 300.f * (V.Energy / 100.f), 8.f, FLinearColor(0.3f, 0.55f, 0.75f, 0.9f));
 	}
 
+	ShadowText(22.f, H - 56.f, WorldActor->GraphicsStatusLine(), FLinearColor(0.62f, 0.68f, 0.55f), 0.7f);
 	ShadowText(22.f, H - 36.f, TEXT("WASD fly   Q/E up-down   mouse look   Shift fast   P pause   [ ] day   click pin"), FLinearColor(0.55f, 0.58f, 0.5f), 0.75f);
 }

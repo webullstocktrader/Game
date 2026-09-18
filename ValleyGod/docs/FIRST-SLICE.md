@@ -27,7 +27,7 @@ Must have:
 - Online multiplayer
 
 ## Graphics goal
-Aim for grounded UE5 look (Lumen, Nanite where useful, wet dirt, soft night). First build may use simple meshes / Metahuman-lite or mannequins with clear silhouettes — better than gray cubes. Prefer quality lighting and materials over asset count.
+Aim for grounded UE5 look (Lumen, Nanite where useful, wet dirt, soft night). Milestone 1 prefers **MetaHuman Creator (Mara)** plus **Quixel/FAB** grass, trees, and dirt when those downloads are in `Content/`. Until then the project keeps procedural meshes and baked/runtime `M_*` materials so PLAY.bat still runs. See `METAHUMAN-QUIXEL.md`.
 
 ## Controls
 - Fly camera: WASD, Q/E up-down, mouse look, scroll zoom

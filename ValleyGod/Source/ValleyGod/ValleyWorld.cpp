@@ -3,6 +3,9 @@
 #include "ValleyVillager.h"
 #include "ValleyAnimal.h"
 #include "ValleyTypes.h"
+#include "ValleyAssets.h"
+#include "Sim/ValleyLookPaths.h"
+#include "Engine/StaticMesh.h"
 #include "Components/DirectionalLightComponent.h"
 #include "Components/ExponentialHeightFogComponent.h"
 #include "Components/PointLightComponent.h"
@@ -43,14 +46,20 @@ void AValleyWorld::BuildValley()
 	Valley::EnsureMaterials();
 	vg::InitWorld(Brain);
 	StripTemplateActors();
+	const Valley::FOptionalAssets Assets = Valley::DiscoverOptionalAssets();
+	MaraMetaHumanClass = Assets.MaraClass;
+	bQuixelGround = Assets.Dirt != nullptr || Assets.Grass != nullptr;
+	bQuixelFoliage = Assets.Trees.Num() > 0 || Assets.GrassMeshes.Num() > 0 || Assets.Rocks.Num() > 0;
 	Terrain = GetWorld()->SpawnActor<AValleyTerrain>(FVector::ZeroVector, FRotator::ZeroRotator);
 	Terrain->BuildValley();
+	Terrain->ApplyGroundMaterials(Assets.Dirt, Assets.Grass, Assets.WetDirt);
 	SpawnAtmosphere();
-	SpawnTreesAndRocks();
+	SpawnTreesAndRocks(Assets);
 	SpawnSheltersAndFire();
 	SpawnPeople();
 	SpawnRain();
 	SpawnTornado();
+	UE_LOG(LogTemp, Display, TEXT("Valley God: %s"), *GraphicsStatusLine());
 }
 
 void AValleyWorld::CommandWeather(vg::Weather Wx)
@@ -133,6 +142,28 @@ UStaticMeshComponent* AValleyWorld::Place(UStaticMesh* Mesh, const FVector& Loc,
 	return Comp;
 }
 
+UStaticMeshComponent* AValleyWorld::PlaceSized(UStaticMesh* Mesh, const FVector& Loc, const FRotator& Rot, float TargetHeightCm, const FName& Name)
+{
+	if (!Mesh)
+	{
+		return nullptr;
+	}
+	const FBoxSphereBounds Bounds = Mesh->GetBounds();
+	const float Height = FMath::Max(Bounds.BoxExtent.Z * 2.f, 1.f);
+	const float S = TargetHeightCm / Height;
+	const float BottomZ = Bounds.Origin.Z - Bounds.BoxExtent.Z;
+	return Place(Mesh, Loc - FVector(0.f, 0.f, BottomZ * S), Rot, FVector(S), nullptr, Name);
+}
+
+FString AValleyWorld::GraphicsStatusLine() const
+{
+	const bool bMaraMH = MaraMetaHumanClass.Get() != nullptr;
+	return FString::Printf(TEXT("Look  Mara %s  ·  ground %s  ·  foliage %s"),
+		bMaraMH ? TEXT("MetaHuman") : TEXT("procedural"),
+		bQuixelGround ? TEXT("Quixel") : TEXT("procedural"),
+		bQuixelFoliage ? TEXT("Quixel") : TEXT("procedural"));
+}
+
 void AValleyWorld::SpawnAtmosphere()
 {
 	Sun = GetWorld()->SpawnActor<ADirectionalLight>(FVector::ZeroVector, FRotator(-42.f, 200.f, 0.f));
@@ -188,7 +219,7 @@ void AValleyWorld::SpawnAtmosphere()
 	P.bOverride_AmbientCubemapIntensity = false;
 }
 
-void AValleyWorld::SpawnTreesAndRocks()
+void AValleyWorld::SpawnTreesAndRocks(const Valley::FOptionalAssets& Assets)
 {
 	UStaticMesh* Cyl = Valley::CylinderMesh();
 	UStaticMesh* Sphere = Valley::SphereMesh();
@@ -197,68 +228,125 @@ void AValleyWorld::SpawnTreesAndRocks()
 	UMaterialInterface* Leaf = Valley::Material(TEXT("M_Foliage"));
 	UMaterialInterface* LeafDark = Valley::Material(TEXT("M_FoliageDark"));
 	UMaterialInterface* Stone = Valley::Material(TEXT("M_Stone"));
-	if (!Cyl || !Sphere || !Terrain)
+	if (!Terrain)
 	{
 		return;
 	}
 
 	FRandomStream Rng(19);
-	int32 TreeN = 0;
-	for (int32 I = 0; I < 48; ++I)
+	auto InClearing = [](float X, float Y)
 	{
-		const float X = Rng.FRandRange(-5200.f, 5200.f);
-		const float Y = Rng.FRandRange(-5200.f, 5200.f);
-		if (FVector2D::Distance(FVector2D(X, Y), FVector2D(0.f, 700.f)) < 700.f)
-		{
-			continue;
-		}
-		if (FMath::Abs(X) < 500.f && FMath::Abs(Y) < 400.f)
-		{
-			continue;
-		}
-		const FVector G = Terrain->GroundAt(FVector(X, Y, 0.f));
-		const float H = Rng.FRandRange(2.8f, 5.2f);
-		const float TrunkR = Rng.FRandRange(0.42f, 0.7f);
-		UStaticMeshComponent* Trunk = Place(Cyl, G + FVector(0.f, 0.f, H * 48.f), FRotator::ZeroRotator, FVector(TrunkR, TrunkR, H), Bark,
-			FName(*FString::Printf(TEXT("Trunk%d"), TreeN)));
-		Trees.Add(Trunk);
+		return FVector2D::Distance(FVector2D(X, Y), FVector2D(0.f, 700.f)) < 700.f
+			|| (FMath::Abs(X) < 500.f && FMath::Abs(Y) < 400.f);
+	};
 
-		auto LeafOn = [&](const FName& Name, const FVector& Rel, const FVector& Scale, UMaterialInterface* Mat)
+	int32 TreeN = 0;
+	if (Assets.Trees.Num() > 0)
+	{
+		for (int32 I = 0; I < 28; ++I)
 		{
-			UStaticMeshComponent* Comp = NewObject<UStaticMeshComponent>(this, Name);
-			Comp->SetStaticMesh(Sphere);
-			Comp->SetRelativeLocation(Rel);
-			Comp->SetRelativeScale3D(Scale);
-			Comp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-			if (Mat)
+			const float X = Rng.FRandRange(-5200.f, 5200.f);
+			const float Y = Rng.FRandRange(-5200.f, 5200.f);
+			if (InClearing(X, Y))
 			{
-				Comp->SetMaterial(0, Mat);
+				continue;
 			}
-			Comp->SetupAttachment(Trunk);
-			Comp->RegisterComponent();
-		};
-
-		LeafOn(FName(*FString::Printf(TEXT("CanopyA%d"), TreeN)), FVector(0.f, 0.f, 48.f), FVector(2.2f, 2.1f, 1.5f) / FVector(TrunkR, TrunkR, H) * Rng.FRandRange(0.9f, 1.15f), Leaf);
-		LeafOn(FName(*FString::Printf(TEXT("CanopyB%d"), TreeN)), FVector(Rng.FRandRange(-18.f, 18.f), Rng.FRandRange(-18.f, 18.f), 68.f), FVector(1.6f, 1.7f, 1.1f) / FVector(TrunkR, TrunkR, H), LeafDark);
-		LeafOn(FName(*FString::Printf(TEXT("CanopyC%d"), TreeN)), FVector(Rng.FRandRange(-12.f, 12.f), Rng.FRandRange(-12.f, 12.f), 36.f), FVector(1.4f, 1.5f, 1.0f) / FVector(TrunkR, TrunkR, H), Leaf);
-		Place(Sphere, G + FVector(0.f, 0.f, 18.f), FRotator::ZeroRotator, FVector(TrunkR * 1.8f, TrunkR * 1.8f, 0.35f), Bark,
-			FName(*FString::Printf(TEXT("Root%d"), TreeN)));
-		if (Cone)
-		{
-			Place(Cyl, G + FVector(Rng.FRandRange(-20.f, 20.f), Rng.FRandRange(-20.f, 20.f), H * 70.f), FRotator(Rng.FRandRange(20.f, 55.f), Rng.FRandRange(0.f, 180.f), 0.f),
-				FVector(0.12f, 0.12f, H * 0.35f), Bark, FName(*FString::Printf(TEXT("Branch%d"), TreeN)));
+			UStaticMesh* Mesh = Assets.Trees[I % Assets.Trees.Num()];
+			const FVector G = Terrain->GroundAt(FVector(X, Y, 0.f));
+			if (UStaticMeshComponent* Placed = PlaceSized(Mesh, G, FRotator(0.f, Rng.FRandRange(0.f, 360.f), 0.f),
+					Rng.FRandRange(380.f, 720.f), FName(*FString::Printf(TEXT("QTree%d"), TreeN))))
+			{
+				Trees.Add(Placed);
+			}
+			++TreeN;
 		}
-		++TreeN;
+	}
+	else if (Cyl && Sphere)
+	{
+		for (int32 I = 0; I < 48; ++I)
+		{
+			const float X = Rng.FRandRange(-5200.f, 5200.f);
+			const float Y = Rng.FRandRange(-5200.f, 5200.f);
+			if (InClearing(X, Y))
+			{
+				continue;
+			}
+			const FVector G = Terrain->GroundAt(FVector(X, Y, 0.f));
+			const float H = Rng.FRandRange(2.8f, 5.2f);
+			const float TrunkR = Rng.FRandRange(0.42f, 0.7f);
+			UStaticMeshComponent* Trunk = Place(Cyl, G + FVector(0.f, 0.f, H * 48.f), FRotator::ZeroRotator, FVector(TrunkR, TrunkR, H), Bark,
+				FName(*FString::Printf(TEXT("Trunk%d"), TreeN)));
+			Trees.Add(Trunk);
+
+			auto LeafOn = [&](const FName& Name, const FVector& Rel, const FVector& Scale, UMaterialInterface* Mat)
+			{
+				UStaticMeshComponent* Comp = NewObject<UStaticMeshComponent>(this, Name);
+				Comp->SetStaticMesh(Sphere);
+				Comp->SetRelativeLocation(Rel);
+				Comp->SetRelativeScale3D(Scale);
+				Comp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+				if (Mat)
+				{
+					Comp->SetMaterial(0, Mat);
+				}
+				Comp->SetupAttachment(Trunk);
+				Comp->RegisterComponent();
+			};
+
+			LeafOn(FName(*FString::Printf(TEXT("CanopyA%d"), TreeN)), FVector(0.f, 0.f, 48.f), FVector(2.2f, 2.1f, 1.5f) / FVector(TrunkR, TrunkR, H) * Rng.FRandRange(0.9f, 1.15f), Leaf);
+			LeafOn(FName(*FString::Printf(TEXT("CanopyB%d"), TreeN)), FVector(Rng.FRandRange(-18.f, 18.f), Rng.FRandRange(-18.f, 18.f), 68.f), FVector(1.6f, 1.7f, 1.1f) / FVector(TrunkR, TrunkR, H), LeafDark);
+			LeafOn(FName(*FString::Printf(TEXT("CanopyC%d"), TreeN)), FVector(Rng.FRandRange(-12.f, 12.f), Rng.FRandRange(-12.f, 12.f), 36.f), FVector(1.4f, 1.5f, 1.0f) / FVector(TrunkR, TrunkR, H), Leaf);
+			Place(Sphere, G + FVector(0.f, 0.f, 18.f), FRotator::ZeroRotator, FVector(TrunkR * 1.8f, TrunkR * 1.8f, 0.35f), Bark,
+				FName(*FString::Printf(TEXT("Root%d"), TreeN)));
+			if (Cone)
+			{
+				Place(Cyl, G + FVector(Rng.FRandRange(-20.f, 20.f), Rng.FRandRange(-20.f, 20.f), H * 70.f), FRotator(Rng.FRandRange(20.f, 55.f), Rng.FRandRange(0.f, 180.f), 0.f),
+					FVector(0.12f, 0.12f, H * 0.35f), Bark, FName(*FString::Printf(TEXT("Branch%d"), TreeN)));
+			}
+			++TreeN;
+		}
 	}
 
-	for (int32 I = 0; I < 18; ++I)
+	if (Assets.GrassMeshes.Num() > 0)
 	{
-		const float X = Rng.FRandRange(-4000.f, 4000.f);
-		const float Y = Rng.FRandRange(-2000.f, 2200.f);
-		const FVector G = Terrain->GroundAt(FVector(X, Y, 0.f));
-		Place(Sphere, G + FVector(0.f, 0.f, 18.f), FRotator(Rng.FRandRange(0.f, 40.f), Rng.FRandRange(0.f, 180.f), 0.f),
-			FVector(Rng.FRandRange(0.4f, 1.1f), Rng.FRandRange(0.3f, 0.8f), Rng.FRandRange(0.25f, 0.5f)), Stone,
-			FName(*FString::Printf(TEXT("Rock%d"), I)));
+		for (int32 I = 0; I < 70; ++I)
+		{
+			const float X = Rng.FRandRange(-2400.f, 2400.f);
+			const float Y = Rng.FRandRange(-800.f, 3200.f);
+			if (InClearing(X, Y))
+			{
+				continue;
+			}
+			UStaticMesh* Mesh = Assets.GrassMeshes[I % Assets.GrassMeshes.Num()];
+			const FVector G = Terrain->GroundAt(FVector(X, Y, 0.f));
+			PlaceSized(Mesh, G, FRotator(0.f, Rng.FRandRange(0.f, 360.f), 0.f), Rng.FRandRange(45.f, 110.f),
+				FName(*FString::Printf(TEXT("QGrass%d"), I)));
+		}
+	}
+
+	if (Assets.Rocks.Num() > 0)
+	{
+		for (int32 I = 0; I < 16; ++I)
+		{
+			const float X = Rng.FRandRange(-4000.f, 4000.f);
+			const float Y = Rng.FRandRange(-2000.f, 2200.f);
+			UStaticMesh* Mesh = Assets.Rocks[I % Assets.Rocks.Num()];
+			const FVector G = Terrain->GroundAt(FVector(X, Y, 0.f));
+			PlaceSized(Mesh, G, FRotator(Rng.FRandRange(0.f, 25.f), Rng.FRandRange(0.f, 180.f), 0.f), Rng.FRandRange(40.f, 120.f),
+				FName(*FString::Printf(TEXT("QRock%d"), I)));
+		}
+	}
+	else if (Sphere)
+	{
+		for (int32 I = 0; I < 18; ++I)
+		{
+			const float X = Rng.FRandRange(-4000.f, 4000.f);
+			const float Y = Rng.FRandRange(-2000.f, 2200.f);
+			const FVector G = Terrain->GroundAt(FVector(X, Y, 0.f));
+			Place(Sphere, G + FVector(0.f, 0.f, 18.f), FRotator(Rng.FRandRange(0.f, 40.f), Rng.FRandRange(0.f, 180.f), 0.f),
+				FVector(Rng.FRandRange(0.4f, 1.1f), Rng.FRandRange(0.3f, 0.8f), Rng.FRandRange(0.25f, 0.5f)), Stone,
+				FName(*FString::Printf(TEXT("Rock%d"), I)));
+		}
 	}
 }
 
@@ -329,7 +417,8 @@ void AValleyWorld::SpawnPeople()
 	for (int32 I = 0; I < Humans; ++I)
 	{
 		AValleyVillager* V = GetWorld()->SpawnActor<AValleyVillager>();
-		V->Arm(Brain.Villagers[I]);
+		UClass* Presentation = vg::UsesMetaHumanSlot(I) ? MaraMetaHumanClass.Get() : nullptr;
+		V->Arm(Brain.Villagers[I], Presentation);
 		V->SyncFromSim(Brain.Villagers[I], Terrain, 0.f);
 		Villagers.Add(V);
 	}

@@ -3,9 +3,13 @@
 #include "ValleyTerrain.h"
 #include "Sim/ValleySim.h"
 #include "Sim/ValleyPalette.h"
+#include "Components/CapsuleComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/TextRenderComponent.h"
 #include "Camera/PlayerCameraManager.h"
+#include "GameFramework/Character.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
 
 AValleyVillager::AValleyVillager()
@@ -13,13 +17,93 @@ AValleyVillager::AValleyVillager()
 	PrimaryActorTick.bCanEverTick = true;
 	USceneComponent* Root = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 	SetRootComponent(Root);
+
+	ClickProbe = CreateDefaultSubobject<UCapsuleComponent>(TEXT("ClickProbe"));
+	ClickProbe->SetupAttachment(Root);
+	ClickProbe->InitCapsuleSize(36.f, 92.f);
+	ClickProbe->SetRelativeLocation(FVector(0.f, 0.f, 92.f));
+	ClickProbe->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	ClickProbe->SetCollisionResponseToAllChannels(ECR_Ignore);
+	ClickProbe->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+	ClickProbe->SetGenerateOverlapEvents(false);
+	ClickProbe->SetHiddenInGame(true);
+	ClickProbe->SetCanEverAffectNavigation(false);
 }
 
-void AValleyVillager::Arm(const vg::Villager& Sim)
+void AValleyVillager::Arm(const vg::Villager& Sim, UClass* PresentationClass)
 {
 	VillagerId = Sim.Id;
 	bWoman = Sim.Body == vg::Sex::Female;
-	BuildBody(Sim);
+	AttachLabels(Sim);
+	if (PresentationClass)
+	{
+		SpawnPresentation(PresentationClass);
+	}
+	if (!Presentation)
+	{
+		BuildBody(Sim);
+	}
+}
+
+void AValleyVillager::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (Presentation)
+	{
+		Presentation->Destroy();
+		Presentation = nullptr;
+	}
+	Super::EndPlay(EndPlayReason);
+}
+
+void AValleyVillager::SpawnPresentation(UClass* PresentationClass)
+{
+	if (!PresentationClass || !GetWorld())
+	{
+		return;
+	}
+
+	FActorSpawnParameters Params;
+	Params.Owner = this;
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	AActor* Spawned = GetWorld()->SpawnActor<AActor>(PresentationClass, GetActorTransform(), Params);
+	if (!Spawned)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Valley God: Mara MetaHuman spawn failed for %s"), *PresentationClass->GetName());
+		return;
+	}
+
+	if (USceneComponent* SpawnRoot = Spawned->GetRootComponent())
+	{
+		SpawnRoot->SetMobility(EComponentMobility::Movable);
+	}
+	if (ACharacter* Character = Cast<ACharacter>(Spawned))
+	{
+		if (UCharacterMovementComponent* Move = Character->GetCharacterMovement())
+		{
+			Move->DisableMovement();
+			Move->SetComponentTickEnabled(false);
+		}
+		if (UCapsuleComponent* Capsule = Character->GetCapsuleComponent())
+		{
+			Capsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		}
+	}
+	TArray<USkeletalMeshComponent*> Skels;
+	Spawned->GetComponents<USkeletalMeshComponent>(Skels);
+	for (USkeletalMeshComponent* Skel : Skels)
+	{
+		if (Skel)
+		{
+			Skel->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		}
+	}
+
+	Spawned->AttachToComponent(GetRootComponent(), FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+	Spawned->SetActorRelativeLocation(FVector::ZeroVector);
+	Spawned->SetActorRelativeRotation(FRotator::ZeroRotator);
+	Spawned->SetActorRelativeScale3D(FVector::OneVector);
+	Presentation = Spawned;
+	UE_LOG(LogTemp, Display, TEXT("Valley God: %s using MetaHuman %s"), *GetName(), *PresentationClass->GetName());
 }
 
 UStaticMeshComponent* AValleyVillager::AddPart(const FName& Name, UStaticMesh* Mesh, const FVector& Loc, const FRotator& Rot, const FVector& Scale, UMaterialInterface* Mat)
@@ -161,6 +245,15 @@ void AValleyVillager::BuildBody(const vg::Villager& Sim)
 		AddPart(TEXT("Spear"), Cyl, FVector(18.f, ArmY + 6.f, 96.f), FRotator(8.f, 0.f, 12.f), FVector(0.035f, 0.035f, 1.15f), WoodUse);
 		AddPart(TEXT("SpearTip"), Cone ? Cone : Cyl, FVector(22.f, ArmY + 8.f, 154.f), FRotator(8.f, 0.f, 12.f), FVector(0.06f, 0.06f, 0.14f), Valley::Material(TEXT("M_Stone")));
 	}
+}
+
+void AValleyVillager::AttachLabels(const vg::Villager& Sim)
+{
+	if (Speech && Nameplate)
+	{
+		Nameplate->SetText(FText::FromString(UTF8_TO_TCHAR(Sim.Name)));
+		return;
+	}
 
 	Speech = NewObject<UTextRenderComponent>(this, TEXT("Speech"));
 	Speech->SetText(FText::GetEmpty());
@@ -196,7 +289,7 @@ void AValleyVillager::SyncFromSim(const vg::Villager& Sim, AValleyTerrain* Terra
 		|| Sim.Current == vg::Activity::Panic || Sim.Current == vg::Activity::Shelter
 		|| Sim.Current == vg::Activity::HighGround || Sim.Current == vg::Activity::Eat;
 
-	if (bMoving)
+	if (bMoving && !Presentation)
 	{
 		WalkPhase = WorldTime * (Sim.Current == vg::Activity::Panic ? 14.f : 8.f);
 		Loc.Z += FMath::Abs(FMath::Sin(WalkPhase)) * 6.f;

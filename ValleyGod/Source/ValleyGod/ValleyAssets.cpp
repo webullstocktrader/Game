@@ -1,0 +1,241 @@
+#include "ValleyAssets.h"
+#include "Sim/ValleyLookPaths.h"
+#include "Engine/StaticMesh.h"
+#include "GameFramework/Actor.h"
+#include "HAL/FileManager.h"
+#include "Materials/MaterialInterface.h"
+#include "Misc/PackageName.h"
+#include "Misc/Paths.h"
+#include "Misc/StringConv.h"
+
+DEFINE_LOG_CATEGORY_STATIC(LogValleyGodAssets, Log, All);
+
+namespace
+{
+	FString Utf(const char* Path)
+	{
+		return UTF8_TO_TCHAR(Path ? Path : "");
+	}
+
+	FString ObjectPathOf(const FString& PackageName)
+	{
+		return PackageName + TEXT(".") + FPackageName::GetShortName(PackageName);
+	}
+
+	bool PackageOnDisk(const FString& PackageName)
+	{
+		if (PackageName.IsEmpty())
+		{
+			return false;
+		}
+		FString Filename;
+		if (!FPackageName::TryConvertLongPackageNameToFilename(PackageName, Filename, FPackageName::GetAssetPackageExtension()))
+		{
+			return false;
+		}
+		return IFileManager::Get().FileExists(*Filename);
+	}
+
+	template <typename T>
+	T* LoadTyped(const FString& PackageName)
+	{
+		if (!PackageOnDisk(PackageName))
+		{
+			return nullptr;
+		}
+		return LoadObject<T>(nullptr, *ObjectPathOf(PackageName));
+	}
+
+	UClass* LoadActorClass(const FString& PackageName)
+	{
+		if (!PackageOnDisk(PackageName))
+		{
+			return nullptr;
+		}
+		const FString Short = FPackageName::GetShortName(PackageName);
+		const FString ClassPath = PackageName + TEXT(".") + Short + TEXT("_C");
+		if (UClass* Class = LoadClass<AActor>(nullptr, *ClassPath))
+		{
+			return Class;
+		}
+		if (UClass* Class = LoadObject<UClass>(nullptr, *ObjectPathOf(PackageName)))
+		{
+			if (Class->IsChildOf(AActor::StaticClass()))
+			{
+				return Class;
+			}
+		}
+		return nullptr;
+	}
+
+	void CollectPackages(const FString& ContentRelative, TArray<FString>& Out, bool bRecursive)
+	{
+		const FString Root = FPaths::Combine(FPaths::ProjectContentDir(), ContentRelative);
+		if (!IFileManager::Get().DirectoryExists(*Root))
+		{
+			return;
+		}
+		TArray<FString> Files;
+		if (bRecursive)
+		{
+			IFileManager::Get().FindFilesRecursive(Files, *Root, TEXT("*.uasset"), true, false);
+		}
+		else
+		{
+			IFileManager::Get().FindFiles(Files, *FPaths::Combine(Root, TEXT("*.uasset")), true, false);
+			for (FString& File : Files)
+			{
+				File = FPaths::Combine(Root, File);
+			}
+		}
+		for (const FString& File : Files)
+		{
+			FString PackageName;
+			if (FPackageName::TryConvertFilenameToLongPackageName(File, PackageName))
+			{
+				Out.AddUnique(PackageName);
+			}
+		}
+	}
+
+	template <typename T>
+	void LoadDocumented(int Count, const char* (*At)(int), TArray<T*>& Out, int32 MaxCount)
+	{
+		for (int I = 0; I < Count && Out.Num() < MaxCount; ++I)
+		{
+			if (T* Obj = LoadTyped<T>(Utf(At(I))))
+			{
+				Out.AddUnique(Obj);
+			}
+		}
+	}
+
+	void ScanKindIntoMeshes(vg::ScanKind Kind, TArray<UStaticMesh*>& Out, int32 MaxCount)
+	{
+		TArray<FString> Packages;
+		CollectPackages(TEXT("Megascans"), Packages, true);
+		CollectPackages(TEXT("Fab"), Packages, true);
+		for (const FString& PackageName : Packages)
+		{
+			if (Out.Num() >= MaxCount)
+			{
+				break;
+			}
+			const auto Converted = StringCast<ANSICHAR>(*PackageName);
+			if (!vg::ClassifyContentPath(Converted.Get(), Kind))
+			{
+				continue;
+			}
+			if (UStaticMesh* Mesh = LoadTyped<UStaticMesh>(PackageName))
+			{
+				Out.AddUnique(Mesh);
+			}
+		}
+	}
+
+	void ScanKindIntoMaterials(vg::ScanKind Kind, TArray<UMaterialInterface*>& Out, int32 MaxCount)
+	{
+		TArray<FString> Packages;
+		CollectPackages(TEXT("Megascans"), Packages, true);
+		CollectPackages(TEXT("Fab"), Packages, true);
+		for (const FString& PackageName : Packages)
+		{
+			if (Out.Num() >= MaxCount)
+			{
+				break;
+			}
+			const auto Converted = StringCast<ANSICHAR>(*PackageName);
+			if (!vg::ClassifyContentPath(Converted.Get(), Kind))
+			{
+				continue;
+			}
+			if (UMaterialInterface* Mat = LoadTyped<UMaterialInterface>(PackageName))
+			{
+				Out.AddUnique(Mat);
+			}
+		}
+	}
+
+	UClass* FindMaraClass()
+	{
+		for (int32 I = 0; I < vg::MetaHumanClassPathCount(); ++I)
+		{
+			if (UClass* Class = LoadActorClass(Utf(vg::MetaHumanClassPathAt(I))))
+			{
+				UE_LOG(LogValleyGodAssets, Display, TEXT("Valley God: Mara MetaHuman class %s"), *Class->GetPathName());
+				return Class;
+			}
+		}
+
+		TArray<FString> TopLevel;
+		CollectPackages(TEXT("MetaHumans/Mara"), TopLevel, false);
+		for (const FString& PackageName : TopLevel)
+		{
+			if (UClass* Class = LoadActorClass(PackageName))
+			{
+				UE_LOG(LogValleyGodAssets, Display, TEXT("Valley God: Mara MetaHuman scanned %s"), *Class->GetPathName());
+				return Class;
+			}
+		}
+		return nullptr;
+	}
+}
+
+namespace Valley
+{
+	FOptionalAssets DiscoverOptionalAssets()
+	{
+		FOptionalAssets Found;
+		Found.MaraClass = FindMaraClass();
+
+		TArray<UMaterialInterface*> Dirts;
+		LoadDocumented<UMaterialInterface>(vg::DirtMaterialPathCount(), &vg::DirtMaterialPathAt, Dirts, 1);
+		if (Dirts.Num() == 0)
+		{
+			ScanKindIntoMaterials(vg::ScanKind::DirtMaterial, Dirts, 1);
+		}
+		Found.Dirt = Dirts.Num() > 0 ? Dirts[0] : nullptr;
+
+		TArray<UMaterialInterface*> Grasses;
+		LoadDocumented<UMaterialInterface>(vg::GrassMaterialPathCount(), &vg::GrassMaterialPathAt, Grasses, 1);
+		if (Grasses.Num() == 0)
+		{
+			ScanKindIntoMaterials(vg::ScanKind::GrassMaterial, Grasses, 1);
+		}
+		Found.Grass = Grasses.Num() > 0 ? Grasses[0] : nullptr;
+
+		TArray<UMaterialInterface*> Wets;
+		LoadDocumented<UMaterialInterface>(vg::WetDirtMaterialPathCount(), &vg::WetDirtMaterialPathAt, Wets, 1);
+		if (Wets.Num() == 0)
+		{
+			ScanKindIntoMaterials(vg::ScanKind::WetDirtMaterial, Wets, 1);
+		}
+		Found.WetDirt = Wets.Num() > 0 ? Wets[0] : nullptr;
+
+		LoadDocumented<UStaticMesh>(vg::TreeMeshPathCount(), &vg::TreeMeshPathAt, Found.Trees, 8);
+		if (Found.Trees.Num() == 0)
+		{
+			ScanKindIntoMeshes(vg::ScanKind::TreeMesh, Found.Trees, 8);
+		}
+
+		LoadDocumented<UStaticMesh>(vg::GrassMeshPathCount(), &vg::GrassMeshPathAt, Found.GrassMeshes, 8);
+		if (Found.GrassMeshes.Num() == 0)
+		{
+			ScanKindIntoMeshes(vg::ScanKind::GrassMesh, Found.GrassMeshes, 8);
+		}
+
+		LoadDocumented<UStaticMesh>(vg::RockMeshPathCount(), &vg::RockMeshPathAt, Found.Rocks, 6);
+		if (Found.Rocks.Num() == 0)
+		{
+			ScanKindIntoMeshes(vg::ScanKind::RockMesh, Found.Rocks, 6);
+		}
+
+		UE_LOG(LogValleyGodAssets, Display,
+			TEXT("Valley God assets: Mara=%s dirt=%s grass=%s trees=%d grassMeshes=%d rocks=%d"),
+			Found.MaraClass ? TEXT("MetaHuman") : TEXT("procedural"),
+			Found.Dirt ? TEXT("Quixel") : TEXT("procedural"),
+			Found.Grass ? TEXT("Quixel") : TEXT("procedural"),
+			Found.Trees.Num(), Found.GrassMeshes.Num(), Found.Rocks.Num());
+		return Found;
+	}
+}

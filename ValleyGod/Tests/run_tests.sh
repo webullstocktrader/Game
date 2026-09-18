@@ -6,5 +6,6 @@ g++ -std=c++17 -Wall -Wextra -Werror -O0 -g \
 	"$ROOT/Tests/test_valley_sim.cpp" \
 	"$ROOT/Source/ValleyGod/Sim/ValleySim.cpp" \
 	"$ROOT/Source/ValleyGod/Sim/ValleyPalette.cpp" \
+	"$ROOT/Source/ValleyGod/Sim/ValleyLookPaths.cpp" \
 	-o "$ROOT/Tests/test_valley_sim"
 "$ROOT/Tests/test_valley_sim"

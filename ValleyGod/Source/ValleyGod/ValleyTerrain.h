@@ -5,6 +5,7 @@
 #include "ValleyTerrain.generated.h"
 
 class UProceduralMeshComponent;
+class UMaterialInterface;
 
 UCLASS()
 class VALLEYGOD_API AValleyTerrain : public AActor
@@ -15,6 +16,7 @@ public:
 	AValleyTerrain();
 
 	void BuildValley();
+	void ApplyGroundMaterials(UMaterialInterface* Dirt, UMaterialInterface* Grass, UMaterialInterface* Wet);
 	float HeightAt(float X, float Y) const;
 	FVector GroundAt(const FVector& WorldPos) const;
 	void SetWet(bool bWet);
@@ -43,4 +45,10 @@ private:
 	TArray<float> BaseHeight;
 	float FloodExtraZ = 0.f;
 	bool bWet = false;
+
+	UPROPERTY()
+	TObjectPtr<UMaterialInterface> DryGroundMat;
+
+	UPROPERTY()
+	TObjectPtr<UMaterialInterface> WetGroundMat;
 };

@@ -21,3 +21,15 @@ Releases/
 Tests/test_valley_sim
 .DS_Store
 Thumbs.db
+
+# Downloaded MetaHuman / Quixel / Fab assets. Do not invent or commit binaries.
+Content/MetaHumans/**
+!Content/MetaHumans/.gitkeep
+!Content/MetaHumans/Mara/
+!Content/MetaHumans/Mara/.gitkeep
+Content/Megascans/**
+!Content/Megascans/.gitkeep
+Content/Fab/**
+!Content/Fab/.gitkeep
+Content/ValleySlice/**
+!Content/ValleySlice/.gitkeep
