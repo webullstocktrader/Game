@@ -82,6 +82,7 @@ void AValleyAnimal::BuildBody()
 	Add(TEXT("HoofRL"), Sphere, FVector(-Len * 22.f, -Rad * 40.f, 6.f), FRotator::ZeroRotator, FVector(0.08f, 0.06f, 0.05f), DarkUse);
 	Add(TEXT("HoofRR"), Sphere, FVector(-Len * 22.f, Rad * 40.f, 6.f), FRotator::ZeroRotator, FVector(0.08f, 0.06f, 0.05f), DarkUse);
 	Add(TEXT("Tail"), Cyl, FVector(-Len * 48.f, 0.f, 58.f + Leg * 6.f), FRotator(55.f, 0.f, 0.f), FVector(0.06f, 0.05f, 0.28f), FurUse);
+	// Long-neck looks (deer) get antlers; thick-body looks (boar) get tusks.
 	if (Look.NeckLen >= 0.34f && Cone)
 	{
 		Add(TEXT("AntlerL"), Cone, FVector(Len * 52.f, -10.f, 112.f + Leg * 6.f), FRotator(-25.f, -20.f, -8.f), FVector(0.05f, 0.04f, 0.22f), DarkUse);
