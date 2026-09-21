@@ -168,6 +168,16 @@ namespace
 		return 2;
 	}
 
+	bool KeepScannedGround(UMaterialInterface* Mat)
+	{
+		if (!Mat)
+		{
+			return false;
+		}
+		const auto Converted = StringCast<ANSICHAR>(*Mat->GetPathName());
+		return vg::AcceptScannedGroundMaterial(Converted.Get());
+	}
+
 	UClass* FindMaraClass()
 	{
 		for (int32 I = 0; I < vg::MetaHumanClassPathCount(); ++I)
@@ -179,25 +189,29 @@ namespace
 			}
 		}
 
-		TArray<FString> Candidates;
-		CollectPackages(TEXT("MetaHumans/Mara"), Candidates, true);
-		Candidates.Sort([](const FString& A, const FString& B)
+		const TCHAR* ScanRoots[] = {TEXT("EditableMetahumans/Mara"), TEXT("MetaHumans/Mara")};
+		for (const TCHAR* Root : ScanRoots)
 		{
-			const int32 RA = BlueprintRank(A);
-			const int32 RB = BlueprintRank(B);
-			if (RA != RB)
+			TArray<FString> Candidates;
+			CollectPackages(Root, Candidates, true);
+			Candidates.Sort([](const FString& A, const FString& B)
 			{
-				return RA < RB;
-			}
-			return A.Len() < B.Len();
-		});
-		for (const FString& PackageName : Candidates)
-		{
-			UE_LOG(LogValleyGodAssets, Verbose, TEXT("Valley God: considering Mara package %s"), *PackageName);
-			if (UClass* Class = LoadActorClass(PackageName))
+				const int32 RA = BlueprintRank(A);
+				const int32 RB = BlueprintRank(B);
+				if (RA != RB)
+				{
+					return RA < RB;
+				}
+				return A.Len() < B.Len();
+			});
+			for (const FString& PackageName : Candidates)
 			{
-				UE_LOG(LogValleyGodAssets, Display, TEXT("Valley God: Mara MetaHuman scanned %s"), *Class->GetPathName());
-				return Class;
+				UE_LOG(LogValleyGodAssets, Verbose, TEXT("Valley God: considering Mara package %s"), *PackageName);
+				if (UClass* Class = LoadActorClass(PackageName))
+				{
+					UE_LOG(LogValleyGodAssets, Display, TEXT("Valley God: Mara MetaHuman scanned %s"), *Class->GetPathName());
+					return Class;
+				}
 			}
 		}
 		return nullptr;
@@ -222,16 +236,19 @@ namespace Valley
 		TArray<UMaterialInterface*> Dirts;
 		LoadDocumented<UMaterialInterface>(vg::DirtMaterialPathCount(), &vg::DirtMaterialPathAt, Dirts, 4);
 		ScanKindIntoMaterials(vg::ScanKind::DirtMaterial, Downloaded, Dirts, 4);
+		Dirts.RemoveAll([](UMaterialInterface* Mat) { return !KeepScannedGround(Mat); });
 		Found.Dirt = Dirts.Num() > 0 ? Dirts[0] : nullptr;
 
 		TArray<UMaterialInterface*> Grasses;
 		LoadDocumented<UMaterialInterface>(vg::GrassMaterialPathCount(), &vg::GrassMaterialPathAt, Grasses, 4);
 		ScanKindIntoMaterials(vg::ScanKind::GrassMaterial, Downloaded, Grasses, 4);
+		Grasses.RemoveAll([](UMaterialInterface* Mat) { return !KeepScannedGround(Mat); });
 		Found.Grass = Grasses.Num() > 0 ? Grasses[0] : nullptr;
 
 		TArray<UMaterialInterface*> Wets;
 		LoadDocumented<UMaterialInterface>(vg::WetDirtMaterialPathCount(), &vg::WetDirtMaterialPathAt, Wets, 4);
 		ScanKindIntoMaterials(vg::ScanKind::WetDirtMaterial, Downloaded, Wets, 4);
+		Wets.RemoveAll([](UMaterialInterface* Mat) { return !KeepScannedGround(Mat); });
 		Found.WetDirt = Wets.Num() > 0 ? Wets[0] : nullptr;
 
 		LoadDocumented<UStaticMesh>(vg::TreeMeshPathCount(), &vg::TreeMeshPathAt, Found.Trees, 32);

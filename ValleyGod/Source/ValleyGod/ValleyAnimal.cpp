@@ -32,8 +32,8 @@ void AValleyAnimal::BuildBody()
 	const vg::AnimalLook& Look = vg::AnimalLookAt(AnimalId);
 	const FLinearColor Fur(Look.FurR, Look.FurG, Look.FurB);
 	const FLinearColor Snout = Fur * 0.75f + FLinearColor(0.08f, 0.05f, 0.03f);
-	UMaterialInterface* FurUse = Valley::Tint(this, Valley::Material(TEXT("M_Fur")), Fur, TEXT("FurDyn"));
-	UMaterialInterface* DarkUse = Valley::Tint(this, Valley::Material(TEXT("M_Hide")), Snout, TEXT("SnoutDyn"));
+	UMaterialInterface* FurUse = Valley::Tint(this, Valley::RecipeMid(this, TEXT("M_Fur"), TEXT("MID_Fur")), Fur, TEXT("FurDyn"));
+	UMaterialInterface* DarkUse = Valley::Tint(this, Valley::RecipeMid(this, TEXT("M_Hide"), TEXT("MID_Hide")), Snout, TEXT("SnoutDyn"));
 
 	auto Add = [&](const FName& Name, UStaticMesh* Mesh, const FVector& Loc, const FRotator& Rot, const FVector& Scale, UMaterialInterface* Mat)
 	{
@@ -69,8 +69,8 @@ void AValleyAnimal::BuildBody()
 	Add(TEXT("Snout"), Sphere, FVector(Len * 70.f, 0.f, 82.f + Leg * 6.f), FRotator::ZeroRotator, FVector(0.16f, 0.10f, 0.10f), DarkUse);
 	Add(TEXT("EarL"), Cone ? Cone : Cyl, FVector(Len * 54.f, -8.f, 100.f + Leg * 6.f), FRotator(0.f, 0.f, -18.f), FVector(0.05f, 0.04f, 0.14f), FurUse);
 	Add(TEXT("EarR"), Cone ? Cone : Cyl, FVector(Len * 54.f, 8.f, 100.f + Leg * 6.f), FRotator(0.f, 0.f, 18.f), FVector(0.05f, 0.04f, 0.14f), FurUse);
-	Add(TEXT("EyeL"), Sphere, FVector(Len * 62.f, -6.f, 90.f + Leg * 6.f), FRotator::ZeroRotator, FVector(0.04f, 0.03f, 0.03f), Valley::Material(TEXT("M_Eye")));
-	Add(TEXT("EyeR"), Sphere, FVector(Len * 62.f, 6.f, 90.f + Leg * 6.f), FRotator::ZeroRotator, FVector(0.04f, 0.03f, 0.03f), Valley::Material(TEXT("M_Eye")));
+	Add(TEXT("EyeL"), Sphere, FVector(Len * 62.f, -6.f, 90.f + Leg * 6.f), FRotator::ZeroRotator, FVector(0.04f, 0.03f, 0.03f), Valley::RecipeMid(this, TEXT("M_Eye"), TEXT("MID_Eye")));
+	Add(TEXT("EyeR"), Sphere, FVector(Len * 62.f, 6.f, 90.f + Leg * 6.f), FRotator::ZeroRotator, FVector(0.04f, 0.03f, 0.03f), Valley::RecipeMid(this, TEXT("M_Eye"), TEXT("MID_Eye")));
 
 	const float HipZ = Leg * 22.f;
 	Add(TEXT("LegFL"), Cyl, FVector(Len * 24.f, -Rad * 38.f, HipZ), FRotator::ZeroRotator, FVector(0.07f, 0.07f, Leg), DarkUse);

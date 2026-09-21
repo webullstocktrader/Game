@@ -1,5 +1,6 @@
 #include "ValleyTerrain.h"
 #include "ValleyTypes.h"
+#include "Sim/ValleyPalette.h"
 #include "ProceduralMeshComponent.h"
 #include "Materials/MaterialInterface.h"
 
@@ -18,6 +19,7 @@ AValleyTerrain::AValleyTerrain()
 	WaterMesh->SetupAttachment(GroundMesh);
 	WaterMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	WaterMesh->SetCastShadow(false);
+	WaterMesh->SetTranslucentSortPriority(2);
 }
 
 float AValleyTerrain::RiverDistance(float X, float Y) const
@@ -160,8 +162,8 @@ void AValleyTerrain::SetWet(bool bInWet)
 	}
 	bWet = bInWet;
 	UMaterialInterface* Mat = bWet
-		? (WetGroundMat ? WetGroundMat.Get() : Valley::Material(TEXT("M_DirtWet")))
-		: (DryGroundMat ? DryGroundMat.Get() : Valley::Material(TEXT("M_Dirt")));
+		? (WetGroundMat ? WetGroundMat.Get() : Valley::RecipeMid(this, TEXT("M_DirtWet"), TEXT("MID_DirtWet")))
+		: (DryGroundMat ? DryGroundMat.Get() : Valley::RecipeMid(this, TEXT("M_Dirt"), TEXT("MID_Dirt")));
 	if (Mat)
 	{
 		GroundMesh->SetMaterial(0, Mat);
@@ -196,9 +198,9 @@ void AValleyTerrain::Rebuild()
 
 			const bool bGrass = IsGrass(X0, Y0, A.Z);
 			const bool bStone = !bGrass && IsStone(X0, Y0, A.Z);
-			const FColor DirtCol(92, 58, 32);
-			const FColor GrassCol(46, 78, 32);
-			const FColor StoneCol(120, 114, 104);
+			const FColor DirtCol = FLinearColor(vg::kGuaranteedDirtR, vg::kGuaranteedDirtG, vg::kGuaranteedDirtB, 1.f).ToFColor(true);
+			const FColor GrassCol = FLinearColor(0.09f, 0.22f, 0.04f, 1.f).ToFColor(true);
+			const FColor StoneCol(138, 128, 112);
 			if (bGrass)
 			{
 				AddQuad(GrassV, GrassT, GrassN, GrassUV, GrassC, A, B, C, D, GrassCol);
@@ -217,71 +219,47 @@ void AValleyTerrain::Rebuild()
 				const float WaterZ = FMath::Max3(A.Z, B.Z, FMath::Max(C.Z, D.Z)) + 14.f;
 				AddQuad(WaterV, WaterT, WaterN, WaterUV, WaterC,
 					FVector(X0, Y0, WaterZ), FVector(X1, Y0, WaterZ), FVector(X1, Y1, WaterZ), FVector(X0, Y1, WaterZ),
-					FColor(24, 48, 44, 150));
+					FLinearColor(0.012f, 0.030f, 0.038f, 0.78f).ToFColor(true));
 			}
 		}
 	}
 
 	GroundMesh->ClearAllMeshSections();
 	GroundMesh->CreateMeshSection(0, DirtV, DirtT, DirtN, DirtUV, DirtC, TArray<FProcMeshTangent>(), true);
-	if (UMaterialInterface* Dirt = Valley::Material(TEXT("M_Dirt")))
-	{
-		GroundMesh->SetMaterial(0, Dirt);
-	}
+	DryGroundMat = Valley::RecipeMid(this, TEXT("M_Dirt"), TEXT("MID_Dirt"));
+	GroundMesh->SetMaterial(0, DryGroundMat);
 	if (GrassV.Num() > 0)
 	{
 		GroundMesh->CreateMeshSection(1, GrassV, GrassT, GrassN, GrassUV, GrassC, TArray<FProcMeshTangent>(), true);
-		if (UMaterialInterface* Grass = Valley::Material(TEXT("M_Grass")))
-		{
-			GroundMesh->SetMaterial(1, Grass);
-		}
+		GroundMesh->SetMaterial(1, Valley::RecipeMid(this, TEXT("M_Grass"), TEXT("MID_Grass")));
 	}
 	if (StoneV.Num() > 0)
 	{
 		GroundMesh->CreateMeshSection(2, StoneV, StoneT, StoneN, StoneUV, StoneC, TArray<FProcMeshTangent>(), true);
-		if (UMaterialInterface* Stone = Valley::Material(TEXT("M_Stone")))
-		{
-			GroundMesh->SetMaterial(2, Stone);
-		}
+		GroundMesh->SetMaterial(2, Valley::RecipeMid(this, TEXT("M_Stone"), TEXT("MID_Stone")));
 	}
 
 	WaterMesh->ClearAllMeshSections();
 	if (WaterV.Num() > 0)
 	{
 		WaterMesh->CreateMeshSection(0, WaterV, WaterT, WaterN, WaterUV, WaterC, TArray<FProcMeshTangent>(), false);
-		if (UMaterialInterface* Water = Valley::Material(TEXT("M_Water")))
-		{
-			WaterMesh->SetMaterial(0, Water);
-		}
+		WaterMesh->SetMaterial(0, Valley::RecipeMid(this, TEXT("M_Water"), TEXT("MID_Water")));
 	}
+	WetGroundMat = Valley::RecipeMid(this, TEXT("M_DirtWet"), TEXT("MID_DirtWet"));
 }
 
 void AValleyTerrain::ApplyGroundMaterials(UMaterialInterface* Dirt, UMaterialInterface* Grass, UMaterialInterface* Wet)
 {
-	if (Dirt)
+	DryGroundMat = Valley::ResolveScannedOrMid(this, Dirt, TEXT("M_Dirt"), TEXT("MID_Dirt"));
+	if (DryGroundMat)
 	{
-		DryGroundMat = Dirt;
-		GroundMesh->SetMaterial(0, Dirt);
-	}
-	else
-	{
-		DryGroundMat = Valley::Material(TEXT("M_Dirt"));
+		GroundMesh->SetMaterial(0, DryGroundMat);
 	}
 
-	if (Grass)
-	{
-		GroundMesh->SetMaterial(1, Grass);
-	}
+	GroundMesh->SetMaterial(1, Valley::ResolveScannedOrMid(this, Grass, TEXT("M_Grass"), TEXT("MID_Grass")));
+	GroundMesh->SetMaterial(2, Valley::RecipeMid(this, TEXT("M_Stone"), TEXT("MID_Stone")));
 
-	if (Wet)
-	{
-		WetGroundMat = Wet;
-	}
-	else
-	{
-		WetGroundMat = Valley::Material(TEXT("M_DirtWet"));
-	}
-
+	WetGroundMat = Valley::ResolveScannedOrMid(this, Wet, TEXT("M_DirtWet"), TEXT("MID_DirtWet"));
 	if (bWet && WetGroundMat)
 	{
 		GroundMesh->SetMaterial(0, WetGroundMat);

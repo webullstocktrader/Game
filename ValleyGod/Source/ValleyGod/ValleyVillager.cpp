@@ -160,12 +160,12 @@ void AValleyVillager::BuildBody(const vg::Villager& Sim)
 	const FLinearColor Hair(L.HairR, L.HairG, L.HairB);
 	const FLinearColor Hide = Cloth * 0.82f + FLinearColor(0.06f, 0.04f, 0.02f);
 
-	UMaterialInterface* SkinUse = Valley::Tint(this, Valley::Material(TEXT("M_SkinWarm")), Skin, TEXT("SkinDyn"));
-	UMaterialInterface* ClothUse = Valley::Tint(this, Valley::Material(TEXT("M_ClothOchre")), Cloth, TEXT("ClothDyn"));
-	UMaterialInterface* HairUse = Valley::Tint(this, Valley::Material(TEXT("M_Hair")), Hair, TEXT("HairDyn"));
-	UMaterialInterface* HideUse = Valley::Tint(this, Valley::Material(TEXT("M_Hide")), Hide, TEXT("HideDyn"));
-	UMaterialInterface* EyeUse = Valley::Material(TEXT("M_Eye"));
-	UMaterialInterface* WoodUse = Valley::Material(TEXT("M_Wood"));
+	UMaterialInterface* SkinUse = Valley::Tint(this, Valley::RecipeMid(this, TEXT("M_SkinWarm"), TEXT("MID_SkinWarm")), Skin, TEXT("SkinDyn"));
+	UMaterialInterface* ClothUse = Valley::Tint(this, Valley::RecipeMid(this, TEXT("M_ClothOchre"), TEXT("MID_ClothOchre")), Cloth, TEXT("ClothDyn"));
+	UMaterialInterface* HairUse = Valley::Tint(this, Valley::RecipeMid(this, TEXT("M_Hair"), TEXT("MID_Hair")), Hair, TEXT("HairDyn"));
+	UMaterialInterface* HideUse = Valley::Tint(this, Valley::RecipeMid(this, TEXT("M_Hide"), TEXT("MID_Hide")), Hide, TEXT("HideDyn"));
+	UMaterialInterface* EyeUse = Valley::RecipeMid(this, TEXT("M_Eye"), TEXT("MID_Eye"));
+	UMaterialInterface* WoodUse = Valley::RecipeMid(this, TEXT("M_Wood"), TEXT("MID_Wood"));
 
 	const bool bF = bWoman;
 	const float Shoulder = L.Shoulder;
@@ -267,8 +267,8 @@ void AValleyVillager::EnsureCraftedSpear()
 	{
 		return;
 	}
-	UMaterialInterface* Wood = Valley::Material(TEXT("M_Wood"));
-	UMaterialInterface* Stone = Valley::Material(TEXT("M_Stone"));
+	UMaterialInterface* Wood = Valley::RecipeMid(this, TEXT("M_Wood"), TEXT("MID_Wood"));
+	UMaterialInterface* Stone = Valley::RecipeMid(this, TEXT("M_Stone"), TEXT("MID_Stone"));
 	StoneSpear = AddPart(TEXT("CraftedSpear"), Cyl, FVector(22.f, 28.f, 96.f), FRotator(8.f, 0.f, 14.f), FVector(0.04f, 0.04f, 1.25f), Wood);
 	StoneSpearTip = AddPart(TEXT("CraftedSpearTip"), Cone ? Cone : Cyl, FVector(28.f, 32.f, 158.f), FRotator(8.f, 0.f, 14.f), FVector(0.07f, 0.07f, 0.16f), Stone);
 	if (StoneSpear)

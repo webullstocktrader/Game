@@ -1,4 +1,5 @@
 #include "ValleyTypes.h"
+#include "Sim/ValleyLookPaths.h"
 #include "Sim/ValleyPalette.h"
 #include "Materials/Material.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -9,6 +10,7 @@
 namespace
 {
 	TMap<FName, TObjectPtr<UMaterialInterface>> GRuntimeMats;
+	TMap<FName, TObjectPtr<UMaterialInterface>> GRecipeMids;
 
 	UMaterialInterface* LoadMat(const TCHAR* Path)
 	{
@@ -270,9 +272,123 @@ namespace Valley
 		if (Dyn)
 		{
 			Dyn->SetVectorParameterValue(TEXT("BaseColor"), Color);
+			Dyn->SetVectorParameterValue(TEXT("Color"), Color);
 			return Dyn;
 		}
 		return Parent;
+	}
+
+	UMaterialInterface* RecipeColorParent(const TCHAR* ShortName)
+	{
+		const FString AssetPath = FString::Printf(TEXT("/Game/Materials/%s.%s"), ShortName, ShortName);
+		if (UMaterialInterface* Asset = LoadMat(*AssetPath))
+		{
+			if (HasBaseColorParam(Asset))
+			{
+				const auto Converted = StringCast<ANSICHAR>(*Asset->GetPathName());
+				if (!vg::IsBlueOrDefaultGroundPath(Converted.Get()))
+				{
+					return Asset;
+				}
+			}
+		}
+
+		const vg::MaterialRecipe* Recipe = nullptr;
+		{
+			const auto Ansi = StringCast<ANSICHAR>(ShortName);
+			Recipe = vg::FindMaterialRecipe(Ansi.Get());
+		}
+		const bool bOpaque = !Recipe || Recipe->Kind == vg::SurfaceKind::Opaque;
+		// Opaque ground, bark, and foliage use a compiled engine parent. An uncompiled
+		// runtime UMaterial is what leaves the valley on the blue default.
+		if (bOpaque)
+		{
+			if (UMaterialInterface* Basic = LoadMat(TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial")))
+			{
+				return Basic;
+			}
+		}
+
+		if (UMaterialInterface* Runtime = Material(ShortName))
+		{
+			if (HasBaseColorParam(Runtime))
+			{
+				return Runtime;
+			}
+		}
+		if (UMaterialInterface* Basic = LoadMat(TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial")))
+		{
+			return Basic;
+		}
+		return UMaterial::GetDefaultMaterial(MD_Surface);
+	}
+
+	UMaterialInterface* RecipeMid(UObject* Outer, const TCHAR* RecipeName, const FName& Name)
+	{
+		const FName Key(RecipeName ? RecipeName : TEXT("M_Dirt"));
+		if (TObjectPtr<UMaterialInterface>* Found = GRecipeMids.Find(Key))
+		{
+			if (Found->Get())
+			{
+				return Found->Get();
+			}
+		}
+
+		const auto Ansi = StringCast<ANSICHAR>(*Key.ToString());
+		const vg::MaterialRecipe* Recipe = vg::FindMaterialRecipe(Ansi.Get());
+		FLinearColor Color(vg::kGuaranteedDirtR, vg::kGuaranteedDirtG, vg::kGuaranteedDirtB, 1.f);
+		float Roughness = 0.88f;
+		float Specular = 0.28f;
+		float Metallic = 0.f;
+		if (Recipe)
+		{
+			Color = FLinearColor(Recipe->R, Recipe->G, Recipe->B, Recipe->A);
+			Roughness = Recipe->Roughness;
+			Specular = Recipe->Specular;
+			Metallic = Recipe->Metallic;
+		}
+		if (Key == TEXT("M_Dirt"))
+		{
+			Color = FLinearColor(vg::kGuaranteedDirtR, vg::kGuaranteedDirtG, vg::kGuaranteedDirtB, 1.f);
+		}
+		else if (Key == TEXT("M_DirtWet"))
+		{
+			Color = FLinearColor(vg::kGuaranteedWetDirtR, vg::kGuaranteedWetDirtG, vg::kGuaranteedWetDirtB, 1.f);
+		}
+
+		UMaterialInterface* Parent = RecipeColorParent(*Key.ToString());
+		const FName MidName = Name.IsNone() ? FName(*FString::Printf(TEXT("MID_%s"), *Key.ToString())) : Name;
+		UMaterialInstanceDynamic* Dyn = UMaterialInstanceDynamic::Create(Parent, GetTransientPackage(), MidName);
+		if (!Dyn)
+		{
+			return Parent;
+		}
+		Dyn->SetVectorParameterValue(TEXT("BaseColor"), Color);
+		Dyn->SetVectorParameterValue(TEXT("Color"), Color);
+		Dyn->SetScalarParameterValue(TEXT("Roughness"), Roughness);
+		Dyn->SetScalarParameterValue(TEXT("Specular"), Specular);
+		Dyn->SetScalarParameterValue(TEXT("Metallic"), Metallic);
+		Dyn->AddToRoot();
+		GRecipeMids.Add(Key, Dyn);
+		(void)Outer;
+		UE_LOG(LogTemp, Display, TEXT("Valley MID %s BaseColor=(%.2f, %.2f, %.2f) parent=%s"),
+			*Key.ToString(), Color.R, Color.G, Color.B, Parent ? *Parent->GetPathName() : TEXT("none"));
+		return Dyn;
+	}
+
+	UMaterialInterface* ResolveScannedOrMid(UObject* Outer, UMaterialInterface* Scanned, const TCHAR* RecipeName, const FName& Name)
+	{
+		if (Scanned)
+		{
+			const auto Converted = StringCast<ANSICHAR>(*Scanned->GetPathName());
+			if (vg::AcceptScannedGroundMaterial(Converted.Get()))
+			{
+				UE_LOG(LogTemp, Display, TEXT("Valley ground %s using scan %s"), RecipeName, *Scanned->GetPathName());
+				return Scanned;
+			}
+			UE_LOG(LogTemp, Warning, TEXT("Valley ground rejected %s; forcing brown/recipe MID"), *Scanned->GetPathName());
+		}
+		return RecipeMid(Outer, RecipeName, Name);
 	}
 
 	void EnsureMaterials()

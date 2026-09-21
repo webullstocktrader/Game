@@ -62,7 +62,7 @@ private:
 	void UpdateWeatherVisuals(float DeltaSeconds);
 	UStaticMeshComponent* Place(UStaticMesh* Mesh, const FVector& Loc, const FRotator& Rot, const FVector& Scale, UMaterialInterface* Mat, const FName& Name);
 	UStaticMeshComponent* PlaceSized(UStaticMesh* Mesh, const FVector& Loc, const FRotator& Rot, float TargetHeightCm, const FName& Name);
-	UHierarchicalInstancedStaticMeshComponent* FoliagePool(UStaticMesh* Mesh, const FName& Name);
+	UHierarchicalInstancedStaticMeshComponent* FoliagePool(UStaticMesh* Mesh, const FName& Name, bool bUniqueName = false);
 	void AddSizedInstance(UHierarchicalInstancedStaticMeshComponent* Pool, const FVector& Loc, const FRotator& Rot, float TargetHeightCm);
 
 	vg::World Brain;

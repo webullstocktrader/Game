@@ -822,6 +822,23 @@ int main()
 		{
 			CHECK(Wet->Roughness < Dirt->Roughness, "wet dirt is glossier than dry dirt");
 			CHECK(Wet->R + Wet->G + Wet->B < Dirt->R + Dirt->G + Dirt->B, "wet dirt is darker");
+			CHECK(std::fabs(Dirt->R - kGuaranteedDirtR) < 0.0001f, "M_Dirt red is guaranteed brown");
+			CHECK(std::fabs(Dirt->G - kGuaranteedDirtG) < 0.0001f, "M_Dirt green is guaranteed brown");
+			CHECK(std::fabs(Dirt->B - kGuaranteedDirtB) < 0.0001f, "M_Dirt blue channel is the earth value");
+			CHECK(std::fabs(kGuaranteedDirtR - 0.30f) < 0.0001f, "guaranteed dirt red is 0.30");
+			CHECK(std::fabs(kGuaranteedDirtG - 0.18f) < 0.0001f, "guaranteed dirt green is 0.18");
+			CHECK(std::fabs(kGuaranteedDirtB - 0.09f) < 0.0001f, "guaranteed dirt blue channel is 0.09");
+			CHECK(!IsBlueGroundTint(Dirt->R, Dirt->G, Dirt->B), "dry dirt tint is not blue");
+			CHECK(!IsBlueGroundTint(Wet->R, Wet->G, Wet->B), "wet dirt tint is not blue");
+			CHECK(std::fabs(Wet->R - kGuaranteedWetDirtR) < 0.0001f, "wet dirt uses the dark earth red");
+		}
+		CHECK(IsBlueGroundTint(0.05f, 0.12f, 0.72f), "a blue-dominant tint is rejected");
+		const MaterialRecipe* Leaf = FindMaterialRecipe("M_Foliage");
+		if (Leaf)
+		{
+			CHECK(Leaf->G > Leaf->R && Leaf->G > Leaf->B, "foliage reads green");
+			CHECK(Leaf->TwoSided, "foliage is two sided");
+			CHECK(!IsBlueGroundTint(Leaf->R, Leaf->G, Leaf->B), "foliage is not a blue default");
 		}
 		if (Water)
 		{
@@ -922,6 +939,9 @@ int main()
 		CHECK(!UsesMetaHumanSlot(-1) && !UsesMetaHumanSlot(8), "out of range slots stay procedural");
 
 		CHECK(std::strcmp(MetaHumanContentFolder(), "/Game/MetaHumans/Mara") == 0, "Mara assemble folder");
+		CHECK(std::strcmp(EditableMetahumansContentFolder(), "/Game/EditableMetahumans/Mara") == 0, "editable Mara folder");
+		CHECK(std::strcmp(MetaHumanClassPathAt(0), "/Game/EditableMetahumans/Mara/BP_Mara") == 0,
+			"Editable Metahuman Mara is the preferred look path");
 		CHECK(std::strcmp(PNGrassLibraryContentFolder(), "/Game/PN_GrassLibrary") == 0, "PN grass pack folder");
 		CHECK(std::strcmp(MegascansContentFolder(), "/Game/Megascans") == 0, "Fab/Quixel default folder");
 		CHECK(std::strcmp(ValleySliceContentFolder(), "/Game/ValleySlice") == 0, "optional alias folder");
@@ -999,6 +1019,32 @@ int main()
 		CHECK(!ClassifyContentPath("/Game/PN_GrassLibrary/Meshes/SM_GroundPlane", ScanKind::GrassMesh),
 			"PN ground plane is not a grass clump");
 		CHECK(!ClassifyContentPath(nullptr, ScanKind::DirtMaterial), "null path is not a match");
+
+		CHECK(IsBlueOrDefaultGroundPath(nullptr), "missing ground path is rejected");
+		CHECK(IsBlueOrDefaultGroundPath(""), "empty ground path is rejected");
+		CHECK(IsBlueOrDefaultGroundPath("/Engine/EngineMaterials/WorldGridMaterial"), "WorldGrid is a blue default");
+		CHECK(IsBlueOrDefaultGroundPath("/Engine/BasicShapes/BasicShapeMaterial"), "BasicShape is not a valley ground");
+		CHECK(IsBlueOrDefaultGroundPath("/Engine/EngineMaterials/DefaultMaterial"), "engine default material is rejected");
+		CHECK(IsBlueOrDefaultGroundPath("/Game/Megascans/Surfaces/Blue_Dirt/MI_Blue_Dirt"), "a blue-named scan loses to brown");
+		CHECK(!IsBlueOrDefaultGroundPath("/Game/Megascans/Surfaces/Forest_Dirt_01/MI_Forest_Dirt_01"),
+			"Quixel forest dirt is not an engine default");
+		CHECK(AcceptScannedGroundMaterial("/Game/Megascans/Surfaces/Forest_Dirt_01/MI_Forest_Dirt_01"),
+			"Quixel dirt is accepted as scanned ground");
+		CHECK(AcceptScannedGroundMaterial("/Game/PN_GrassLibrary/Materials/MI_Grass_01"),
+			"PN grass material is accepted as scanned ground");
+		CHECK(AcceptScannedGroundMaterial("/Game/Quixel/Surfaces/Soil/MI_Soil"), "Quixel soil alias is accepted");
+		CHECK(!AcceptScannedGroundMaterial("/Engine/EngineMaterials/WorldGridMaterial"), "WorldGrid is never scanned ground");
+		CHECK(!AcceptScannedGroundMaterial("/Game/Materials/M_Dirt"), "baked M_Dirt is the brown fallback, not a scan");
+		CHECK(!AcceptScannedGroundMaterial(nullptr), "null scan is not accepted");
+		CHECK(ResolveGroundSource("/Game/Megascans/Surfaces/Soil/MI_Soil") == GroundSource::Scanned, "real soil stays scanned");
+		CHECK(ResolveGroundSource("/Game/ValleySlice/MI_Dirt") == GroundSource::Scanned, "ValleySlice dirt alias stays scanned");
+		CHECK(ResolveGroundSource("/Engine/EngineMaterials/WorldGridMaterial") == GroundSource::GuaranteedBrown,
+			"WorldGrid resolves to guaranteed brown");
+		CHECK(ResolveGroundSource("/Game/Megascans/Surfaces/Blue_Grid/MI_Blue") == GroundSource::GuaranteedBrown,
+			"blue grid scan resolves to guaranteed brown");
+		CHECK(ResolveGroundSource(nullptr) == GroundSource::GuaranteedBrown, "missing Quixel resolves to guaranteed brown");
+		CHECK(ResolveGroundSource("/Game/Materials/M_Dirt") == GroundSource::GuaranteedBrown,
+			"no blue path: non-scan ground is the brown MID");
 	}
 
 	std::printf("%d passed, %d failed\n", GPasses, GFails);
