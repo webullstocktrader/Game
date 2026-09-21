@@ -2,7 +2,7 @@
 
 Ships as `ValleyGod/`, a self-contained Unreal Engine 5.8 C++ project. It does not replace or rewrite any other slice in this repo.
 
-**Lore:** prehistoric **Earth**, our sun, our Milky Way. See `WORLD-LORE.md`. This slice is one valley. Do not add space.
+**Lore:** prehistoric **Earth**, our sun, our Milky Way. See `WORLD-LORE.md`. The eight-human lock in this note is the original valley slice. The current sim is eight tribes on a miniature Earth — see `PLAYTEST-EIGHT-TRIBES.md`. Do not add space.
 
 ## Approach
 

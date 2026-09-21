@@ -1,22 +1,20 @@
-# First-slice cast
+# Cast
 
-These **8 adults are the entire human population on Earth** in this slice. Four women, four men. All 21 or older. No children. No other tribes, villages, or background humans.
+Eight tribes. Each has **one teacher** and three adult learners. All starter ages are 21 or older. Hide tunics cover the torso. This pass has no nudity and no child bodies.
 
-Later slices may grow the population through children. Not this pass.
+The teachers are the original eight. Learners use the procedural body (a look borrowed from the cast, not a second MetaHuman).
 
-Hide tunics and wraps cover the torso. This pass has no nudity.
+| Tribe | Land | Teacher | | Age | Habit |
+|---|---|---|---|---|---|
+| Willow | Willow basin (sculpted valley) | Mara | woman | 27 | Hunter. Milestone 1 MetaHuman slot: `Content/MetaHumans/Mara`. |
+| Red bluff | Red bluff | Nima | woman | 32 | Fire / talk |
+| Salt | Salt flats | Lira | woman | 41 | Stone |
+| Dark wood | Dark wood | Sable | woman | 24 | Wander |
+| High stone | High stones | Flint | man | 38 | Hunter |
+| Reed water | Reed water | Oak | man | 44 | Wood |
+| Cold ridge | Cold ridge | Reed | man | 29 | River |
+| Ash shore | Ash shore | Bram | man | 34 | Hides |
 
-| Name | | Age | Habit | Watch for |
-|---|---|---|---|---|
-| Mara | woman | 27 | Hunter | Quiet. Short hair. Ochre wrap. Watches the trees. **Milestone 1 MetaHuman slot** — drop an assembled Blueprint in `Content/MetaHumans/Mara`. |
-| Nima | woman | 32 | Fire / talk | Long hair. Clay-red wrap. Keeps the fire and the talk. |
-| Lira | woman | 41 | Stone | Wiry. Gray bun. Soot wrap. Knaps by the river. |
-| Sable | woman | 24 | Wander | Tall. Thick dark hair. Umber wrap. Ridge berries. |
-| Flint | man | 38 | Hunter | Broad. Beard. Bark tunic. First to the hunt. |
-| Oak | man | 44 | Wood | Largest. Heavy tunic. Slow with the wood. |
-| Reed | man | 29 | River | Slim. Hair tied. Quiet at the fast water. |
-| Bram | man | 34 | Hides | Stocky. Rust wrap. Laughs at the fire. |
+Pin them (click / Tab) for the habit line, knowledge, and whether they are the teacher.
 
-Pin them (click / Tab) to read the habit line.
-
-Mara is the first adult to prefer a MetaHuman presentation when that asset exists. The other seven stay on the procedural body until a later milestone. See `METAHUMAN-QUIXEL.md`.
+Later kin, if two adults of a tribe stay fed and close, arrive at age 21. They are not teachers. Nobody under 21 can pair.

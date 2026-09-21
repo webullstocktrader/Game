@@ -38,7 +38,9 @@ public:
 	void TogglePause();
 	void PinVillager(int32 Id);
 	int32 CyclePin();
+	int32 CycleContinent();
 	int32 GetPinnedId() const { return PinnedId; }
+	int32 GetFocusedContinent() const { return FocusedContinent; }
 	FString GraphicsStatusLine() const;
 
 	static AValleyWorld* Get(const UWorld* World);
@@ -47,8 +49,11 @@ private:
 	void StripTemplateActors();
 	void SpawnAtmosphere();
 	void SpawnTreesAndRocks(const Valley::FOptionalAssets& Assets);
+	void SpawnMiniatureEarth();
 	void SpawnSheltersAndFire();
+	void PlaceShelter(int32 Index);
 	void SpawnPeople();
+	void EnsureSpawnedPopulation();
 	void SpawnRain();
 	void SpawnTornado();
 	void UpdateSky();
@@ -102,6 +107,8 @@ private:
 	TSubclassOf<AActor> MaraMetaHumanClass;
 
 	int32 PinnedId = -1;
+	int32 FocusedContinent = 0;
+	int32 SpawnedShelters = 0;
 	float RainClock = 0.f;
 	bool bMaraMetaHuman = false;
 	bool bQuixelGround = false;

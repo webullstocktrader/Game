@@ -43,6 +43,7 @@ private:
 	void OnPin();
 	void OnCycle();
 	void OnOverview();
+	void OnNextLand();
 
 	AValleyWorld* Valley() const;
 
@@ -85,6 +86,8 @@ private:
 	TObjectPtr<UInputAction> CycleAction;
 	UPROPERTY()
 	TObjectPtr<UInputAction> OverviewAction;
+	UPROPERTY()
+	TObjectPtr<UInputAction> NextLandAction;
 
 	float ForwardAxis = 0.f;
 	float RightAxis = 0.f;

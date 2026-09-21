@@ -149,7 +149,7 @@ void AValleyVillager::BuildBody(const vg::Villager& Sim)
 		return;
 	}
 
-	const vg::PersonLook& L = vg::PersonLookAt(Sim.Id);
+	const vg::PersonLook& L = vg::PersonLookAt(Sim.LookId);
 	bWoman = L.Woman;
 	HeightScale = L.Height;
 	SetActorScale3D(FVector(HeightScale));
@@ -290,16 +290,14 @@ void AValleyVillager::AttachLabels(const vg::Villager& Sim)
 
 void AValleyVillager::SyncFromSim(const vg::Villager& Sim, AValleyTerrain* Terrain, float WorldTime)
 {
-	FVector Loc(Sim.X, Sim.Y, 0.f);
-	if (Terrain)
-	{
-		Loc.Z = Terrain->HeightAt(Sim.X, Sim.Y);
-	}
+	const FVector LocBase = Terrain ? Terrain->StandAt(Sim.X, Sim.Y) : FVector(Sim.X, Sim.Y, 0.f);
+	FVector Loc = LocBase;
 
 	const bool bSleep = Sim.Current == vg::Activity::Sleep;
 	const bool bMoving = Sim.Current == vg::Activity::Walk || Sim.Current == vg::Activity::Hunt
 		|| Sim.Current == vg::Activity::Panic || Sim.Current == vg::Activity::Shelter
-		|| Sim.Current == vg::Activity::HighGround || Sim.Current == vg::Activity::Eat;
+		|| Sim.Current == vg::Activity::HighGround || Sim.Current == vg::Activity::Eat
+		|| Sim.Current == vg::Activity::Teach || Sim.Current == vg::Activity::Build;
 
 	if (bMoving && !Presentation)
 	{

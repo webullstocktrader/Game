@@ -2,7 +2,7 @@
 
 Spectator god-mode. Stone-age valley **on Earth** — our sun, our sky, the planet that will later be called Earth. You are invisible. The villagers never know a watcher exists. Weather is weather.
 
-This is the **first watchable slice** — one valley, a compressed day, **eight adults** (four women, four men) who are **every human on Earth**, four weather commands. No other tribes. No space. No other worlds. See `docs/WORLD-LORE.md` and `docs/CAST.md`.
+This slice is a **miniature Earth**: the sculpted valley plus seven placeholder continents, with ocean between them. Eight tribes start there, one on each land. Each tribe has one teacher. See `docs/WORLD-LORE.md`, `docs/CAST.md`, and `docs/PLAYTEST-EIGHT-TRIBES.md`.
 
 You do not need to write any game code.
 
@@ -11,14 +11,15 @@ You do not need to write any game code.
 ## What you can do in this slice
 
 1. Free-fly an invisible camera (WASD, Q/E up/down, mouse look). There is no in-world body for them to see.
-2. Watch **8 adults** (4 women, 4 men) — the whole human population — walk, talk in English, hunt, eat, and sleep. Each has a name, look, and habit. Hunger and energy drive it.
+2. Watch eight tribes. Each land starts with one teacher (Mara, Nima, Lira, Sable, Flint, Oak, Reed, Bram) and three learners. They walk, talk, hunt, eat, sleep, teach, and build. Hunger and energy still drive them.
 3. Fire weather: **1 Rain**, **2 Tornado**, **3 Hurricane**, **4 Flood**. They seek shelter, panic, or climb. **0** clears the sky.
 4. Watch the day turn. Default is a **75 second day**. `[` / `]` stretch or compress it.
-5. Pin a villager (left click / Tab) and read their name, habit, and the countdown panel (meal / sleep / dawn).
+5. Pin someone (left click / Tab). The card shows tribe, Teacher or Learning, knowledge, shelters, and claim.
+6. Press **G** to hop the camera to the next continent, or hold **Shift** and fly across the ocean yourself.
 
-**Cast (all 21+):** Mara, Nima, Lira, Sable · Flint, Oak, Reed, Bram. They are everyone. No children. No other villages.
+**Teachers (all 21+):** Mara, Nima, Lira, Sable · Flint, Oak, Reed, Bram. Learners and later kin are adults too. This slice does not place child bodies. Pairing only runs at 21 or older, and it is not an intimacy scene.
 
-No marriage, no children, no later tech, no myths about you.
+No myths about you. No space travel.
 
 ---
 
@@ -81,14 +82,14 @@ The valley is built when the game starts. You do not place anything in the level
 | Pin villager under crosshair | **Left mouse** |
 | Cycle pinned villager | **Tab** |
 | Unpin / overview | **F** |
+| Next continent | **G** |
 
 ---
 
 ## What this slice is not
 
-- Not a full calendar of lives.
-- Not marriage, pregnancy, or children.
-- Not other tribes, villages, or background humans. These eight are everyone.
+- Not a full-size Earth. Continents past the valley are placeholder discs.
+- Not a sex scene. New people arrive as adults (21+). Nobody under 21 can pair.
 - Not bronze, iron, or anything past knapped stone.
 - Not a visible god, a cult, or villager awareness of the camera.
 - Not space, planet travel, or a fantasy planet. Same solar system, later — not here.
@@ -155,6 +156,7 @@ From this folder: `bash Tests/run_tests.sh`
 | `Content/Megascans/` | Fab/Quixel downloads (not committed) |
 | `docs/METAHUMAN-QUIXEL.md` | Fab sign-in, Mara assemble, dense valley foliage, PLAY |
 | `docs/WORLD-LORE.md` | Earth / this solar system. No fantasy planet. No space in this slice |
-| `docs/CAST.md` | Eight named adults: four women, four men |
+| `docs/CAST.md` | Eight teachers and the learners on their lands |
+| `docs/PLAYTEST-EIGHT-TRIBES.md` | How to watch dialogue, teaching, and the other continents |
 
 Unreal 5.8. Latest stable. Watch first.

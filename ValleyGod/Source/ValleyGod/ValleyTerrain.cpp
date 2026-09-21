@@ -138,6 +138,20 @@ FVector AValleyTerrain::GroundAt(const FVector& WorldPos) const
 	return FVector(WorldPos.X, WorldPos.Y, HeightAt(WorldPos.X, WorldPos.Y));
 }
 
+bool AValleyTerrain::ContainsPlan(float X, float Y) const
+{
+	return FMath::Abs(X) <= HalfExtentCm && FMath::Abs(Y) <= HalfExtentCm;
+}
+
+FVector AValleyTerrain::StandAt(float X, float Y) const
+{
+	if (ContainsPlan(X, Y))
+	{
+		return GroundAt(FVector(X, Y, 0.f));
+	}
+	return FVector(X, Y, OffMeshStandZ);
+}
+
 void AValleyTerrain::SetWet(bool bInWet)
 {
 	if (bWet == bInWet)

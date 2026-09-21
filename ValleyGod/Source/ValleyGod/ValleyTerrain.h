@@ -19,6 +19,8 @@ public:
 	void ApplyGroundMaterials(UMaterialInterface* Dirt, UMaterialInterface* Grass, UMaterialInterface* Wet);
 	float HeightAt(float X, float Y) const;
 	FVector GroundAt(const FVector& WorldPos) const;
+	bool ContainsPlan(float X, float Y) const;
+	FVector StandAt(float X, float Y) const;
 	void SetWet(bool bWet);
 	void SetFlood(float ExtraZ);
 
@@ -31,6 +33,8 @@ public:
 	static constexpr int32 GridN = 81;
 	static constexpr float CellCm = 180.f;
 	static constexpr float HalfExtentCm = 7200.f;
+	// Feet height for people standing on placeholder continents outside the sculpted valley.
+	static constexpr float OffMeshStandZ = 48.f;
 
 private:
 	int32 IndexOf(int32 IX, int32 IY) const { return IY * GridN + IX; }
