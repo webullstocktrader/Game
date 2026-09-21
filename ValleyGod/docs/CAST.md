@@ -1,8 +1,8 @@
 # Cast
 
-Eight tribes. Each has **one teacher** and three adult learners. All starter ages are 21 or older. Hide tunics cover the torso. This pass has no nudity and no child bodies.
+Eight tribes. Each has **one teacher** and three adult learners. All starter ages are 21 or older. Hide tunics cover the torso. This pass has no nudity and no intimacy. A later birth is a baby who grows; they cannot pair until 21.
 
-The teachers are the original eight. Learners use the procedural body (a look borrowed from the cast, not a second MetaHuman).
+The preferred body is a MetaHuman, or an equivalent photoreal pack. Procedural capsules are only the empty-folder fallback so the sim still runs. Mara is the one wired MetaHuman slot today (`Content/MetaHumans/Mara`). The other people borrow a procedural look until Desktop has packs for them. Stick bodies are not the art direction.
 
 | Tribe | Land | Teacher | | Age | Habit |
 |---|---|---|---|---|---|
@@ -17,4 +17,4 @@ The teachers are the original eight. Learners use the procedural body (a look bo
 
 Pin them (click / Tab) for the habit line, knowledge, and whether they are the teacher.
 
-Later kin, if two adults of a tribe stay fed and close, arrive at age 21. They are not teachers. Nobody under 21 can pair.
+Later kin, if two adults of a tribe stay fed and close, arrive as babies. They are not teachers. Nobody under 21 can pair.

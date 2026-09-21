@@ -18,6 +18,8 @@ Pairing is adults-only. A birth is a baby who grows up in compressed time and ca
 
 Camps chop timber into a wood stock and raise shelters in stages: site, frame, walls, roof. Teachers unlock knowledge from fire and tools toward later human crafts. Early tiers are the ones you can watch; later names are on the tree so the run can continue.
 
+The progression lock for that work is `docs/PROGRESSION-LOCK.md`. Harvest removes the chopped tree instance. Buildings are a log, thatch, and stone kit the player watches go up. People should read as MetaHumans or an equivalent photoreal pack when those assets exist. The graphics north star is a Quixel, Nanite, and Lumen path. That art pass does not block the eight lands shipping.
+
 ## Same sky, later
 
 The other planets and the named stars exist. They are not content in this slice. No planet travel, no solar-system map, no naming Mars or the Milky Way in the game. Optional flavor may notice the night sky the way a person on the ground would: dark, lights, the white disc. That is all.

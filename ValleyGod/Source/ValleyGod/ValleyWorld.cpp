@@ -684,12 +684,26 @@ void AValleyWorld::EnsureWorkVisuals()
 	UStaticMesh* Sphere = Valley::SphereMesh();
 	UMaterialInterface* Wood = Valley::Material(TEXT("M_Wood"));
 	UMaterialInterface* Foliage = Valley::Material(TEXT("M_Foliage"));
-	UMaterialInterface* Dirt = Valley::Material(TEXT("M_Dirt"));
+	UMaterialInterface* Stone = Valley::Material(TEXT("M_Stone"));
 	UMaterialInterface* Hide = Valley::Material(TEXT("M_Hide"));
 	if (!Cyl)
 	{
 		return;
 	}
+
+	// Kit pieces hang off the stage root so hiding that stage hides the whole module.
+	// These are log, thatch, and stone parts. A finished building is not its own imported mesh.
+	auto AddPiece = [&](UStaticMeshComponent* Parent, UStaticMesh* Mesh, const FVector& Loc, const FRotator& Rot, const FVector& Scale, UMaterialInterface* Mat, const FName& Name)
+	{
+		if (!Parent || !Mesh)
+		{
+			return;
+		}
+		if (UStaticMeshComponent* Piece = Place(Mesh, Loc, Rot, Scale, Mat, Name))
+		{
+			Piece->AttachToComponent(Parent, FAttachmentTransformRules::KeepWorldTransform);
+		}
+	};
 
 	while (HarvestTrunks.Num() < Brain.TreeCount)
 	{
@@ -705,14 +719,19 @@ void AValleyWorld::EnsureWorkVisuals()
 	}
 	for (int32 I = 0; I < HarvestTrunks.Num() && I < Brain.TreeCount; ++I)
 	{
-		const bool bHide = !Brain.Trees[I].Standing;
-		if (HarvestTrunks[I])
+		if (Brain.Trees[I].Standing)
 		{
-			HarvestTrunks[I]->SetHiddenInGame(bHide, true);
+			continue;
 		}
 		if (HarvestCrowns.IsValidIndex(I) && HarvestCrowns[I])
 		{
-			HarvestCrowns[I]->SetHiddenInGame(bHide, true);
+			HarvestCrowns[I]->DestroyComponent();
+			HarvestCrowns[I] = nullptr;
+		}
+		if (HarvestTrunks[I])
+		{
+			HarvestTrunks[I]->DestroyComponent();
+			HarvestTrunks[I] = nullptr;
 		}
 	}
 
@@ -721,14 +740,35 @@ void AValleyWorld::EnsureWorkVisuals()
 		const int32 I = SitePads.Num();
 		const vg::WorkSite& Site = Brain.Sites[I];
 		const FVector G = Terrain ? Terrain->StandAt(Site.X, Site.Y) : FVector(Site.X, Site.Y, AValleyTerrain::OffMeshStandZ);
-		UStaticMeshComponent* Pad = Place(Cube ? Cube : Cyl, G + FVector(0.f, 0.f, 8.f), FRotator::ZeroRotator, FVector(2.4f, 2.2f, 0.08f), Dirt,
+		UStaticMeshComponent* Pad = Place(Cube ? Cube : Cyl, G + FVector(0.f, 0.f, 8.f), FRotator::ZeroRotator, FVector(2.6f, 2.4f, 0.1f), Stone,
 			FName(*FString::Printf(TEXT("SitePad%d"), I)));
-		UStaticMeshComponent* Frame = Place(Cyl, G + FVector(0.f, 0.f, 70.f), FRotator::ZeroRotator, FVector(0.16f, 0.16f, 1.4f), Wood,
+		const FVector Corners[4] = {FVector(-90.f, -80.f, 16.f), FVector(90.f, -80.f, 16.f), FVector(-90.f, 80.f, 16.f), FVector(90.f, 80.f, 16.f)};
+		for (int32 C = 0; C < 4; ++C)
+		{
+			AddPiece(Pad, Cube ? Cube : Cyl, G + Corners[C], FRotator::ZeroRotator, FVector(0.28f, 0.28f, 0.16f), Stone,
+				FName(*FString::Printf(TEXT("SiteStone%d_%d"), I, C)));
+		}
+		UStaticMeshComponent* Frame = Place(Cyl, G + Corners[0] + FVector(0.f, 0.f, 70.f), FRotator::ZeroRotator, FVector(0.14f, 0.14f, 1.5f), Wood,
 			FName(*FString::Printf(TEXT("SiteFrame%d"), I)));
-		UStaticMeshComponent* Wall = Place(Cube ? Cube : Cyl, G + FVector(0.f, 0.f, 70.f), FRotator::ZeroRotator, FVector(2.1f, 1.8f, 1.15f), Hide,
+		for (int32 C = 1; C < 4; ++C)
+		{
+			AddPiece(Frame, Cyl, G + Corners[C] + FVector(0.f, 0.f, 70.f), FRotator::ZeroRotator, FVector(0.14f, 0.14f, 1.5f), Wood,
+				FName(*FString::Printf(TEXT("SiteLog%d_%d"), I, C)));
+		}
+		AddPiece(Frame, Cyl, G + FVector(0.f, -80.f, 145.f), FRotator(0.f, 90.f, 90.f), FVector(0.1f, 0.1f, 1.9f), Wood,
+			FName(*FString::Printf(TEXT("SiteBeamA%d"), I)));
+		AddPiece(Frame, Cyl, G + FVector(0.f, 80.f, 145.f), FRotator(0.f, 90.f, 90.f), FVector(0.1f, 0.1f, 1.9f), Wood,
+			FName(*FString::Printf(TEXT("SiteBeamB%d"), I)));
+		UStaticMeshComponent* Wall = Place(Cube ? Cube : Cyl, G + FVector(0.f, -80.f, 78.f), FRotator::ZeroRotator, FVector(1.7f, 0.08f, 1.15f), Hide,
 			FName(*FString::Printf(TEXT("SiteWall%d"), I)));
-		UStaticMeshComponent* Roof = Place(Cube ? Cube : Cyl, G + FVector(0.f, 0.f, 150.f), FRotator(-18.f, 0.f, 0.f), FVector(2.6f, 2.3f, 0.08f), Hide,
+		AddPiece(Wall, Cube ? Cube : Cyl, G + FVector(0.f, 80.f, 78.f), FRotator::ZeroRotator, FVector(1.7f, 0.08f, 1.15f), Hide,
+			FName(*FString::Printf(TEXT("SiteWallB%d"), I)));
+		AddPiece(Wall, Cube ? Cube : Cyl, G + FVector(-90.f, 0.f, 78.f), FRotator(0.f, 90.f, 0.f), FVector(1.5f, 0.08f, 1.15f), Hide,
+			FName(*FString::Printf(TEXT("SiteWallC%d"), I)));
+		UStaticMeshComponent* Roof = Place(Cube ? Cube : Cyl, G + FVector(0.f, -40.f, 168.f), FRotator(-22.f, 0.f, 0.f), FVector(2.9f, 1.35f, 0.08f), Hide,
 			FName(*FString::Printf(TEXT("SiteRoof%d"), I)));
+		AddPiece(Roof, Cube ? Cube : Cyl, G + FVector(0.f, 40.f, 168.f), FRotator(22.f, 0.f, 0.f), FVector(2.9f, 1.35f, 0.08f), Hide,
+			FName(*FString::Printf(TEXT("SiteRoofB%d"), I)));
 		SitePads.Add(Pad);
 		SiteFrames.Add(Frame);
 		SiteWalls.Add(Wall);

@@ -16,7 +16,7 @@ You do not need to write any game code.
 4. Watch the day turn. Default is a **75 second day**. `[` / `]` stretch or compress it.
 5. Pin someone (left click / Tab). The card shows tribe, Teacher or Learning, Neutral/Ally/Enemy, knowledge, wood, tech, and the build stage.
 6. You start overhead: eight lands, ocean between them, one camp name on each. Tribes are neutral until a teacher chooses otherwise. **Q** drops closer, **G** hops to the next land, **F** returns overhead.
-7. Watch a tree come down into wood, a shelter go up site → frame → walls → roof, and a baby grow up. Tech starts at Fire and tools and climbs toward Computing as the teacher’s camp learns.
+7. Watch a chopped tree leave the world as wood, and a shelter go up as a stone, log, and thatch kit: site → frame → walls → roof. A baby grows up. Tech starts at Fire and tools and climbs toward Computing as the teacher’s camp learns. People prefer a MetaHuman or an equivalent photoreal pack; capsule bodies are only the empty-folder fallback. See `docs/PROGRESSION-LOCK.md`.
 
 **Teachers (all 21+):** Mara, Nima, Lira, Sable · Flint, Oak, Reed, Bram. A birth is a baby who grows in compressed time. Pairing only runs at 21 or older, and it is not an intimacy scene.
 

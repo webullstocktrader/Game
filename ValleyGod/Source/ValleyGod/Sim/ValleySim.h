@@ -4,6 +4,8 @@
 // Eight continents, one starter tribe each, oceans between.
 // Pairing is adults only (21+). A birth is a baby who grows in compressed time.
 // Babies do not pair. Lie, cheat, and steal are personal; war is a teacher choice.
+// Harvest: chopping a tree removes that timber instance and adds tribe wood.
+// Buildings: watchable stages site, frame, walls, roof. Pieces are a kit, not a unique mesh.
 
 namespace vg
 {
