@@ -16,7 +16,7 @@ You do not need to write any game code.
 4. Watch the day turn. Default is a **75 second day**. `[` / `]` stretch or compress it.
 5. Pin someone (left click / Tab). The card shows tribe, Teacher or Learning, Neutral/Ally/Enemy, knowledge, wood, tech, and the build stage.
 6. You start overhead: eight lands, ocean between them, one camp name on each. Tribes are neutral until a teacher chooses otherwise. **Q** drops closer, **G** hops to the next land, **F** returns overhead.
-7. Watch a chopped tree leave the world as wood, a stone spear get crafted once Stone tools unlocks, and a shelter go up as a stone, log, and thatch kit: site → frame → walls → roof. The teacher researches Fire, then Stone tools, then Shelter craft. A baby grows up. People prefer a MetaHuman or an equivalent photoreal pack; capsule bodies are only the empty-folder fallback. See `docs/PROGRESSION-LOCK.md`.
+7. Stay with one camp for about two minutes. A chopped tree leaves the world as wood and does not grow back. A stone spear is crafted once Stone tools unlocks. A shelter goes up out past the starter huts as a stone, log, and thatch kit: site → frame → walls → roof. The roof plants a new grove and the next site opens farther out. The teacher researches Fire, then Stone tools, then Shelter craft, and keeps going. A baby shows up and grows. People prefer a MetaHuman or an equivalent photoreal pack; capsule bodies are only the empty-folder fallback. See `docs/PROGRESSION-LOCK.md` and `docs/APPLY-DESKTOP.md`.
 
 **Teachers (all 21+):** Mara, Nima, Lira, Sable · Flint, Oak, Reed, Bram. A birth is a baby who grows in compressed time. Pairing only runs at 21 or older, and it is not an intimacy scene.
 
@@ -90,7 +90,7 @@ The valley is built when the game starts. You do not place anything in the level
 ## What this slice is not
 
 - Not a full-size Earth. Continents past the valley are placeholder discs.
-- Not a sex scene. New people arrive as adults (21+). Nobody under 21 can pair.
+- Not a sex scene. New people arrive as babies and grow. Nobody under 21 can pair.
 - Not bronze, iron, or anything past knapped stone.
 - Not a visible god, a cult, or villager awareness of the camera.
 - Not space, planet travel, or a fantasy planet. Same solar system, later — not here.

@@ -8,6 +8,7 @@ namespace vg
 	namespace
 	{
 		const char* kMetaHumanClassPaths[] = {
+			"/Game/EditableMetahumans/MHC_Hannah/Mara/BP_Mara",
 			"/Game/MetaHumans/Mara/BP_Mara",
 			"/Game/MetaHumans/Mara/Mara",
 			"/Game/MetaHumans/Mara/BP_MetaHuman",

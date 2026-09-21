@@ -16,7 +16,7 @@ Eight tribes, one on each continent. Each tribe has one teacher and learners who
 
 Pairing is adults-only. A birth is a baby who grows up in compressed time and cannot pair until 21. There is no intimacy scene. People may lie, cheat, or steal; that does not by itself start a war.
 
-Camps chop timber into a wood stock and raise shelters in stages: site, frame, walls, roof. A teacher researches from Fire to Stone tools to Shelter craft. Stone tools craft a spear. Shelter craft opens a watched build. Later crafts stay on the tree. Animal husbandry only marks riding; it does not mount anyone yet.
+Camps chop timber into a wood stock and raise shelters in stages: site, frame, walls, roof. A finished roof plants a new grove farther out and the next site opens there, so a camp grows past its starter huts. A chopped tree stays down. A teacher researches from Fire to Stone tools to Shelter craft and on toward later crafts. Stone tools craft a spear. Shelter craft opens a watched build. Animal husbandry only marks riding; it does not mount anyone yet. Babies arrive at a fed camp and grow. Tribes start Neutral. Expansion does not start a war.
 
 The progression lock for that work is `docs/PROGRESSION-LOCK.md`. Harvest removes the chopped tree instance. Buildings are a log, thatch, and stone kit the player watches go up. People should read as MetaHumans or an equivalent photoreal pack when those assets exist. The graphics north star is a Quixel, Nanite, and Lumen path. That art pass does not block the eight lands shipping.
 

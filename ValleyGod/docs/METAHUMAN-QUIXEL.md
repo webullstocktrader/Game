@@ -36,11 +36,12 @@ If aliases are missing, the game also scans `Content/PN_GrassLibrary`, `Content/
 
 Mara Blueprint candidates (first file that exists wins):
 
-1. `/Game/MetaHumans/Mara/BP_Mara`
-2. `/Game/MetaHumans/Mara/Mara`
-3. `/Game/MetaHumans/Mara/BP_MetaHuman`
-4. `/Game/ValleySlice/BP_Mara`
-5. Any top-level Blueprint under `Content/MetaHumans/Mara/`
+1. `/Game/EditableMetahumans/MHC_Hannah/Mara/BP_Mara` — Desktop assemble path
+2. `/Game/MetaHumans/Mara/BP_Mara`
+3. `/Game/MetaHumans/Mara/Mara`
+4. `/Game/MetaHumans/Mara/BP_MetaHuman`
+5. `/Game/ValleySlice/BP_Mara`
+6. Any top-level Blueprint under `Content/MetaHumans/Mara/`
 
 Only **Mara** (cast slot 0) uses a MetaHuman this milestone. Nima, Lira, Sable, Flint, Oak, Reed, and Bram stay procedural until a later pass.
 
