@@ -7,6 +7,8 @@
 // Harvest: chopping a tree removes that timber instance and adds tribe wood.
 // Buildings: watchable stages site, frame, walls, roof. Pieces are a kit, not a unique mesh.
 // Teachers research the tech tree. Stone tools craft a spear. Shelter craft raises a site.
+// A finished roof plants a new grove farther out and the next site opens there.
+// Chopped trees stay down. Animal husbandry only sets a riding flag.
 
 #include "ValleyTechTree.h"
 
@@ -28,9 +30,9 @@ namespace vg
 	constexpr int kMaxStructuresPerTribe = 8;
 	constexpr int kMaxAnimals = 24;
 	constexpr int kAnimalsPerTribe = 2;
-	constexpr int kMaxTrees = 32;
-	constexpr int kTreesPerTribe = 3;
-	constexpr int kMaxSites = 16;
+	constexpr int kMaxTrees = 96;
+	constexpr int kTreesPerTribe = 5;
+	constexpr int kMaxSites = 40;
 	constexpr float kBabyYearSeconds = 6.f;
 
 	enum class Activity

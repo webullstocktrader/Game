@@ -4,11 +4,11 @@ This is the rule for harvest, buildings, people, and the look of the world. The 
 
 ## Research
 
-The teacher runs `TickResearch` on `vg::Tech` (`ValleyTechTree.h`). The watchable start is Fire, Stone tools, Shelter craft. One tier unlocks at a time. Stone tools spends wood to craft a spear the person carries, and a spare shows by the fire. Shelter craft sends an adult into the Build activity on a site. Animal husbandry sets `bRidingUnlocked` and does not spawn a horse.
+The teacher runs `TickResearch` on `vg::Tech` (`ValleyTechTree.h`). The watchable start is Fire, Stone tools, Shelter craft. One tier unlocks at a time, and research keeps ticking toward Farming, Metal, and later names. Stone tools spends wood to craft a spear the person carries, and a spare shows by the fire. Shelter craft sends an adult into the Build activity on a site. A camp that has a live site keeps a builder on it after dawn. Animal husbandry sets `bRidingUnlocked` and does not spawn a horse.
 
 ## Harvest
 
-Chopping a tree removes **that** world tree instance and adds one wood to the tribe stock. The sim marks the timber down. The world destroys the trunk and crown components for that tree. They do not grow back.
+Chopping a tree removes **that** world tree instance and adds one wood to the tribe stock. The sim marks the timber down. The world destroys the trunk and crown components for that tree. They do not grow back. Each camp starts with five of these trees. When a roof finishes, the camp plants a new grove farther out. Those are new instances. The chopped ones stay gone.
 
 Scenic forest scatter is dressing. It is not the wood stock. The trees that count are the ones a person can chop.
 
@@ -21,7 +21,7 @@ Construction is modular and staged. The player can watch it:
 3. **Walls** — thatch or hide panels
 4. **Roof** — thatch slopes
 
-An adult uses the **Build** activity at the site. Frame, walls, and roof spend wood. The roof finishes a shelter and grows the claim. Outer land on the continent stays unclaimed.
+An adult uses the **Build** activity at the site. Frame, walls, and roof spend wood. The roof finishes a shelter and grows the claim. The next site opens farther from the starter huts, so the camp expands instead of stacking on one pad. People sleep at night and wake at dawn so the work continues. Outer land on the continent stays unclaimed.
 
 Do not import a unique finished building for each structure. Log, thatch, and stone kit pieces are the building. Procedural kit pieces are the right stand-in until a real kit pack exists.
 

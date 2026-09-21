@@ -632,6 +632,100 @@ int main()
 	{
 		World W;
 		InitWorld(W);
+		const int StartPeople = W.VillagerCount;
+		const int StartTrees = W.TreeCount;
+		int StartStructures[kTribeCount];
+		for (int T = 0; T < W.TribeCount; ++T)
+		{
+			StartStructures[T] = W.Tribes[T].StructureCount;
+		}
+		for (int Step = 0; Step < 240; ++Step)
+		{
+			TickWorld(W, 0.5f);
+		}
+		const Tribe& Home = W.Tribes[0];
+		CHECK(Home.TechTier >= static_cast<int>(TechId::Metal), "two minutes of teaching reaches metal");
+		CHECK(Home.TechUnlocked[static_cast<int>(TechId::ShelterCraft)], "shelter craft is on by then");
+		CHECK(!Home.TechUnlocked[static_cast<int>(TechId::Computing)], "computing stays a later era");
+		CHECK(!Home.bRidingUnlocked, "riding stays locked during the early watch");
+		CHECK(Home.Spears >= 1, "someone crafts a spear while you watch");
+		CHECK(Home.StructureCount > StartStructures[0], "a finished roof adds a shelter");
+		int WillowSites = 0;
+		int WillowRoofs = 0;
+		float Farthest = 0.f;
+		for (int I = 0; I < W.SiteCount; ++I)
+		{
+			if (W.Sites[I].TribeId != 0)
+			{
+				continue;
+			}
+			++WillowSites;
+			if (W.Sites[I].Stage == 4 && !W.Sites[I].Live)
+			{
+				++WillowRoofs;
+			}
+			const float DX = W.Sites[I].X - Home.CampX;
+			const float DY = W.Sites[I].Y - Home.CampY;
+			const float D = std::sqrt(DX * DX + DY * DY);
+			if (D > Farthest)
+			{
+				Farthest = D;
+			}
+		}
+		CHECK(WillowRoofs >= 1, "a staged shelter reaches a roof");
+		CHECK(WillowSites >= 2, "a second build site opens past the first");
+		CHECK(Farthest > 600.f, "the new site sits out from the starter huts");
+		CHECK(W.VillagerCount > StartPeople, "the camp has a baby");
+		CHECK(W.Tribes[0].Births >= 1, "the watched valley camp has a baby");
+		int Child = -1;
+		for (int I = StartPeople; I < W.VillagerCount; ++I)
+		{
+			if (W.Villagers[I].AgeYears < kMinAdultAge)
+			{
+				Child = I;
+				break;
+			}
+		}
+		CHECK(Child >= 0, "new kin is still a child");
+		const int AgeBefore = W.Villagers[Child].AgeYears;
+		TickWorld(W, kBabyYearSeconds);
+		CHECK(W.Villagers[Child].AgeYears == AgeBefore + 1, "the baby keeps growing");
+		int Felled = 0;
+		for (int I = 0; I < StartTrees; ++I)
+		{
+			if (W.Trees[I].TribeId == 0 && !W.Trees[I].Standing)
+			{
+				++Felled;
+			}
+		}
+		CHECK(Felled >= 1, "a chopped starter tree stays down");
+		CHECK(W.TreeCount > StartTrees, "a finished roof plants a new grove");
+		int Expanded = 0;
+		for (int T = 0; T < W.TribeCount; ++T)
+		{
+			if (W.Tribes[T].StructureCount > StartStructures[T])
+			{
+				++Expanded;
+			}
+		}
+		CHECK(Expanded >= 6, "most tribes raise a new shelter");
+		int Wars = 0;
+		for (int A = 0; A < W.TribeCount; ++A)
+		{
+			for (int B = A + 1; B < W.TribeCount; ++B)
+			{
+				if (TribesAtWar(W, A, B))
+				{
+					++Wars;
+				}
+			}
+		}
+		CHECK(Wars == 0, "expansion does not force a war");
+	}
+
+	{
+		World W;
+		InitWorld(W);
 		W.Paused = true;
 		const float Hour = W.TimeOfDayHours;
 		const float Hunger = W.Villagers[0].Hunger;
@@ -927,7 +1021,9 @@ int main()
 		CHECK(std::strcmp(ValleySliceContentFolder(), "/Game/ValleySlice") == 0, "optional alias folder");
 		CHECK(std::strcmp(ValleySliceMapPath(), "/Game/Maps/ValleySlice") == 0, "playable slice map");
 
-		CHECK(MetaHumanClassPathCount() >= 3, "several Mara Blueprint candidates");
+		CHECK(MetaHumanClassPathCount() >= 4, "several Mara Blueprint candidates");
+		CHECK(std::strcmp(MetaHumanClassPathAt(0), "/Game/EditableMetahumans/MHC_Hannah/Mara/BP_Mara") == 0,
+			"Desktop Mara blueprint is the first look path");
 		bool bHasMaraFolder = false;
 		bool bHasAlias = false;
 		for (int I = 0; I < MetaHumanClassPathCount(); ++I)

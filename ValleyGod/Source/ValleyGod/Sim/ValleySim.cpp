@@ -14,9 +14,10 @@ namespace vg
 		constexpr float kOuterOrbit = 16800.f;
 		constexpr float kBondNeed = 100.f;
 		constexpr float kBondPerSecond = 3.2f;
+		constexpr float kPairRange = 780.f;
 		constexpr float kTeachRange = 420.f;
 		constexpr float kChopPerSecond = 50.f;
-		constexpr float kBuildPerSecond = 24.f;
+		constexpr float kBuildPerSecond = 36.f;
 		constexpr float kCraftPerSecond = 45.f;
 		constexpr float kResearchPerSecond = 3.f;
 
@@ -805,6 +806,50 @@ namespace vg
 			return true;
 		}
 
+		void ClampPointToContinent(const World& W, int TribeId, float& X, float& Y)
+		{
+			if (TribeId < 0 || TribeId >= W.ContinentCount)
+			{
+				return;
+			}
+			const Continent& C = W.Continents[TribeId];
+			const float DX = X - C.X;
+			const float DY = Y - C.Y;
+			const float D = std::sqrt(DX * DX + DY * DY);
+			const float Max = C.Radius * 0.72f;
+			if (D > Max && D > 1.f)
+			{
+				X = C.X + DX / D * Max;
+				Y = C.Y + DY / D * Max;
+			}
+		}
+
+		void PlantExpansionGrove(World& W, Tribe& T)
+		{
+			// A finished roof opens timber farther out. The trees that were chopped stay down.
+			for (int N = 0; N < 2; ++N)
+			{
+				if (W.TreeCount >= kMaxTrees)
+				{
+					return;
+				}
+				const float Ang = 0.85f + static_cast<float>(T.StructureCount) * 0.65f + static_cast<float>(N) * 0.7f;
+				const float Rad = 980.f + static_cast<float>(T.StructureCount) * 140.f;
+				float X = T.CampX + std::cos(Ang) * Rad;
+				float Y = T.CampY + std::sin(Ang) * Rad;
+				ClampPointToContinent(W, T.Id, X, Y);
+				Timber& Tree = W.Trees[W.TreeCount];
+				Tree = Timber{};
+				Tree.Id = W.TreeCount;
+				Tree.TribeId = T.Id;
+				Tree.X = X;
+				Tree.Y = Y;
+				Tree.Standing = true;
+				Tree.Chop = 0.f;
+				W.TreeCount += 1;
+			}
+		}
+
 		int OpenSite(World& W, Tribe& T, float X, float Y)
 		{
 			if (T.ActiveSite >= 0 && T.ActiveSite < W.SiteCount && W.Sites[T.ActiveSite].Live)
@@ -852,6 +897,7 @@ namespace vg
 						S.Progress = 100.f;
 						T.ActiveSite = -1;
 						AddStructure(W, T);
+						PlantExpansionGrove(W, T);
 						V.Current = Activity::Idle;
 						V.bWorked = true;
 						Speak(V, PickFresh(W, V, SpeechContext::Build), 3.4f);
@@ -919,6 +965,13 @@ namespace vg
 				V.Energy = std::max(0.f, V.Energy - Drain * 12.f);
 			}
 
+			// Night and exhaustion send people to sleep. Dawn, or a finished nap, lets them work again.
+			if (!Storm && V.Current == Activity::Sleep && !IsNight(W.TimeOfDayHours) && V.Energy >= 60.f)
+			{
+				V.Current = Activity::Idle;
+				V.StateTimer = 0.f;
+			}
+
 			const bool NeedsFood = V.Hunger < 32.f;
 			const bool NeedsSleep = V.Energy < 22.f || (IsNight(W.TimeOfDayHours) && V.Energy < 85.f);
 			if (!Storm
@@ -931,7 +984,11 @@ namespace vg
 			if (!Storm && (V.Current == Activity::Build || V.Current == Activity::Chop || V.Current == Activity::Craft)
 				&& (NeedsFood || NeedsSleep))
 			{
-				ChooseNeed(W, V);
+				const bool bFinishStage = V.Current == Activity::Build && V.Hunger >= 16.f && !IsNight(W.TimeOfDayHours);
+				if (!bFinishStage)
+				{
+					ChooseNeed(W, V);
+				}
 			}
 
 			if (!Storm && V.Current == Activity::Talk)
@@ -1320,6 +1377,7 @@ namespace vg
 						}
 					}
 					Villager* IdleAdult = nullptr;
+					Villager* Talker = nullptr;
 					for (int I = 0; I < W.VillagerCount; ++I)
 					{
 						Villager& V = W.Villagers[I];
@@ -1327,29 +1385,65 @@ namespace vg
 						{
 							continue;
 						}
-						if (V.Current == Activity::Idle || V.Current == Activity::Walk)
+						if (!IdleAdult && (V.Current == Activity::Idle || V.Current == Activity::Walk))
 						{
 							IdleAdult = &V;
-							break;
+						}
+						else if (!Talker && (V.Current == Activity::Talk || V.Current == Activity::Teach))
+						{
+							Talker = &V;
 						}
 					}
 					bool bCrafter = false;
+					bool bBuilder = false;
 					for (int I = 0; I < W.VillagerCount; ++I)
 					{
-						if (W.Villagers[I].TribeId == T.Id && W.Villagers[I].Current == Activity::Craft)
+						if (W.Villagers[I].TribeId != T.Id)
+						{
+							continue;
+						}
+						if (W.Villagers[I].Current == Activity::Craft)
 						{
 							bCrafter = true;
+						}
+						if (W.Villagers[I].Current == Activity::Build)
+						{
+							bBuilder = true;
 						}
 					}
 					const bool bNeedWood = Standing > 0 && (T.Wood < 1 || (bHasLive && T.Wood <= 0));
 					const bool bSiteWaiting = bHasLive && W.Sites[T.ActiveSite].Progress >= 100.f
 						&& W.Sites[T.ActiveSite].Stage < 4 && T.Wood <= 0;
-					const bool bWantSpear = T.TechUnlocked[static_cast<int>(TechId::StoneTools)] && T.Spears < 2 && T.Wood >= 1;
-					if ((bNeedWood || bSiteWaiting) && !bChopper && IdleAdult)
+					bool bHasRoof = false;
+					for (int I = 0; I < W.SiteCount; ++I)
 					{
-						AssignChop(W, *IdleAdult);
+						if (W.Sites[I].TribeId == T.Id && W.Sites[I].Stage == 4 && !W.Sites[I].Live)
+						{
+							bHasRoof = true;
+							break;
+						}
 					}
-					else if (bWantSpear && !bCrafter && IdleAdult)
+					const int SpearCap = bHasRoof ? 2 : 1;
+					const bool bWantSpear = !bHasLive && T.TechUnlocked[static_cast<int>(TechId::StoneTools)]
+						&& T.Spears < SpearCap && T.Wood >= 1;
+					const bool bWantBuild = !bHasLive && T.BuildCooldown <= 0.f
+						&& T.TechUnlocked[static_cast<int>(TechId::ShelterCraft)] && T.Wood >= 1
+						&& T.StructureCount < kMaxStructuresPerTribe;
+					Villager* Hands = IdleAdult ? IdleAdult : Talker;
+					if ((bNeedWood || bSiteWaiting) && !bChopper && Hands)
+					{
+						AssignChop(W, *Hands);
+					}
+					else if (bHasLive && !bBuilder && !bSiteWaiting && Hands)
+					{
+						Hands->Current = Activity::Build;
+						Hands->bWorked = false;
+						Hands->WorkTarget = T.ActiveSite;
+						Hands->TargetX = W.Sites[T.ActiveSite].X;
+						Hands->TargetY = W.Sites[T.ActiveSite].Y;
+						Hands->StateTimer = 6.f;
+					}
+					else if (bWantSpear && T.Spears < 1 && !bCrafter && IdleAdult)
 					{
 						IdleAdult->Current = Activity::Craft;
 						IdleAdult->Craft = 0.f;
@@ -1358,14 +1452,21 @@ namespace vg
 						IdleAdult->StateTimer = 4.f;
 						Speak(*IdleAdult, PickFresh(W, *IdleAdult, SpeechContext::Craft), 3.f);
 					}
-					else if (!bHasLive && T.BuildCooldown <= 0.f
-						&& T.TechUnlocked[static_cast<int>(TechId::ShelterCraft)] && T.Wood >= 1
-						&& T.StructureCount < kMaxStructuresPerTribe && IdleAdult)
+					else if (bWantBuild && IdleAdult)
 					{
-						const float Ang = static_cast<float>(T.StructureCount) * 0.9f;
-						const float Rad = 180.f + static_cast<float>(T.StructureCount) * 40.f;
-						const float X = T.CampX + std::cos(Ang) * Rad;
-						const float Y = T.CampY + std::sin(Ang) * Rad;
+						int Roofs = 0;
+						for (int I = 0; I < W.SiteCount; ++I)
+						{
+							if (W.Sites[I].TribeId == T.Id && !W.Sites[I].Live && W.Sites[I].Stage >= 4)
+							{
+								++Roofs;
+							}
+						}
+						const float Ang = 0.55f + static_cast<float>(Roofs) * 1.35f;
+						const float Rad = 720.f + static_cast<float>(Roofs) * 420.f;
+						float X = T.CampX + std::cos(Ang) * Rad;
+						float Y = T.CampY + std::sin(Ang) * Rad;
+						ClampPointToContinent(W, T.Id, X, Y);
 						const int Id = OpenSite(W, T, X, Y);
 						if (Id >= 0)
 						{
@@ -1377,8 +1478,17 @@ namespace vg
 							ClampTargetToLand(W, *IdleAdult);
 							IdleAdult->StateTimer = 6.f;
 							Speak(*IdleAdult, PickFresh(W, *IdleAdult, SpeechContext::Build), 3.2f);
-							T.BuildCooldown = 16.f;
+							T.BuildCooldown = 6.f;
 						}
+					}
+					else if (bWantSpear && !bCrafter && IdleAdult)
+					{
+						IdleAdult->Current = Activity::Craft;
+						IdleAdult->Craft = 0.f;
+						IdleAdult->TargetX = T.FireX;
+						IdleAdult->TargetY = T.FireY;
+						IdleAdult->StateTimer = 4.f;
+						Speak(*IdleAdult, PickFresh(W, *IdleAdult, SpeechContext::Craft), 3.f);
 					}
 				}
 
@@ -1388,7 +1498,7 @@ namespace vg
 				}
 				int Woman = -1;
 				int Man = -1;
-				float Best = 260.f;
+				float BestScore = -1.0e9f;
 				for (int I = 0; I < W.VillagerCount; ++I)
 				{
 					Villager& A = W.Villagers[I];
@@ -1412,11 +1522,22 @@ namespace vg
 							continue;
 						}
 						const float D = Dist(A.X, A.Y, B.X, B.Y);
-						if (D < Best)
+						const bool bAtCamp = Dist(A.X, A.Y, T.CampX, T.CampY) < 900.f
+							&& Dist(B.X, B.Y, T.CampX, T.CampY) < 900.f;
+						const float Limit = bAtCamp ? 1400.f : kPairRange;
+						if (D >= Limit)
 						{
-							Best = D;
-							Woman = A.Body == Sex::Female ? I : J;
-							Man = A.Body == Sex::Male ? I : J;
+							continue;
+						}
+						const int SheId = A.Body == Sex::Female ? I : J;
+						const int HeId = A.Body == Sex::Male ? I : J;
+						// Stay with the woman who already has a bond, so two pairs do not split one birth.
+						const float Score = W.Villagers[SheId].Bond * 1000.f - D;
+						if (Score > BestScore)
+						{
+							BestScore = Score;
+							Woman = SheId;
+							Man = HeId;
 						}
 					}
 				}
@@ -1810,7 +1931,7 @@ namespace vg
 				PlaceShelter(W, TribeSlot, Land.X - 180.f, Land.Y + 140.f);
 				PlaceShelter(W, TribeSlot, Land.X + 200.f, Land.Y + 120.f);
 			}
-			TribeSlot.BuildCooldown = 8.f + static_cast<float>(T);
+			TribeSlot.BuildCooldown = 2.f;
 			TribeSlot.Honesty = kHonesty[T];
 			TribeSlot.Greed = kGreed[T];
 			TribeSlot.Ambition = kAmbition[T];
