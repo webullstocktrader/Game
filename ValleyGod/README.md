@@ -96,7 +96,7 @@ The valley is built when the game starts. You do not place anything in the level
 - Not space, planet travel, or a fantasy planet. Same solar system, later — not here.
 - Characters wear hide tunics. No intimate content.
 
-Meshes are built in-engine (cylinders, spheres, layered canopies) **until** you drop MetaHuman + Quixel downloads into the folders in `docs/METAHUMAN-QUIXEL.md`. Lighting is Lumen with volumetric fog, virtual shadows, TSR, and cinematic post. Dirt goes wet when it rains. PLAY.bat bakes `Content/Materials/M_*` when Unreal prep succeeds; if Content materials are empty, the game module builds the same wet materials at runtime so `-game` does not fall back to WorldGrid or BasicShape.
+Meshes are built in-engine (cylinders, spheres, layered canopies) **until** you drop MetaHuman + Quixel downloads into the folders in `docs/METAHUMAN-QUIXEL.md`. Lighting is Lumen with volumetric fog, virtual shadows, TSR, and cinematic post. Dirt goes wet when it rains. The ground is never the blue WorldGrid. If a Quixel/Megascans/PN dirt or grass material is present it is used; otherwise a material instance forces brown dirt BaseColor (0.30, 0.18, 0.09). PLAY.bat bakes `Content/Materials/M_*` when Unreal prep succeeds.
 
 ---
 
@@ -120,14 +120,25 @@ UnrealEditor.exe "ValleyGod.uproject" -run=ValleyGodEditor.ValleyPrepCommandlet 
 **Black level / missing map**  
 Open the project in the editor once (not `-game`). The editor writes `/Game/Maps/ValleySlice` and the materials on startup. Then press Play.
 
-**Looks dry / gray / checkerboard**  
-PLAY.bat now launches `-game` even when prep failed. Runtime materials should still show wet dirt, grass, bark, hide, and skin. To bake assets onto disk: run PLAY.bat once (it calls `-run=ValleyPrep`) or open the editor. After a successful prep, `Content/Materials` contains `M_Dirt`, `M_DirtWet`, `M_Grass`, `M_Water`, `M_Bark`, `M_Foliage`, `M_Wood`, `M_Hide`, `M_SkinWarm`, and the rest of the `M_*` set.
+**Looks blue / gray / checkerboard**  
+The template floor is removed at startup. Ground sections always get a material instance. Dry dirt BaseColor is (0.30, 0.18, 0.09). A path that is WorldGrid, BasicShape, DefaultMaterial, `/Engine`, or named blue is rejected and the brown MID is used instead. HUD reads `ground brown` in that case, and `ground Quixel` only when a real Megascans, Quixel, PN, Fab, or ValleySlice dirt/grass material loaded.
 
 **How to verify this graphics pass**
 1. Double-click `PLAY.bat` (quotes handle spaces in the project path).
-2. Confirm the valley is brown dirt + green patches + dark water, not a gray grid.
-3. Fly to camp: hide roofs, wood poles, stone fire ring. Eight named adults in hide tunics. Trees have thick trunks and layered canopies.
-4. Press **1** — dirt darkens (wet). Press **0** to clear.
+2. Confirm the valley is brown dirt + green patches + dark reflective water, not a blue grid.
+3. Fly to camp: hide roofs, wood poles, stone fire ring. Eight named adults in hide tunics. Trees have thick trunks and layered canopies. Grass tufts cover the meadow.
+4. Press **1** — dirt darkens to wet earth (still brown). Press **0** to clear.
+5. Bottom-left HUD: `ground brown` with empty download folders, `ground Quixel` after a real dirt/grass scan is in Content.
+
+## Desktop apply
+
+The copy you play is the `ValleyGod` folder on your Desktop. Sync it from this branch after the PR, then:
+
+1. Copy the updated project over the Desktop `ValleyGod` folder. Keep any packs you already downloaded under `Content/Megascans`, `Content/PN_GrassLibrary`, `Content/Quixel`, `Content/Fab`, `Content/MSPresets`, and `Content/MetaHumans`.
+2. Preferred Mara path is `Content/EditableMetahumans/Mara/BP_Mara`. `Content/MetaHumans/Mara` still works when the editable Blueprint is absent.
+3. Delete Desktop `ValleyGod\Intermediate` and `ValleyGod\Binaries` so the material module rebuilds clean (this avoids a stale `Valley::Material` link error).
+4. Double-click `PLAY.bat`. First launch compiles and writes `Content/Materials`.
+5. In game, the valley floor must be brown dirt. It must not be the blue engine default. Rain (key **1**) darkens that dirt. Quixel/Megascans/PN dirt and grass replace the flat brown only when the asset path is a real scan, not an engine default.
 
 **MetaHuman + Quixel (after Fab / Creator downloads)**  
 Full steps: [`docs/METAHUMAN-QUIXEL.md`](docs/METAHUMAN-QUIXEL.md).
@@ -135,7 +146,7 @@ Full steps: [`docs/METAHUMAN-QUIXEL.md`](docs/METAHUMAN-QUIXEL.md).
 1. Sign into **Fab**, download a Quixel grass/forest/dirt pack (`Content/Megascans/` or `Content/PN_GrassLibrary/`).
 2. In MetaHuman Creator, assemble adult **Mara** into `Content/MetaHumans/Mara`.
 3. PLAY. Bottom-left HUD: `Look  Mara MetaHuman  ·  ground Quixel  ·  foliage Quixel` when those assets exist.
-4. Empty folders are OK — HUD stays `procedural` and `-game` still runs.
+4. Empty folders are OK — HUD stays `Look  Mara procedural  ·  ground brown  ·  foliage procedural` and `-game` still runs. The ground is the brown MID, not WorldGrid.
 
 **Sim tests (no Unreal required)**  
 From this folder: `bash Tests/run_tests.sh`

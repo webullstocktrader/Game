@@ -14,6 +14,18 @@ namespace vg
 		Emissive = 3
 	};
 
+	// Linear BaseColor forced onto the ground MID when Quixel/Megascans/PN is missing
+	// or the loaded material is an engine default / blue grid. Brown always wins.
+	constexpr float kGuaranteedDirtR = 0.30f;
+	constexpr float kGuaranteedDirtG = 0.18f;
+	constexpr float kGuaranteedDirtB = 0.09f;
+	constexpr float kGuaranteedWetDirtR = 0.11f;
+	constexpr float kGuaranteedWetDirtG = 0.065f;
+	constexpr float kGuaranteedWetDirtB = 0.032f;
+
+	// True when a tint would read as the engine's blue default rather than earth.
+	bool IsBlueGroundTint(float R, float G, float B);
+
 	struct MaterialRecipe
 	{
 		const char* Name = "";

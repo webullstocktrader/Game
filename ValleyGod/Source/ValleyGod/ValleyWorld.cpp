@@ -5,6 +5,7 @@
 #include "ValleyTypes.h"
 #include "ValleyAssets.h"
 #include "Sim/ValleyLookPaths.h"
+#include "Sim/ValleyPalette.h"
 #include "Engine/StaticMesh.h"
 #include "Components/TextRenderComponent.h"
 #include "Components/DirectionalLightComponent.h"
@@ -19,9 +20,24 @@
 #include "Engine/ExponentialHeightFog.h"
 #include "Engine/PostProcessVolume.h"
 #include "Engine/SkyLight.h"
+#include "Engine/StaticMeshActor.h"
 #include "EngineUtils.h"
+#include "Misc/StringConv.h"
 #include "GameFramework/PlayerController.h"
 #include "Camera/PlayerCameraManager.h"
+
+namespace
+{
+	bool IsBlueDefaultMaterial(UMaterialInterface* Mat)
+	{
+		if (!Mat)
+		{
+			return true;
+		}
+		const auto Converted = StringCast<ANSICHAR>(*Mat->GetPathName());
+		return vg::IsBlueOrDefaultGroundPath(Converted.Get());
+	}
+}
 
 AValleyWorld::AValleyWorld()
 {
@@ -129,11 +145,19 @@ void AValleyWorld::StripTemplateActors()
 	TArray<AActor*> Kill;
 	for (TActorIterator<AActor> It(GetWorld()); It; ++It)
 	{
-		const FString Name = It->GetName();
-		if (Name.Contains(TEXT("Floor")) || Name.Contains(TEXT("SkySphere")) || Name.Contains(TEXT("AtmosphericFog"))
-			|| Name.Contains(TEXT("Template")) || Name.Contains(TEXT("SM_SkySphere")))
+		AActor* Actor = *It;
+		if (!Actor || Actor == this || Actor->IsA<AValleyTerrain>() || Actor->IsA<AValleyWorld>())
 		{
-			Kill.Add(*It);
+			continue;
+		}
+		const FString Name = Actor->GetName();
+		const bool bNamedJunk = Name.Contains(TEXT("Floor")) || Name.Contains(TEXT("SkySphere"))
+			|| Name.Contains(TEXT("AtmosphericFog")) || Name.Contains(TEXT("Template"))
+			|| Name.Contains(TEXT("SM_SkySphere")) || Name.Contains(TEXT("Grid"));
+		// Template_Default's floor is a static mesh on the blue WorldGrid material.
+		if (bNamedJunk || Actor->IsA<AStaticMeshActor>())
+		{
+			Kill.Add(Actor);
 		}
 	}
 	for (AActor* Actor : Kill)
@@ -155,9 +179,15 @@ UStaticMeshComponent* AValleyWorld::Place(UStaticMesh* Mesh, const FVector& Loc,
 	Comp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	Comp->SetCastShadow(true);
 	Comp->bAffectDistanceFieldLighting = true;
+	Comp->bAffectDynamicIndirectLighting = true;
+	Comp->bDisallowNanite = false;
 	if (Mat)
 	{
 		Comp->SetMaterial(0, Mat);
+	}
+	else if (IsBlueDefaultMaterial(Mesh ? Mesh->GetMaterial(0) : nullptr))
+	{
+		Comp->SetMaterial(0, Valley::RecipeMid(this, TEXT("M_Dirt"), TEXT("MID_Dirt")));
 	}
 	Comp->SetupAttachment(GetRootComponent());
 	Comp->RegisterComponent();
@@ -177,7 +207,7 @@ UStaticMeshComponent* AValleyWorld::PlaceSized(UStaticMesh* Mesh, const FVector&
 	return Place(Mesh, Loc - FVector(0.f, 0.f, BottomZ * S), Rot, FVector(S), nullptr, Name);
 }
 
-UHierarchicalInstancedStaticMeshComponent* AValleyWorld::FoliagePool(UStaticMesh* Mesh, const FName& Name)
+UHierarchicalInstancedStaticMeshComponent* AValleyWorld::FoliagePool(UStaticMesh* Mesh, const FName& Name, bool bUniqueName)
 {
 	if (!Mesh)
 	{
@@ -185,7 +215,18 @@ UHierarchicalInstancedStaticMeshComponent* AValleyWorld::FoliagePool(UStaticMesh
 	}
 	for (UHierarchicalInstancedStaticMeshComponent* Existing : FoliagePools)
 	{
-		if (Existing && Existing->GetStaticMesh() == Mesh)
+		if (!Existing)
+		{
+			continue;
+		}
+		if (bUniqueName)
+		{
+			if (Existing->GetFName() == Name)
+			{
+				return Existing;
+			}
+		}
+		else if (Existing->GetStaticMesh() == Mesh)
 		{
 			return Existing;
 		}
@@ -195,8 +236,15 @@ UHierarchicalInstancedStaticMeshComponent* AValleyWorld::FoliagePool(UStaticMesh
 	Pool->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	Pool->SetCastShadow(true);
 	Pool->bAffectDistanceFieldLighting = true;
-	Pool->InstanceStartCullDistance = 7000.f;
-	Pool->InstanceEndCullDistance = 16000.f;
+	Pool->bAffectDynamicIndirectLighting = true;
+	Pool->bDisallowNanite = false;
+	Pool->bEvaluateWorldPositionOffset = true;
+	Pool->InstanceStartCullDistance = 14000.f;
+	Pool->InstanceEndCullDistance = 32000.f;
+	if (IsBlueDefaultMaterial(Mesh->GetMaterial(0)))
+	{
+		Pool->SetMaterial(0, Valley::RecipeMid(this, TEXT("M_Foliage"), TEXT("MID_Foliage")));
+	}
 	Pool->SetupAttachment(GetRootComponent());
 	Pool->RegisterComponent();
 	FoliagePools.Add(Pool);
@@ -221,49 +269,59 @@ FString AValleyWorld::GraphicsStatusLine() const
 {
 	return FString::Printf(TEXT("Look  Mara %s  ·  ground %s  ·  foliage %s"),
 		bMaraMetaHuman ? TEXT("MetaHuman") : TEXT("procedural"),
-		bQuixelGround ? TEXT("Quixel") : TEXT("procedural"),
+		bQuixelGround ? TEXT("Quixel") : TEXT("brown"),
 		bQuixelFoliage ? TEXT("Quixel") : TEXT("procedural"));
 }
 
 void AValleyWorld::SpawnAtmosphere()
 {
-	Sun = GetWorld()->SpawnActor<ADirectionalLight>(FVector::ZeroVector, FRotator(-42.f, 200.f, 0.f));
+	Sun = GetWorld()->SpawnActor<ADirectionalLight>(FVector::ZeroVector, FRotator(-38.f, 210.f, 0.f));
 	if (UDirectionalLightComponent* L = Cast<UDirectionalLightComponent>(Sun->GetLightComponent()))
 	{
-		L->SetIntensity(16.f);
-		L->SetLightColor(FLinearColor(1.f, 0.94f, 0.82f));
+		L->SetIntensity(28.f);
+		L->SetLightColor(FLinearColor(1.f, 0.93f, 0.78f));
 		L->SetAtmosphereSunLight(true);
-		L->SetDynamicShadowDistanceMovableLight(50000.f);
+		L->AtmosphereSunLightIndex = 0;
+		L->SetDynamicShadowDistanceMovableLight(60000.f);
 		L->SetUseTemperature(true);
-		L->SetTemperature(5300.f);
+		L->SetTemperature(5000.f);
+		L->SetLightSourceAngle(0.5357f);
 		L->bEnableLightShaftBloom = true;
-		L->LightShaftBloomScale = 0.35f;
-		L->ContactShadowLength = 0.12f;
+		L->LightShaftBloomScale = 0.22f;
+		L->ContactShadowLength = 0.18f;
+		L->SetCastShadows(true);
+		L->bCastVolumetricShadow = true;
 	}
 
 	Sky = GetWorld()->SpawnActor<ASkyLight>();
 	if (USkyLightComponent* S = Sky->GetLightComponent())
 	{
-		S->SetIntensity(1.05f);
+		S->SetIntensity(1.25f);
 		S->bRealTimeCapture = true;
-		S->SetLightColor(FLinearColor(0.78f, 0.86f, 0.95f));
-		S->OcclusionMaxDistance = 1200.f;
-		S->OcclusionExponent = 1.4f;
+		S->SourceType = SLS_CapturedScene;
+		// Warm fill so Lumen bounce does not paint the dirt blue.
+		S->SetLightColor(FLinearColor(0.93f, 0.88f, 0.78f));
+		S->bLowerHemisphereIsBlack = false;
+		S->LowerHemisphereColor = FLinearColor(vg::kGuaranteedDirtR, vg::kGuaranteedDirtG, vg::kGuaranteedDirtB);
+		S->OcclusionMaxDistance = 1800.f;
+		S->OcclusionExponent = 1.2f;
 	}
 
 	GetWorld()->SpawnActor<ASkyAtmosphere>();
 	GetWorld()->SpawnActor<AVolumetricCloud>();
 
-	Fog = GetWorld()->SpawnActor<AExponentialHeightFog>(FVector(0.f, 0.f, 180.f), FRotator::ZeroRotator);
+	Fog = GetWorld()->SpawnActor<AExponentialHeightFog>(FVector(0.f, 0.f, 220.f), FRotator::ZeroRotator);
 	if (UExponentialHeightFogComponent* FogComp = Fog->GetComponent())
 	{
-		FogComp->SetFogDensity(0.018f);
-		FogComp->FogHeightFalloff = 0.14f;
+		FogComp->SetFogDensity(0.006f);
+		FogComp->FogHeightFalloff = 0.22f;
+		FogComp->StartDistance = 2800.f;
+		FogComp->FogMaxOpacity = 0.55f;
 		FogComp->SetVolumetricFog(true);
-		FogComp->VolumetricFogScatteringDistribution = 0.72f;
-		FogComp->VolumetricFogExtinctionScale = 0.85f;
-		FogComp->VolumetricFogAlbedo = FColor(186, 194, 188);
-		FogComp->SetFogInscatteringColor(FLinearColor(0.58f, 0.64f, 0.60f));
+		FogComp->VolumetricFogScatteringDistribution = 0.62f;
+		FogComp->VolumetricFogExtinctionScale = 0.42f;
+		FogComp->VolumetricFogAlbedo = FColor(214, 198, 170);
+		FogComp->SetFogInscatteringColor(FLinearColor(0.74f, 0.66f, 0.52f));
 	}
 
 	Post = GetWorld()->SpawnActor<APostProcessVolume>();
@@ -272,29 +330,37 @@ void AValleyWorld::SpawnAtmosphere()
 	P.bOverride_AutoExposureMethod = true;
 	P.AutoExposureMethod = AEM_Histogram;
 	P.bOverride_AutoExposureBias = true;
-	P.AutoExposureBias = 0.28f;
+	P.AutoExposureBias = 0.40f;
 	P.bOverride_AutoExposureMinBrightness = true;
-	P.AutoExposureMinBrightness = -1.6f;
+	P.AutoExposureMinBrightness = -2.0f;
 	P.bOverride_AutoExposureMaxBrightness = true;
-	P.AutoExposureMaxBrightness = 1.6f;
+	P.AutoExposureMaxBrightness = 2.2f;
+	P.bOverride_WhiteTemp = true;
+	P.WhiteTemp = 6400.f;
 	P.bOverride_ColorSaturation = true;
-	P.ColorSaturation = FVector4(0.96f, 0.94f, 0.88f, 1.f);
+	P.ColorSaturation = FVector4(1.06f, 1.02f, 0.88f, 1.f);
 	P.bOverride_ColorContrast = true;
-	P.ColorContrast = FVector4(1.12f, 1.08f, 1.04f, 1.f);
+	P.ColorContrast = FVector4(1.08f, 1.06f, 1.02f, 1.f);
 	P.bOverride_ColorGamma = true;
-	P.ColorGamma = FVector4(1.02f, 1.0f, 0.96f, 1.f);
+	P.ColorGamma = FVector4(1.0f, 0.99f, 0.96f, 1.f);
 	P.bOverride_VignetteIntensity = true;
-	P.VignetteIntensity = 0.28f;
+	P.VignetteIntensity = 0.2f;
 	P.bOverride_BloomIntensity = true;
-	P.BloomIntensity = 0.52f;
+	P.BloomIntensity = 0.36f;
+	P.bOverride_BloomThreshold = true;
+	P.BloomThreshold = 1.15f;
 	P.bOverride_AmbientOcclusionIntensity = true;
-	P.AmbientOcclusionIntensity = 0.7f;
+	P.AmbientOcclusionIntensity = 0.58f;
 	P.bOverride_AmbientOcclusionRadius = true;
-	P.AmbientOcclusionRadius = 52.f;
+	P.AmbientOcclusionRadius = 72.f;
 	P.bOverride_IndirectLightingColor = true;
-	P.IndirectLightingColor = FLinearColor(1.02f, 0.98f, 0.92f);
+	P.IndirectLightingColor = FLinearColor(1.06f, 0.98f, 0.86f);
 	P.bOverride_MotionBlurAmount = true;
-	P.MotionBlurAmount = 0.22f;
+	P.MotionBlurAmount = 0.16f;
+	P.bOverride_LocalExposureHighlightContrastScale = true;
+	P.LocalExposureHighlightContrastScale = 0.8f;
+	P.bOverride_LocalExposureShadowContrastScale = true;
+	P.LocalExposureShadowContrastScale = 0.85f;
 	P.bOverride_AmbientCubemapIntensity = false;
 }
 
@@ -303,10 +369,10 @@ void AValleyWorld::SpawnTreesAndRocks(const Valley::FOptionalAssets& Assets)
 	UStaticMesh* Cyl = Valley::CylinderMesh();
 	UStaticMesh* Sphere = Valley::SphereMesh();
 	UStaticMesh* Cone = Valley::ConeMesh();
-	UMaterialInterface* Bark = Valley::Material(TEXT("M_Bark"));
-	UMaterialInterface* Leaf = Valley::Material(TEXT("M_Foliage"));
-	UMaterialInterface* LeafDark = Valley::Material(TEXT("M_FoliageDark"));
-	UMaterialInterface* Stone = Valley::Material(TEXT("M_Stone"));
+	UMaterialInterface* Bark = Valley::RecipeMid(this, TEXT("M_Bark"), TEXT("MID_Bark"));
+	UMaterialInterface* Leaf = Valley::RecipeMid(this, TEXT("M_Foliage"), TEXT("MID_Foliage"));
+	UMaterialInterface* LeafDark = Valley::RecipeMid(this, TEXT("M_FoliageDark"), TEXT("MID_FoliageDark"));
+	UMaterialInterface* Stone = Valley::RecipeMid(this, TEXT("M_Stone"), TEXT("MID_Stone"));
 	if (!Terrain)
 	{
 		return;
@@ -360,22 +426,23 @@ void AValleyWorld::SpawnTreesAndRocks(const Valley::FOptionalAssets& Assets)
 	}
 	else if (Cyl && Sphere)
 	{
-		const int32 Want = 56;
+		const int32 Want = 96;
 		ScatterUntil(Want, Want * 4, [&](int32 /*Attempt*/, int32 /*Placed*/)
 		{
-			const float X = Rng.FRandRange(-5200.f, 5200.f);
-			const float Y = Rng.FRandRange(-5200.f, 5200.f);
+			const float X = Rng.FRandRange(-5400.f, 5400.f);
+			const float Y = Rng.FRandRange(-5400.f, 5400.f);
 			if (InClearing(X, Y))
 			{
 				return false;
 			}
 			const FVector G = Terrain->GroundAt(FVector(X, Y, 0.f));
-			const float H = Rng.FRandRange(2.8f, 5.2f);
-			const float TrunkR = Rng.FRandRange(0.42f, 0.7f);
-			UStaticMeshComponent* Trunk = Place(Cyl, G + FVector(0.f, 0.f, H * 48.f), FRotator::ZeroRotator, FVector(TrunkR, TrunkR, H), Bark,
+			const float H = Rng.FRandRange(3.6f, 6.6f);
+			const float TrunkR = Rng.FRandRange(0.58f, 1.05f);
+			const float Yaw = Rng.FRandRange(0.f, 360.f);
+			UStaticMeshComponent* Trunk = Place(Cyl, G + FVector(0.f, 0.f, H * 46.f), FRotator(0.f, Yaw, 0.f), FVector(TrunkR, TrunkR, H), Bark,
 				FName(*FString::Printf(TEXT("Trunk%d"), TreeN)));
 			Trees.Add(Trunk);
-			TreeBaseYaw.Add(18.f);
+			TreeBaseYaw.Add(Yaw);
 
 			auto LeafOn = [&](const FName& Name, const FVector& Rel, const FVector& Scale, UMaterialInterface* Mat)
 			{
@@ -384,6 +451,9 @@ void AValleyWorld::SpawnTreesAndRocks(const Valley::FOptionalAssets& Assets)
 				Comp->SetRelativeLocation(Rel);
 				Comp->SetRelativeScale3D(Scale);
 				Comp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+				Comp->SetCastShadow(true);
+				Comp->bAffectDistanceFieldLighting = true;
+				Comp->bAffectDynamicIndirectLighting = true;
 				if (Mat)
 				{
 					Comp->SetMaterial(0, Mat);
@@ -392,16 +462,21 @@ void AValleyWorld::SpawnTreesAndRocks(const Valley::FOptionalAssets& Assets)
 				Comp->RegisterComponent();
 			};
 
-			LeafOn(FName(*FString::Printf(TEXT("CanopyA%d"), TreeN)), FVector(0.f, 0.f, 48.f), FVector(2.2f, 2.1f, 1.5f) / FVector(TrunkR, TrunkR, H) * Rng.FRandRange(0.9f, 1.15f), Leaf);
-			LeafOn(FName(*FString::Printf(TEXT("CanopyB%d"), TreeN)), FVector(Rng.FRandRange(-18.f, 18.f), Rng.FRandRange(-18.f, 18.f), 68.f), FVector(1.6f, 1.7f, 1.1f) / FVector(TrunkR, TrunkR, H), LeafDark);
-			LeafOn(FName(*FString::Printf(TEXT("CanopyC%d"), TreeN)), FVector(Rng.FRandRange(-12.f, 12.f), Rng.FRandRange(-12.f, 12.f), 36.f), FVector(1.4f, 1.5f, 1.0f) / FVector(TrunkR, TrunkR, H), Leaf);
-			Place(Sphere, G + FVector(0.f, 0.f, 18.f), FRotator::ZeroRotator, FVector(TrunkR * 1.8f, TrunkR * 1.8f, 0.35f), Bark,
+			const FVector TrunkScale(TrunkR, TrunkR, H);
+			const float Jitter = Rng.FRandRange(0.92f, 1.18f);
+			LeafOn(FName(*FString::Printf(TEXT("CanopyA%d"), TreeN)), FVector(0.f, 0.f, 52.f), FVector(2.5f, 2.35f, 1.55f) / TrunkScale * Jitter, Leaf);
+			LeafOn(FName(*FString::Printf(TEXT("CanopyB%d"), TreeN)), FVector(Rng.FRandRange(-22.f, 22.f), Rng.FRandRange(-22.f, 22.f), 74.f), FVector(1.85f, 1.9f, 1.15f) / TrunkScale, LeafDark);
+			LeafOn(FName(*FString::Printf(TEXT("CanopyC%d"), TreeN)), FVector(Rng.FRandRange(-16.f, 16.f), Rng.FRandRange(-16.f, 16.f), 34.f), FVector(1.7f, 1.65f, 1.05f) / TrunkScale, Leaf);
+			LeafOn(FName(*FString::Printf(TEXT("CanopyD%d"), TreeN)), FVector(Rng.FRandRange(-28.f, 28.f), Rng.FRandRange(-10.f, 10.f), 58.f), FVector(1.35f, 1.2f, 0.85f) / TrunkScale, LeafDark);
+			LeafOn(FName(*FString::Printf(TEXT("CanopyE%d"), TreeN)), FVector(0.f, 0.f, 18.f), FVector(2.05f, 2.0f, 0.7f) / TrunkScale, Leaf);
+			Place(Sphere, G + FVector(0.f, 0.f, 16.f), FRotator::ZeroRotator, FVector(TrunkR * 2.1f, TrunkR * 2.1f, 0.38f), Bark,
 				FName(*FString::Printf(TEXT("Root%d"), TreeN)));
-			if (Cone)
-			{
-				Place(Cyl, G + FVector(Rng.FRandRange(-20.f, 20.f), Rng.FRandRange(-20.f, 20.f), H * 70.f), FRotator(Rng.FRandRange(20.f, 55.f), Rng.FRandRange(0.f, 180.f), 0.f),
-					FVector(0.12f, 0.12f, H * 0.35f), Bark, FName(*FString::Printf(TEXT("Branch%d"), TreeN)));
-			}
+			Place(Cyl, G + FVector(Rng.FRandRange(-24.f, 24.f), Rng.FRandRange(-24.f, 24.f), H * 62.f),
+				FRotator(Rng.FRandRange(18.f, 58.f), Rng.FRandRange(0.f, 180.f), 0.f),
+				FVector(0.14f, 0.14f, H * 0.32f), Bark, FName(*FString::Printf(TEXT("Branch%d"), TreeN)));
+			Place(Cyl, G + FVector(Rng.FRandRange(-18.f, 18.f), Rng.FRandRange(-18.f, 18.f), H * 48.f),
+				FRotator(Rng.FRandRange(25.f, 70.f), Rng.FRandRange(0.f, 180.f), 0.f),
+				FVector(0.1f, 0.1f, H * 0.22f), Bark, FName(*FString::Printf(TEXT("BranchB%d"), TreeN)));
 			++TreeN;
 			return true;
 		});
@@ -454,25 +529,40 @@ void AValleyWorld::SpawnTreesAndRocks(const Valley::FOptionalAssets& Assets)
 	else if (Cone)
 	{
 		const int32 Want = vg::ProceduralGrassTuftCount();
+		auto ScatterTufts = [&](UHierarchicalInstancedStaticMeshComponent* Pool, int32 Count, float MinH, float MaxH)
+		{
+			if (!Pool)
+			{
+				return;
+			}
+			ScatterUntil(Count, Count * 3, [&](int32 /*Attempt*/, int32 /*Placed*/)
+			{
+				const float X = Rng.FRandRange(-4800.f, 4800.f);
+				const float Y = Rng.FRandRange(-2800.f, 4600.f);
+				if (InClearing(X, Y))
+				{
+					return false;
+				}
+				const FVector G = Terrain->GroundAt(FVector(X, Y, 0.f));
+				AddSizedInstance(Pool, G, FRotator(0.f, Rng.FRandRange(0.f, 180.f), Rng.FRandRange(-6.f, 6.f)), Rng.FRandRange(MinH, MaxH));
+				return true;
+			});
+		};
 		if (UHierarchicalInstancedStaticMeshComponent* Pool = FoliagePool(Cone, TEXT("TuftPool")))
 		{
 			if (Leaf)
 			{
 				Pool->SetMaterial(0, Leaf);
 			}
-			ScatterUntil(Want, Want * 3, [&](int32 /*Attempt*/, int32 /*Placed*/)
+			ScatterTufts(Pool, Want, 36.f, 110.f);
+		}
+		if (UHierarchicalInstancedStaticMeshComponent* Dark = FoliagePool(Cone, TEXT("TuftDarkPool"), true))
+		{
+			if (LeafDark)
 			{
-				const float X = Rng.FRandRange(-4200.f, 4200.f);
-				const float Y = Rng.FRandRange(-2200.f, 4200.f);
-				if (InClearing(X, Y))
-				{
-					return false;
-				}
-				const FVector G = Terrain->GroundAt(FVector(X, Y, 0.f));
-				const float S = Rng.FRandRange(28.f, 70.f);
-				AddSizedInstance(Pool, G, FRotator(0.f, Rng.FRandRange(0.f, 180.f), 0.f), S);
-				return true;
-			});
+				Dark->SetMaterial(0, LeafDark);
+			}
+			ScatterTufts(Dark, Want / 2, 22.f, 64.f);
 		}
 	}
 
@@ -495,7 +585,7 @@ void AValleyWorld::SpawnTreesAndRocks(const Valley::FOptionalAssets& Assets)
 	}
 	else if (Sphere)
 	{
-		for (int32 I = 0; I < 36; ++I)
+		for (int32 I = 0; I < 72; ++I)
 		{
 			const float X = Rng.FRandRange(-4000.f, 4000.f);
 			const float Y = Rng.FRandRange(-2000.f, 2200.f);
@@ -510,9 +600,9 @@ void AValleyWorld::SpawnTreesAndRocks(const Valley::FOptionalAssets& Assets)
 void AValleyWorld::SpawnMiniatureEarth()
 {
 	UStaticMesh* Cyl = Valley::CylinderMesh();
-	UMaterialInterface* Water = Valley::Material(TEXT("M_Water"));
-	UMaterialInterface* Grass = Valley::Material(TEXT("M_Grass"));
-	UMaterialInterface* Dirt = Valley::Material(TEXT("M_Dirt"));
+	UMaterialInterface* Water = Valley::RecipeMid(this, TEXT("M_Water"), TEXT("MID_Water"));
+	UMaterialInterface* Grass = Valley::RecipeMid(this, TEXT("M_Grass"), TEXT("MID_Grass"));
+	UMaterialInterface* Dirt = Valley::RecipeMid(this, TEXT("M_Dirt"), TEXT("MID_Dirt"));
 	if (!Cyl)
 	{
 		return;
@@ -538,7 +628,7 @@ void AValleyWorld::SpawnMiniatureEarth()
 void AValleyWorld::SpawnTribeMarks()
 {
 	UStaticMesh* Cyl = Valley::CylinderMesh();
-	UMaterialInterface* Cloth = Valley::Material(TEXT("M_ClothOchre"));
+	UMaterialInterface* Cloth = Valley::RecipeMid(this, TEXT("M_ClothOchre"), TEXT("MID_ClothOchre"));
 	if (!Cyl)
 	{
 		return;
@@ -588,8 +678,8 @@ void AValleyWorld::PlaceShelter(int32 Index)
 	}
 	UStaticMesh* Cyl = Valley::CylinderMesh();
 	UStaticMesh* Cube = Valley::CubeMesh();
-	UMaterialInterface* Wood = Valley::Material(TEXT("M_Wood"));
-	UMaterialInterface* Hide = Valley::Material(TEXT("M_Hide"));
+	UMaterialInterface* Wood = Valley::RecipeMid(this, TEXT("M_Wood"), TEXT("MID_Wood"));
+	UMaterialInterface* Hide = Valley::RecipeMid(this, TEXT("M_Hide"), TEXT("MID_Hide"));
 	if (!Cyl)
 	{
 		return;
@@ -612,10 +702,10 @@ void AValleyWorld::SpawnSheltersAndFire()
 	UStaticMesh* Cyl = Valley::CylinderMesh();
 	UStaticMesh* Cube = Valley::CubeMesh();
 	UStaticMesh* Sphere = Valley::SphereMesh();
-	UMaterialInterface* Wood = Valley::Material(TEXT("M_Wood"));
-	UMaterialInterface* Hide = Valley::Material(TEXT("M_Hide"));
-	UMaterialInterface* Fire = Valley::Material(TEXT("M_Fire"));
-	UMaterialInterface* Stone = Valley::Material(TEXT("M_Stone"));
+	UMaterialInterface* Wood = Valley::RecipeMid(this, TEXT("M_Wood"), TEXT("MID_Wood"));
+	UMaterialInterface* Hide = Valley::RecipeMid(this, TEXT("M_Hide"), TEXT("MID_Hide"));
+	UMaterialInterface* Fire = Valley::RecipeMid(this, TEXT("M_Fire"), TEXT("MID_Fire"));
+	UMaterialInterface* Stone = Valley::RecipeMid(this, TEXT("M_Stone"), TEXT("MID_Stone"));
 	if (!Cyl)
 	{
 		return;
@@ -682,10 +772,10 @@ void AValleyWorld::EnsureWorkVisuals()
 	UStaticMesh* Cyl = Valley::CylinderMesh();
 	UStaticMesh* Cube = Valley::CubeMesh();
 	UStaticMesh* Sphere = Valley::SphereMesh();
-	UMaterialInterface* Wood = Valley::Material(TEXT("M_Wood"));
-	UMaterialInterface* Foliage = Valley::Material(TEXT("M_Foliage"));
-	UMaterialInterface* Stone = Valley::Material(TEXT("M_Stone"));
-	UMaterialInterface* Hide = Valley::Material(TEXT("M_Hide"));
+	UMaterialInterface* Wood = Valley::RecipeMid(this, TEXT("M_Wood"), TEXT("MID_Wood"));
+	UMaterialInterface* Foliage = Valley::RecipeMid(this, TEXT("M_Foliage"), TEXT("MID_Foliage"));
+	UMaterialInterface* Stone = Valley::RecipeMid(this, TEXT("M_Stone"), TEXT("MID_Stone"));
+	UMaterialInterface* Hide = Valley::RecipeMid(this, TEXT("M_Hide"), TEXT("MID_Hide"));
 	if (!Cyl)
 	{
 		return;
@@ -710,9 +800,9 @@ void AValleyWorld::EnsureWorkVisuals()
 		const int32 I = HarvestTrunks.Num();
 		const vg::Timber& Tree = Brain.Trees[I];
 		const FVector G = Terrain ? Terrain->StandAt(Tree.X, Tree.Y) : FVector(Tree.X, Tree.Y, AValleyTerrain::OffMeshStandZ);
-		UStaticMeshComponent* Trunk = Place(Cyl, G + FVector(0.f, 0.f, 90.f), FRotator::ZeroRotator, FVector(0.22f, 0.22f, 1.8f), Wood,
+		UStaticMeshComponent* Trunk = Place(Cyl, G + FVector(0.f, 0.f, 110.f), FRotator::ZeroRotator, FVector(0.32f, 0.32f, 2.2f), Wood,
 			FName(*FString::Printf(TEXT("HarvestTrunk%d"), I)));
-		UStaticMeshComponent* Crown = Place(Sphere ? Sphere : Cyl, G + FVector(0.f, 0.f, 230.f), FRotator::ZeroRotator, FVector(1.15f, 1.15f, 0.9f), Foliage,
+		UStaticMeshComponent* Crown = Place(Sphere ? Sphere : Cyl, G + FVector(0.f, 0.f, 280.f), FRotator::ZeroRotator, FVector(1.45f, 1.4f, 1.05f), Foliage,
 			FName(*FString::Printf(TEXT("HarvestCrown%d"), I)));
 		HarvestTrunks.Add(Trunk);
 		HarvestCrowns.Add(Crown);
@@ -746,7 +836,7 @@ void AValleyWorld::EnsureWorkVisuals()
 		UStaticMeshComponent* Shaft = Place(Cyl, G + Offset, FRotator(0.f, 20.f, 78.f), FVector(0.05f, 0.05f, 1.15f), Wood,
 			FName(*FString::Printf(TEXT("CampSpear%d"), I)));
 		UStaticMeshComponent* Tip = Place(Cube ? Cube : Cyl, G + Offset + FVector(8.f, 0.f, 52.f), FRotator(0.f, 20.f, 78.f), FVector(0.08f, 0.08f, 0.16f),
-			Valley::Material(TEXT("M_Stone")), FName(*FString::Printf(TEXT("CampSpearTip%d"), I)));
+			Valley::RecipeMid(this, TEXT("M_Stone"), TEXT("MID_Stone")), FName(*FString::Printf(TEXT("CampSpearTip%d"), I)));
 		if (Shaft)
 		{
 			Shaft->SetHiddenInGame(true);
@@ -890,7 +980,7 @@ void AValleyWorld::EnsureSpawnedPopulation()
 void AValleyWorld::SpawnRain()
 {
 	UStaticMesh* Cube = Valley::CubeMesh();
-	UMaterialInterface* Water = Valley::Material(TEXT("M_Water"));
+	UMaterialInterface* Water = Valley::RecipeMid(this, TEXT("M_Water"), TEXT("MID_Water"));
 	if (!Cube)
 	{
 		return;
@@ -916,7 +1006,7 @@ void AValleyWorld::SpawnRain()
 void AValleyWorld::SpawnTornado()
 {
 	UStaticMesh* Cyl = Valley::CylinderMesh();
-	UMaterialInterface* Dust = Valley::Material(TEXT("M_Dirt"));
+	UMaterialInterface* Dust = Valley::RecipeMid(this, TEXT("M_Dirt"), TEXT("MID_Dirt"));
 	if (!Cyl)
 	{
 		return;
@@ -947,15 +1037,15 @@ void AValleyWorld::UpdateSky()
 			const float Dusk = FMath::Clamp(1.f - FMath::Abs(Hours - 18.f) / 2.5f, 0.f, 1.f);
 			const float Dawn = FMath::Clamp(1.f - FMath::Abs(Hours - 6.f) / 2.5f, 0.f, 1.f);
 			const float Gold = FMath::Max(Dusk, Dawn);
-			L->SetIntensity(bNight ? 0.55f : FMath::Lerp(16.f, 7.5f, Gold));
-			L->SetLightColor(bNight ? FLinearColor(0.28f, 0.36f, 0.58f) : FMath::Lerp(FLinearColor(1.f, 0.96f, 0.86f), FLinearColor(1.f, 0.58f, 0.3f), Gold));
+			L->SetIntensity(bNight ? 0.45f : FMath::Lerp(28.f, 12.f, Gold));
+			L->SetLightColor(bNight ? FLinearColor(0.45f, 0.52f, 0.72f) : FMath::Lerp(FLinearColor(1.f, 0.94f, 0.82f), FLinearColor(1.f, 0.55f, 0.28f), Gold));
 		}
 	}
 	if (Sky)
 	{
 		if (USkyLightComponent* S = Sky->GetLightComponent())
 		{
-			S->SetIntensity(vg::IsNight(Hours) ? 0.28f : 1.05f);
+			S->SetIntensity(vg::IsNight(Hours) ? 0.22f : 1.25f);
 		}
 	}
 	if (Fog)
@@ -963,13 +1053,13 @@ void AValleyWorld::UpdateSky()
 		if (UExponentialHeightFogComponent* F = Fog->GetComponent())
 		{
 			const bool bStorm = Brain.Sky != vg::Weather::Clear;
-			F->SetFogDensity(vg::IsNight(Hours) ? 0.028f : (bStorm ? 0.034f : 0.018f));
+			F->SetFogDensity(vg::IsNight(Hours) ? 0.012f : (bStorm ? 0.02f : 0.006f));
 		}
 	}
 	if (Post)
 	{
 		const bool bNight = vg::IsNight(Hours);
-		Post->Settings.AutoExposureBias = bNight ? 0.08f : 0.28f;
+		Post->Settings.AutoExposureBias = bNight ? -0.15f : 0.40f;
 	}
 	if (FireLight)
 	{

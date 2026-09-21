@@ -9,14 +9,14 @@ namespace vg
 	{
 		const MaterialRecipe kMaterials[] = {
 			// name, R G B A, metallic, roughness, specular, emissive, opacity, subRGB, kind, twoSided
-			{"M_Dirt", 0.16f, 0.09f, 0.045f, 1.f, 0.03f, 0.46f, 0.38f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
-			{"M_DirtWet", 0.048f, 0.028f, 0.014f, 1.f, 0.08f, 0.10f, 0.82f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
-			{"M_Grass", 0.048f, 0.12f, 0.034f, 1.f, 0.f, 0.52f, 0.36f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
-			{"M_Water", 0.010f, 0.038f, 0.048f, 0.62f, 0.04f, 0.035f, 0.92f, 0.f, 0.62f, 0.f, 0.f, 0.f, SurfaceKind::Translucent, false},
-			{"M_Bark", 0.075f, 0.042f, 0.024f, 1.f, 0.f, 0.84f, 0.28f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
-			{"M_Foliage", 0.038f, 0.095f, 0.022f, 1.f, 0.f, 0.48f, 0.3f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, true},
-			{"M_FoliageDark", 0.022f, 0.06f, 0.016f, 1.f, 0.f, 0.52f, 0.28f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, true},
-			{"M_Wood", 0.13f, 0.07f, 0.028f, 1.f, 0.f, 0.56f, 0.34f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
+			{"M_Dirt", kGuaranteedDirtR, kGuaranteedDirtG, kGuaranteedDirtB, 1.f, 0.02f, 0.88f, 0.28f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
+			{"M_DirtWet", kGuaranteedWetDirtR, kGuaranteedWetDirtG, kGuaranteedWetDirtB, 1.f, 0.06f, 0.07f, 0.78f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
+			{"M_Grass", 0.09f, 0.22f, 0.04f, 1.f, 0.f, 0.74f, 0.32f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
+			{"M_Water", 0.012f, 0.030f, 0.038f, 0.78f, 0.02f, 0.02f, 0.95f, 0.f, 0.78f, 0.f, 0.f, 0.f, SurfaceKind::Translucent, false},
+			{"M_Bark", 0.12f, 0.062f, 0.030f, 1.f, 0.f, 0.90f, 0.24f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
+			{"M_Foliage", 0.055f, 0.18f, 0.032f, 1.f, 0.f, 0.58f, 0.26f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, true},
+			{"M_FoliageDark", 0.028f, 0.09f, 0.018f, 1.f, 0.f, 0.62f, 0.24f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, true},
+			{"M_Wood", 0.16f, 0.08f, 0.032f, 1.f, 0.f, 0.62f, 0.32f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
 			{"M_Hide", 0.2f, 0.12f, 0.055f, 1.f, 0.f, 0.64f, 0.3f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
 			{"M_Fur", 0.24f, 0.15f, 0.07f, 1.f, 0.f, 0.78f, 0.22f, 0.f, 1.f, 0.f, 0.f, 0.f, SurfaceKind::Opaque, false},
 			{"M_SkinWarm", 0.46f, 0.3f, 0.2f, 1.f, 0.f, 0.74f, 0.26f, 0.f, 0.42f, 0.42f, 0.12f, 0.08f, SurfaceKind::Subsurface, false},
@@ -116,5 +116,10 @@ namespace vg
 		const float DG = G0 - G1;
 		const float DB = B0 - B1;
 		return std::sqrt(DR * DR + DG * DG + DB * DB);
+	}
+
+	bool IsBlueGroundTint(float R, float G, float B)
+	{
+		return B > 0.15f && B > R && B > G;
 	}
 }

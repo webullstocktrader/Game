@@ -4,7 +4,7 @@ Code-capsule bodies are no longer the hero look. This slice prefers **one assemb
 
 God camera, the eight adults, weather, and “they never look at you” are unchanged. Intimate content is out of scope.
 
-If the folders below are empty, PLAY.bat still runs: Mara falls back to the procedural villager, and the valley keeps the current procedural dirt bowl and trees.
+If the folders below are empty, PLAY.bat still runs: Mara falls back to the procedural villager, and the valley ground is a brown dirt material instance (BaseColor 0.30, 0.18, 0.09), never the blue engine default. Rain darkens that dirt. Real Quixel/Megascans/PN dirt and grass replace it only when the asset is not WorldGrid, BasicShape, or a blue-named default.
 
 ---
 
@@ -12,7 +12,8 @@ If the folders below are empty, PLAY.bat still runs: Mara falls back to the proc
 
 | Disk | Unreal path | Put this here |
 |---|---|---|
-| `Content/MetaHumans/Mara/` | `/Game/MetaHumans/Mara/` | Assemble MetaHuman **Mara** (Blueprint + body/face/grooms) |
+| `Content/EditableMetahumans/Mara/` | `/Game/EditableMetahumans/Mara/` | Preferred. Assemble editable MetaHuman **Mara** here (`BP_Mara`) |
+| `Content/MetaHumans/Mara/` | `/Game/MetaHumans/Mara/` | Older assemble folder. Used when the editable Blueprint is absent |
 | `Content/PN_GrassLibrary/` | `/Game/PN_GrassLibrary/` | Grass clump meshes / grass materials |
 | `Content/Megascans/` | `/Game/Megascans/` | Fab/Quixel default download root |
 | `Content/Fab/` | `/Game/Fab/` | Alternate Fab drop folder (also scanned) |
@@ -36,11 +37,14 @@ If aliases are missing, the game also scans `Content/PN_GrassLibrary`, `Content/
 
 Mara Blueprint candidates (first file that exists wins):
 
-1. `/Game/MetaHumans/Mara/BP_Mara`
-2. `/Game/MetaHumans/Mara/Mara`
-3. `/Game/MetaHumans/Mara/BP_MetaHuman`
-4. `/Game/ValleySlice/BP_Mara`
-5. Any top-level Blueprint under `Content/MetaHumans/Mara/`
+1. `/Game/EditableMetahumans/Mara/BP_Mara`
+2. `/Game/EditableMetahumans/Mara/Mara`
+3. `/Game/MetaHumans/Mara/BP_Mara`
+4. `/Game/MetaHumans/Mara/Mara`
+5. `/Game/MetaHumans/Mara/BP_MetaHuman`
+6. `/Game/MetaHumans/Mara/Blueprints/BP_Mara`
+7. `/Game/ValleySlice/BP_Mara`
+8. Any Actor Blueprint under `Content/EditableMetahumans/Mara/`, then `Content/MetaHumans/Mara/`
 
 Only **Mara** (cast slot 0) uses a MetaHuman this milestone. Nima, Lira, Sable, Flint, Oak, Reed, and Bram stay procedural until a later pass.
 
@@ -91,7 +95,7 @@ Hide clothing: use any fully covering hide/leather wardrobe item you have in Fab
 1. Double-click `PLAY.bat`, or in the editor press **Alt+P**.
 2. Bottom-left HUD line should read something like:
    - `Look  Mara MetaHuman  ·  ground Quixel  ·  foliage Quixel` when downloads are present
-   - `Look  Mara procedural  ·  ground procedural  ·  foliage procedural` when folders are still empty
+   - `Look  Mara procedural  ·  ground brown  ·  foliage procedural` when folders are still empty
 3. Output Log (`Window → Developer Tools → Output Log`) also prints `Valley God assets: Mara=...`.
 
 Mara may idle-slide until you assign a walk AnimBP. That is expected for this scaffolding milestone. Click-to-pin still works (capsule on the villager actor).
@@ -110,7 +114,7 @@ Mara may idle-slide until you assign a walk AnimBP. That is expected for this sc
 ## Troubleshooting
 
 **HUD still says Mara procedural after assemble**  
-The Blueprint is not at a candidate path. Move/assemble it to `Content/MetaHumans/Mara/` or copy the Actor Blueprint to `Content/ValleySlice/BP_Mara`. Watch the Output Log for `Mara MetaHuman class`.
+The Blueprint is not at a candidate path. Prefer `Content/EditableMetahumans/Mara/BP_Mara`. `Content/MetaHumans/Mara/` and `Content/ValleySlice/BP_Mara` still work. Watch the Output Log for `Mara MetaHuman class`.
 
 **HUD still says foliage procedural after Fab download**  
 Files are not under `Content/Megascans`, `Content/Fab`, `Content/PN_GrassLibrary`, `Content/MSPresets`, or `Content/Quixel`, or names do not contain dirt/grass/tree/rock keywords. Copy chosen meshes to `Content/ValleySlice/SM_Tree` (and `SM_Grass`, `MI_Dirt`, …).
@@ -122,4 +126,7 @@ Install 5.8.2 with MetaHuman extras. Enable the plugin from the warning dialog. 
 HairStrands is enabled in the `.uproject`. Also enable **Groom** / **Alembic Groom Importer** in the Plugins window if the editor lists them separately, and confirm MetaHuman Core Data is installed.
 
 **`-game` / PLAY.bat with empty Content**  
-This is supported. Procedural terrain and villagers spawn as before.
+This is supported. The ground is brown (HUD `ground brown`), not the blue template floor. Villagers and capsule trees still spawn. Chopping, staged builds, and the tech tree are unchanged.
+
+**Ground is still blue**  
+You are on an old build, or a material named like a real dirt scan is actually an engine default. Delete `Intermediate` and `Binaries`, run `PLAY.bat` again, and check the log for `Valley MID M_Dirt BaseColor=(0.30, 0.18, 0.09)`. A rejected scan logs `Valley ground rejected`.

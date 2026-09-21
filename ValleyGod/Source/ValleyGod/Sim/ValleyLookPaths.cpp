@@ -8,9 +8,12 @@ namespace vg
 	namespace
 	{
 		const char* kMetaHumanClassPaths[] = {
+			"/Game/EditableMetahumans/Mara/BP_Mara",
+			"/Game/EditableMetahumans/Mara/Mara",
 			"/Game/MetaHumans/Mara/BP_Mara",
 			"/Game/MetaHumans/Mara/Mara",
 			"/Game/MetaHumans/Mara/BP_MetaHuman",
+			"/Game/MetaHumans/Mara/Blueprints/BP_Mara",
 			"/Game/ValleySlice/BP_Mara"
 		};
 
@@ -158,16 +161,17 @@ namespace vg
 	}
 
 	const char* MetaHumanContentFolder() { return "/Game/MetaHumans/Mara"; }
+	const char* EditableMetahumansContentFolder() { return "/Game/EditableMetahumans/Mara"; }
 	const char* PNGrassLibraryContentFolder() { return "/Game/PN_GrassLibrary"; }
 	const char* MegascansContentFolder() { return "/Game/Megascans"; }
 	const char* FabContentFolder() { return "/Game/Fab"; }
 	const char* ValleySliceContentFolder() { return "/Game/ValleySlice"; }
 	const char* ValleySliceMapPath() { return "/Game/Maps/ValleySlice"; }
 
-	int PreferredTreeScatterCount() { return 140; }
-	int PreferredGrassScatterCount() { return 1600; }
-	int PreferredRockScatterCount() { return 90; }
-	int ProceduralGrassTuftCount() { return 400; }
+	int PreferredTreeScatterCount() { return 180; }
+	int PreferredGrassScatterCount() { return 2400; }
+	int PreferredRockScatterCount() { return 140; }
+	int ProceduralGrassTuftCount() { return 900; }
 
 	int MetaHumanClassPathCount() { return static_cast<int>(sizeof(kMetaHumanClassPaths) / sizeof(kMetaHumanClassPaths[0])); }
 	const char* MetaHumanClassPathAt(int Index) { return AtOrEmpty(kMetaHumanClassPaths, Index); }
@@ -235,5 +239,58 @@ namespace vg
 		default:
 			return false;
 		}
+	}
+
+	bool IsBlueOrDefaultGroundPath(const char* Path)
+	{
+		if (!Path || !Path[0])
+		{
+			return true;
+		}
+		if (ContainsFold(Path, "/Engine/"))
+		{
+			return true;
+		}
+		if (ContainsFold(Path, "WorldGrid") || ContainsFold(Path, "BasicShape") || ContainsFold(Path, "DefaultMaterial")
+			|| ContainsFold(Path, "DefaultDeferred") || ContainsFold(Path, "M_Grid") || ContainsFold(Path, "GridMaterial"))
+		{
+			return true;
+		}
+		if (ContainsWord(Path, "blue") || ContainsWord(Path, "cyan") || ContainsWord(Path, "azure")
+			|| ContainsWord(Path, "checker") || ContainsWord(Path, "grid"))
+		{
+			return true;
+		}
+		if (ContainsFold(Path, "Template_Default"))
+		{
+			return true;
+		}
+		return false;
+	}
+
+	bool AcceptScannedGroundMaterial(const char* Path)
+	{
+		if (IsBlueOrDefaultGroundPath(Path))
+		{
+			return false;
+		}
+		if (!ContainsFold(Path, "/Game/"))
+		{
+			return false;
+		}
+		const bool bPack = ContainsFold(Path, "/Megascans/") || ContainsFold(Path, "/Quixel/")
+			|| ContainsFold(Path, "/PN_GrassLibrary/") || ContainsFold(Path, "/Fab/")
+			|| ContainsFold(Path, "/MSPresets/") || ContainsFold(Path, "/ValleySlice/");
+		if (!bPack)
+		{
+			return false;
+		}
+		return ClassifyContentPath(Path, ScanKind::DirtMaterial) || ClassifyContentPath(Path, ScanKind::GrassMaterial)
+			|| ClassifyContentPath(Path, ScanKind::WetDirtMaterial);
+	}
+
+	GroundSource ResolveGroundSource(const char* Path)
+	{
+		return AcceptScannedGroundMaterial(Path) ? GroundSource::Scanned : GroundSource::GuaranteedBrown;
 	}
 } // namespace vg

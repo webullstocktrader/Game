@@ -17,9 +17,18 @@ namespace vg
 		RockMesh = 5
 	};
 
+	// Scanned Quixel/Megascans/PN/Fab ground, or the guaranteed brown MID.
+	// There is no engine-default / blue outcome.
+	enum class GroundSource
+	{
+		Scanned = 0,
+		GuaranteedBrown = 1
+	};
+
 	bool UsesMetaHumanSlot(int Slot);
 
 	const char* MetaHumanContentFolder();
+	const char* EditableMetahumansContentFolder();
 	const char* PNGrassLibraryContentFolder();
 	const char* MegascansContentFolder();
 	const char* FabContentFolder();
@@ -53,4 +62,10 @@ namespace vg
 	const char* RockMeshPathAt(int Index);
 
 	bool ClassifyContentPath(const char* Path, ScanKind Kind);
+
+	// WorldGrid, BasicShape, DefaultMaterial, /Engine, and names that read as blue.
+	bool IsBlueOrDefaultGroundPath(const char* Path);
+	// Real dirt/grass/wet materials under Megascans, Quixel, PN, Fab, MSPresets, ValleySlice.
+	bool AcceptScannedGroundMaterial(const char* Path);
+	GroundSource ResolveGroundSource(const char* Path);
 } // namespace vg
