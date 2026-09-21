@@ -29,7 +29,7 @@ private:
 	float RightAxis = 0.f;
 	float UpAxis = 0.f;
 	bool bSprint = false;
-	float FlySpeed = 2200.f;
+	float FlySpeed = 6500.f;
 	float Fov = 80.f;
 	TWeakObjectPtr<AActor> FollowTarget;
 };

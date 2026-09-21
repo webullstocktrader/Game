@@ -15,7 +15,7 @@ You do not need to write any game code.
 3. Fire weather: **1 Rain**, **2 Tornado**, **3 Hurricane**, **4 Flood**. They seek shelter, panic, or climb. **0** clears the sky.
 4. Watch the day turn. Default is a **75 second day**. `[` / `]` stretch or compress it.
 5. Pin someone (left click / Tab). The card shows tribe, Teacher or Learning, knowledge, shelters, and claim.
-6. Press **G** to hop the camera to the next continent, or hold **Shift** and fly across the ocean yourself.
+6. You start overhead: eight lands, ocean between them, one camp name on each. Tribes are neutral. **Q** drops closer, **G** hops to the next land, **F** returns overhead.
 
 **Teachers (all 21+):** Mara, Nima, Lira, Sable · Flint, Oak, Reed, Bram. Learners and later kin are adults too. This slice does not place child bodies. Pairing only runs at 21 or older, and it is not an intimacy scene.
 

@@ -285,6 +285,22 @@ namespace vg
 			"High stone", "Reed water", "Cold ridge", "Ash shore"
 		};
 
+		// Humans, not monsters. Greed and low honesty are the capacity to cheat.
+		// Ambition stays too low to open a fight.
+		const float kHonesty[] = {0.72f, 0.42f, 0.84f, 0.55f, 0.48f, 0.78f, 0.66f, 0.34f};
+		const float kGreed[] = {0.28f, 0.58f, 0.18f, 0.46f, 0.40f, 0.22f, 0.33f, 0.70f};
+		const float kAmbition[] = {0.18f, 0.32f, 0.12f, 0.36f, 0.28f, 0.16f, 0.22f, 0.40f};
+		const char* kTempers[] = {
+			"Quiet. May bend a tale to keep the meat.",
+			"Warm talk. Will short a count of hides.",
+			"Patient. Trades straight unless the pot is empty.",
+			"Restless. Keeps a path they do not share.",
+			"Steady hunter. Will claim a kill was smaller.",
+			"Slow and fair. Hides a good log now and then.",
+			"Soft voice. May lie about where the fish went.",
+			"Laughs. Will trade, and will pocket a spare stone."
+		};
+
 		const char* kContinentNames[] = {
 			"Willow basin", "Red bluff", "Salt flats", "Dark wood",
 			"High stones", "Reed water", "Cold ridge", "Ash shore"
@@ -1143,6 +1159,69 @@ namespace vg
 			V.HuntTarget = -1;
 		}
 
+		void InitDiplomacy(World& W)
+		{
+			for (int A = 0; A < kTribeCount; ++A)
+			{
+				for (int B = 0; B < kTribeCount; ++B)
+				{
+					Relation& R = W.Relations[A * kTribeCount + B];
+					R.Hostile = false;
+					if (A == B)
+					{
+						R.Trust = 100.f;
+						R.Trade = 0.f;
+						R.Betrayal = 0.f;
+						continue;
+					}
+					const float Cheat = (W.Tribes[A].Greed + (1.f - W.Tribes[A].Honesty)
+						+ W.Tribes[B].Greed + (1.f - W.Tribes[B].Honesty))
+						* 0.25f;
+					R.Trust = 58.f - Cheat * 10.f;
+					if (R.Trust < 46.f)
+					{
+						R.Trust = 46.f;
+					}
+					if (R.Trust > 64.f)
+					{
+						R.Trust = 64.f;
+					}
+					R.Trade = 50.f;
+					R.Betrayal = 8.f + Cheat * 28.f;
+					if (R.Betrayal > 40.f)
+					{
+						R.Betrayal = 40.f;
+					}
+				}
+			}
+		}
+
+		void TickDiplomacy(World& W, float Dt)
+		{
+			for (int A = 0; A < W.TribeCount; ++A)
+			{
+				for (int B = A + 1; B < W.TribeCount; ++B)
+				{
+					Relation& AB = W.Relations[A * kTribeCount + B];
+					Relation& BA = W.Relations[B * kTribeCount + A];
+					// This slice never opens a war. Ambition and headcount are still too small.
+					AB.Hostile = false;
+					BA.Hostile = false;
+					const bool bScarce = W.Tribes[A].ScarceSeconds > W.Tribes[A].SurvivalSeconds
+						&& W.Tribes[B].ScarceSeconds > W.Tribes[B].SurvivalSeconds;
+					const float Toward = bScarce ? 50.f : 58.f;
+					const float Step = Dt * 0.08f;
+					AB.Trust += (Toward - AB.Trust) * Step;
+					BA.Trust = AB.Trust;
+					if (!bScarce && AB.Trust > 48.f && AB.Trade < 62.f)
+					{
+						AB.Trade += Dt * 0.15f;
+					}
+					BA.Trade = AB.Trade;
+				}
+			}
+		}
+
 		void LayoutContinents(World& W)
 		{
 			W.ContinentCount = kContinentCount;
@@ -1230,6 +1309,44 @@ namespace vg
 		return false;
 	}
 
+	const Relation& RelationBetween(const World& W, int FromTribe, int ToTribe)
+	{
+		static const Relation Neutral{};
+		if (FromTribe < 0 || ToTribe < 0 || FromTribe >= W.TribeCount || ToTribe >= W.TribeCount)
+		{
+			return Neutral;
+		}
+		return W.Relations[FromTribe * kTribeCount + ToTribe];
+	}
+
+	bool TribesAtWar(const World& W, int TribeA, int TribeB)
+	{
+		if (TribeA == TribeB)
+		{
+			return false;
+		}
+		return RelationBetween(W, TribeA, TribeB).Hostile || RelationBetween(W, TribeB, TribeA).Hostile;
+	}
+
+	bool ConflictReady(const World& W, int TribeId)
+	{
+		if (TribeId < 0 || TribeId >= W.TribeCount)
+		{
+			return false;
+		}
+		const Tribe& T = W.Tribes[TribeId];
+		int Members = 0;
+		for (int I = 0; I < W.VillagerCount; ++I)
+		{
+			if (W.Villagers[I].TribeId == TribeId)
+			{
+				Members += 1;
+			}
+		}
+		// Starter camps cannot reach this. Wars wait on people, building, and ambition together.
+		return T.Ambition >= 0.8f && T.StructureCount >= 12 && Members >= 12;
+	}
+
 	const char* TribeLabel(const World& W, int TribeId)
 	{
 		if (TribeId < 0 || TribeId >= W.TribeCount || !W.Tribes[TribeId].Name)
@@ -1286,8 +1403,13 @@ namespace vg
 				PlaceShelter(W, TribeSlot, Land.X + 200.f, Land.Y + 120.f);
 			}
 			TribeSlot.BuildCooldown = 8.f + static_cast<float>(T);
+			TribeSlot.Honesty = kHonesty[T];
+			TribeSlot.Greed = kGreed[T];
+			TribeSlot.Ambition = kAmbition[T];
+			TribeSlot.Temper = kTempers[T];
 			RefreshClaim(W, TribeSlot);
 		}
+		InitDiplomacy(W);
 
 		W.CampX = W.Tribes[0].CampX;
 		W.CampY = W.Tribes[0].CampY;
@@ -1514,6 +1636,7 @@ namespace vg
 		}
 		TickAnimals(W, Dt);
 		TickProgress(W, Dt);
+		TickDiplomacy(W, Dt);
 		RefreshCountdowns(W);
 	}
 

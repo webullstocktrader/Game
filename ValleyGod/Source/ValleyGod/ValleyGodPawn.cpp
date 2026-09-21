@@ -62,7 +62,7 @@ void AValleyGodPawn::AddZoom(float Wheel)
 		return;
 	}
 	Fov = FMath::Clamp(Fov - Wheel * 6.f, 42.f, 110.f);
-	FlySpeed = FMath::Clamp(FlySpeed + Wheel * 180.f, 700.f, 6000.f);
+	FlySpeed = FMath::Clamp(FlySpeed + Wheel * 400.f, 700.f, 24000.f);
 	if (APlayerController* PC = Cast<APlayerController>(GetController()))
 	{
 		if (PC->PlayerCameraManager)
@@ -99,10 +99,11 @@ void AValleyGodPawn::StopFollow()
 void AValleyGodPawn::GoOverview()
 {
 	StopFollow();
-	SetActorLocation(FVector(40.f, -2100.f, 1280.f));
+	// Straight down on the whole miniature Earth: valley, ocean, and the other seven lands.
+	SetActorLocation(FVector(0.f, 400.f, 30000.f));
 	if (APlayerController* PC = Cast<APlayerController>(GetController()))
 	{
-		PC->SetControlRotation(FRotator(-28.f, 90.f, 0.f));
+		PC->SetControlRotation(FRotator(-88.f, 0.f, 0.f));
 	}
 }
 

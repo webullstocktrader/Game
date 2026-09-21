@@ -50,7 +50,7 @@ void AValleyHUD::DrawHUD()
 	ShadowText(22.f, 12.f, TEXT("VALLEY"), FLinearColor(0.82f, 0.74f, 0.42f), 1.15f);
 	ShadowText(160.f, 16.f, Clock(Sim.TimeOfDayHours) + (Sim.Paused ? TEXT("  PAUSED") : TEXT("")), FLinearColor(0.9f, 0.88f, 0.78f), 1.0f);
 	ShadowText(W * 0.5f - 180.f, 16.f, FString::Printf(TEXT("Weather  %s"), UTF8_TO_TCHAR(vg::WeatherName(Sim.Sky))), FLinearColor(0.75f, 0.85f, 0.9f), 0.95f);
-	ShadowText(W * 0.5f + 120.f, 16.f, FString::Printf(TEXT("%d tribes   kin %d"), Sim.TribeCount, Sim.Births), FLinearColor(0.78f, 0.74f, 0.55f), 0.9f);
+	ShadowText(W * 0.5f + 80.f, 16.f, FString::Printf(TEXT("%d lands  ·  ocean  ·  neutral  ·  kin %d"), Sim.TribeCount, Sim.Births), FLinearColor(0.78f, 0.74f, 0.55f), 0.9f);
 
 	const float PanelX = W - 360.f;
 	DrawBar(PanelX, 64.f, 340.f, 200.f, FLinearColor(0.02f, 0.03f, 0.02f, 0.62f));
@@ -107,10 +107,19 @@ void AValleyHUD::DrawHUD()
 		ShadowText(W - 344.f, H - 196.f,
 			FString::Printf(TEXT("%s  ·  %s  ·  %d"), UTF8_TO_TCHAR(V.Name), UTF8_TO_TCHAR(vg::SexName(V.Body)), V.AgeYears),
 			FLinearColor(0.82f, 0.74f, 0.42f), 1.0f);
+		bool bAtWar = false;
+		for (int32 Other = 0; Other < Sim.TribeCount; ++Other)
+		{
+			if (vg::TribesAtWar(Sim, V.TribeId, Other))
+			{
+				bAtWar = true;
+			}
+		}
 		ShadowText(W - 344.f, H - 172.f,
-			FString::Printf(TEXT("%s  ·  %s  ·  know %d"),
+			FString::Printf(TEXT("%s  ·  %s  ·  %s  ·  know %d"),
 				UTF8_TO_TCHAR(vg::TribeLabel(Sim, V.TribeId)),
 				V.bTeacher ? TEXT("Teacher") : TEXT("Learning"),
+				bAtWar ? TEXT("hostile") : TEXT("neutral"),
 				FMath::RoundToInt(V.Knowledge)),
 			FLinearColor(0.78f, 0.74f, 0.55f), 0.8f);
 		ShadowText(W - 344.f, H - 150.f, UTF8_TO_TCHAR(V.Trait), FLinearColor(0.85f, 0.82f, 0.72f), 0.75f);

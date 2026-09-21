@@ -6,6 +6,7 @@
 #include "ValleyAssets.h"
 #include "Sim/ValleyLookPaths.h"
 #include "Engine/StaticMesh.h"
+#include "Components/TextRenderComponent.h"
 #include "Components/DirectionalLightComponent.h"
 #include "Components/ExponentialHeightFogComponent.h"
 #include "Components/PointLightComponent.h"
@@ -56,6 +57,7 @@ void AValleyWorld::BuildValley()
 	Terrain->ApplyGroundMaterials(Assets.Dirt, Assets.Grass, Assets.WetDirt);
 	SpawnAtmosphere();
 	SpawnMiniatureEarth();
+	SpawnTribeMarks();
 	SpawnTreesAndRocks(Assets);
 	SpawnSheltersAndFire();
 	SpawnPeople();
@@ -529,6 +531,51 @@ void AValleyWorld::SpawnMiniatureEarth()
 		Place(Cyl, FVector(Land.X, Land.Y, CenterZ), FRotator::ZeroRotator,
 			FVector(Land.Radius / 50.f, Land.Radius / 50.f, Height / 100.f), Mat,
 			FName(*FString::Printf(TEXT("Continent%d"), I)));
+	}
+}
+
+void AValleyWorld::SpawnTribeMarks()
+{
+	UStaticMesh* Cyl = Valley::CylinderMesh();
+	UMaterialInterface* Cloth = Valley::Material(TEXT("M_ClothOchre"));
+	if (!Cyl)
+	{
+		return;
+	}
+
+	const FLinearColor Colors[8] = {
+		FLinearColor(0.75f, 0.38f, 0.12f),
+		FLinearColor(0.62f, 0.16f, 0.12f),
+		FLinearColor(0.78f, 0.72f, 0.48f),
+		FLinearColor(0.16f, 0.32f, 0.14f),
+		FLinearColor(0.48f, 0.46f, 0.40f),
+		FLinearColor(0.18f, 0.36f, 0.52f),
+		FLinearColor(0.62f, 0.68f, 0.72f),
+		FLinearColor(0.40f, 0.30f, 0.22f)
+	};
+
+	for (int32 T = 0; T < Brain.TribeCount && T < 8; ++T)
+	{
+		const vg::Tribe& Tribe = Brain.Tribes[T];
+		const FVector G = Terrain ? Terrain->StandAt(Tribe.CampX, Tribe.CampY)
+								  : FVector(Tribe.CampX, Tribe.CampY, AValleyTerrain::OffMeshStandZ);
+		UMaterialInterface* Mat = Valley::Tint(this, Cloth, Colors[T], FName(*FString::Printf(TEXT("CampTint%d"), T)));
+		// Flat disc so the camp reads from the overhead view. Radius 50 * 32 = 16m.
+		Place(Cyl, G + FVector(0.f, 0.f, 30.f), FRotator::ZeroRotator, FVector(32.f, 32.f, 0.06f), Mat,
+			FName(*FString::Printf(TEXT("CampDisc%d"), T)));
+
+		UTextRenderComponent* Label = NewObject<UTextRenderComponent>(this, FName(*FString::Printf(TEXT("LandLabel%d"), T)));
+		const FString Title = FString::Printf(TEXT("%s"), UTF8_TO_TCHAR(Tribe.Name ? Tribe.Name : ""));
+		Label->SetText(FText::FromString(Title));
+		Label->SetWorldSize(1100.f);
+		Label->SetTextRenderColor(FColor(255, 236, 200));
+		Label->SetHorizontalAlignment(EHTA_Center);
+		Label->SetVerticalAlignment(EVRTA_TextCenter);
+		Label->SetWorldLocation(G + FVector(0.f, 0.f, 220.f));
+		Label->SetWorldRotation(FRotator(-90.f, 0.f, 0.f));
+		Label->SetCastShadow(false);
+		Label->SetupAttachment(GetRootComponent());
+		Label->RegisterComponent();
 	}
 }
 

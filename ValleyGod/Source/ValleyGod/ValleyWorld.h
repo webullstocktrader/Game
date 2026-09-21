@@ -50,6 +50,7 @@ private:
 	void SpawnAtmosphere();
 	void SpawnTreesAndRocks(const Valley::FOptionalAssets& Assets);
 	void SpawnMiniatureEarth();
+	void SpawnTribeMarks();
 	void SpawnSheltersAndFire();
 	void PlaceShelter(int32 Index);
 	void SpawnPeople();

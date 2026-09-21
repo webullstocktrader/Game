@@ -147,6 +147,21 @@ namespace vg
 		float SurvivalSeconds = 0.f;
 		float ScarceSeconds = 0.f;
 		int Births = 0;
+		// Personality. They can lie, cheat, or steal later. None of this starts a war.
+		float Honesty = 0.5f;
+		float Greed = 0.3f;
+		float Ambition = 0.15f;
+		const char* Temper = "";
+	};
+
+	// One directed link. Hostile stays false until a later slice, when population,
+	// skill, and ambition are all high. Starter camps are neighbors, not enemies.
+	struct Relation
+	{
+		float Trust = 55.f;
+		float Trade = 50.f;
+		float Betrayal = 12.f;
+		bool Hostile = false;
 	};
 
 	struct Continent
@@ -201,6 +216,7 @@ namespace vg
 		float DawnCountdown = 0.f;
 		int Births = 0;
 		int KinCursor = 0;
+		Relation Relations[kTribeCount * kTribeCount];
 
 		unsigned Rng = 1u;
 	};
@@ -223,6 +239,9 @@ namespace vg
 	bool IsAdult(const Villager& V);
 	int ContinentAt(const World& W, float X, float Y);
 	bool IsClaimedLand(const World& W, float X, float Y, int& OutTribe);
+	const Relation& RelationBetween(const World& W, int FromTribe, int ToTribe);
+	bool TribesAtWar(const World& W, int TribeA, int TribeB);
+	bool ConflictReady(const World& W, int TribeId);
 	bool IsNight(float Hours);
 	float HoursUntil(float Now, float TargetHour);
 	float Rand01(World& W);

@@ -248,6 +248,44 @@ int main()
 		const float EdgeY = Home.Y + Home.Radius * 0.9f;
 		CHECK(ContinentAt(W, EdgeX, EdgeY) == 0, "outer basin is still land");
 		CHECK(!IsClaimedLand(W, EdgeX, EdgeY, Claimed), "outer basin is unclaimed");
+
+		int Wars = 0;
+		for (int A = 0; A < W.TribeCount; ++A)
+		{
+			CHECK(W.Tribes[A].Temper && W.Tribes[A].Temper[0], "each tribe has a temper");
+			CHECK(!SpeechForbidden(W.Tribes[A].Temper), "temper has no cosmos/god");
+			CHECK(W.Tribes[A].Ambition < 0.8f, "ambition is too small to fight");
+			CHECK(!ConflictReady(W, A), "starter tribe is not ready for war");
+			for (int B = 0; B < W.TribeCount; ++B)
+			{
+				const Relation& R = RelationBetween(W, A, B);
+				CHECK(!R.Hostile, "no pair starts hostile");
+				CHECK(!TribesAtWar(W, A, B), "no war at the start");
+				if (A != B)
+				{
+					CHECK(R.Trust >= 45.f && R.Trust <= 65.f, "trust starts neutral");
+					CHECK(R.Trade >= 40.f, "they can trade");
+					CHECK(R.Betrayal > 0.f && R.Betrayal <= 40.f, "betrayal is only a potential");
+				}
+				if (R.Hostile)
+				{
+					++Wars;
+				}
+			}
+		}
+		CHECK(Wars == 0, "diplomacy starts with zero wars");
+		for (int Step = 0; Step < 40; ++Step)
+		{
+			TickWorld(W, 0.5f);
+		}
+		for (int A = 0; A < W.TribeCount; ++A)
+		{
+			CHECK(!ConflictReady(W, A), "time alone does not make a war");
+			for (int B = 0; B < W.TribeCount; ++B)
+			{
+				CHECK(!TribesAtWar(W, A, B), "neighbors stay unhostile");
+			}
+		}
 	}
 
 	{
