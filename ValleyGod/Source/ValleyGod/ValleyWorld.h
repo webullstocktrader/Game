@@ -38,7 +38,9 @@ public:
 	void TogglePause();
 	void PinVillager(int32 Id);
 	int32 CyclePin();
+	int32 CycleContinent();
 	int32 GetPinnedId() const { return PinnedId; }
+	int32 GetFocusedContinent() const { return FocusedContinent; }
 	FString GraphicsStatusLine() const;
 
 	static AValleyWorld* Get(const UWorld* World);
@@ -47,8 +49,13 @@ private:
 	void StripTemplateActors();
 	void SpawnAtmosphere();
 	void SpawnTreesAndRocks(const Valley::FOptionalAssets& Assets);
+	void SpawnMiniatureEarth();
+	void SpawnTribeMarks();
 	void SpawnSheltersAndFire();
+	void PlaceShelter(int32 Index);
 	void SpawnPeople();
+	void EnsureSpawnedPopulation();
+	void EnsureWorkVisuals();
 	void SpawnRain();
 	void SpawnTornado();
 	void UpdateSky();
@@ -91,6 +98,30 @@ private:
 	TArray<TObjectPtr<UStaticMeshComponent>> Trees;
 
 	UPROPERTY()
+	TArray<TObjectPtr<UStaticMeshComponent>> HarvestTrunks;
+
+	UPROPERTY()
+	TArray<TObjectPtr<UStaticMeshComponent>> HarvestCrowns;
+
+	UPROPERTY()
+	TArray<TObjectPtr<UStaticMeshComponent>> SitePads;
+
+	UPROPERTY()
+	TArray<TObjectPtr<UStaticMeshComponent>> SiteFrames;
+
+	UPROPERTY()
+	TArray<TObjectPtr<UStaticMeshComponent>> SiteWalls;
+
+	UPROPERTY()
+	TArray<TObjectPtr<UStaticMeshComponent>> SiteRoofs;
+
+	UPROPERTY()
+	TArray<TObjectPtr<UStaticMeshComponent>> CampSpearShafts;
+
+	UPROPERTY()
+	TArray<TObjectPtr<UStaticMeshComponent>> CampSpearTips;
+
+	UPROPERTY()
 	TArray<TObjectPtr<UHierarchicalInstancedStaticMeshComponent>> FoliagePools;
 
 	TArray<float> TreeBaseYaw;
@@ -102,6 +133,8 @@ private:
 	TSubclassOf<AActor> MaraMetaHumanClass;
 
 	int32 PinnedId = -1;
+	int32 FocusedContinent = 0;
+	int32 SpawnedShelters = 0;
 	float RainClock = 0.f;
 	bool bMaraMetaHuman = false;
 	bool bQuixelGround = false;

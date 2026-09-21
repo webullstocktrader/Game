@@ -6,6 +6,7 @@
 #include "ValleyAssets.h"
 #include "Sim/ValleyLookPaths.h"
 #include "Engine/StaticMesh.h"
+#include "Components/TextRenderComponent.h"
 #include "Components/DirectionalLightComponent.h"
 #include "Components/ExponentialHeightFogComponent.h"
 #include "Components/PointLightComponent.h"
@@ -55,9 +56,12 @@ void AValleyWorld::BuildValley()
 	Terrain->BuildValley();
 	Terrain->ApplyGroundMaterials(Assets.Dirt, Assets.Grass, Assets.WetDirt);
 	SpawnAtmosphere();
+	SpawnMiniatureEarth();
+	SpawnTribeMarks();
 	SpawnTreesAndRocks(Assets);
 	SpawnSheltersAndFire();
 	SpawnPeople();
+	EnsureWorkVisuals();
 	bMaraMetaHuman = false;
 	if (AValleyVillager* Mara = FindVillager(vg::kMetaHumanMilestoneSlot))
 	{
@@ -96,6 +100,16 @@ int32 AValleyWorld::CyclePin()
 	}
 	PinnedId = (PinnedId + 1) % Brain.VillagerCount;
 	return PinnedId;
+}
+
+int32 AValleyWorld::CycleContinent()
+{
+	if (Brain.ContinentCount <= 0)
+	{
+		return 0;
+	}
+	FocusedContinent = (FocusedContinent + 1) % Brain.ContinentCount;
+	return FocusedContinent;
 }
 
 AValleyVillager* AValleyWorld::FindVillager(int32 Id) const
@@ -493,6 +507,106 @@ void AValleyWorld::SpawnTreesAndRocks(const Valley::FOptionalAssets& Assets)
 	}
 }
 
+void AValleyWorld::SpawnMiniatureEarth()
+{
+	UStaticMesh* Cyl = Valley::CylinderMesh();
+	UMaterialInterface* Water = Valley::Material(TEXT("M_Water"));
+	UMaterialInterface* Grass = Valley::Material(TEXT("M_Grass"));
+	UMaterialInterface* Dirt = Valley::Material(TEXT("M_Dirt"));
+	if (!Cyl)
+	{
+		return;
+	}
+
+	// Engine cylinder: 50cm radius, 100cm tall. Ocean sits under the sculpted valley.
+	const float OceanRadius = 23000.f;
+	Place(Cyl, FVector(0.f, 0.f, -140.f), FRotator::ZeroRotator,
+		FVector(OceanRadius / 50.f, OceanRadius / 50.f, 0.4f), Water, TEXT("MiniatureOcean"));
+
+	for (int32 I = 1; I < Brain.ContinentCount; ++I)
+	{
+		const vg::Continent& Land = Brain.Continents[I];
+		const float Height = 64.f;
+		const float CenterZ = AValleyTerrain::OffMeshStandZ - Height * 0.5f;
+		UMaterialInterface* Mat = (I % 2 == 0) ? Dirt : Grass;
+		Place(Cyl, FVector(Land.X, Land.Y, CenterZ), FRotator::ZeroRotator,
+			FVector(Land.Radius / 50.f, Land.Radius / 50.f, Height / 100.f), Mat,
+			FName(*FString::Printf(TEXT("Continent%d"), I)));
+	}
+}
+
+void AValleyWorld::SpawnTribeMarks()
+{
+	UStaticMesh* Cyl = Valley::CylinderMesh();
+	UMaterialInterface* Cloth = Valley::Material(TEXT("M_ClothOchre"));
+	if (!Cyl)
+	{
+		return;
+	}
+
+	const FLinearColor Colors[8] = {
+		FLinearColor(0.75f, 0.38f, 0.12f),
+		FLinearColor(0.62f, 0.16f, 0.12f),
+		FLinearColor(0.78f, 0.72f, 0.48f),
+		FLinearColor(0.16f, 0.32f, 0.14f),
+		FLinearColor(0.48f, 0.46f, 0.40f),
+		FLinearColor(0.18f, 0.36f, 0.52f),
+		FLinearColor(0.62f, 0.68f, 0.72f),
+		FLinearColor(0.40f, 0.30f, 0.22f)
+	};
+
+	for (int32 T = 0; T < Brain.TribeCount && T < 8; ++T)
+	{
+		const vg::Tribe& Tribe = Brain.Tribes[T];
+		const FVector G = Terrain ? Terrain->StandAt(Tribe.CampX, Tribe.CampY)
+								  : FVector(Tribe.CampX, Tribe.CampY, AValleyTerrain::OffMeshStandZ);
+		UMaterialInterface* Mat = Valley::Tint(this, Cloth, Colors[T], FName(*FString::Printf(TEXT("CampTint%d"), T)));
+		// Flat disc so the camp reads from the overhead view. Radius 50 * 32 = 16m.
+		Place(Cyl, G + FVector(0.f, 0.f, 30.f), FRotator::ZeroRotator, FVector(32.f, 32.f, 0.06f), Mat,
+			FName(*FString::Printf(TEXT("CampDisc%d"), T)));
+
+		UTextRenderComponent* Label = NewObject<UTextRenderComponent>(this, FName(*FString::Printf(TEXT("LandLabel%d"), T)));
+		const FString Title = FString::Printf(TEXT("%s"), UTF8_TO_TCHAR(Tribe.Name ? Tribe.Name : ""));
+		Label->SetText(FText::FromString(Title));
+		Label->SetWorldSize(1100.f);
+		Label->SetTextRenderColor(FColor(255, 236, 200));
+		Label->SetHorizontalAlignment(EHTA_Center);
+		Label->SetVerticalAlignment(EVRTA_TextCenter);
+		Label->SetWorldLocation(G + FVector(0.f, 0.f, 220.f));
+		Label->SetWorldRotation(FRotator(-90.f, 0.f, 0.f));
+		Label->SetCastShadow(false);
+		Label->SetupAttachment(GetRootComponent());
+		Label->RegisterComponent();
+	}
+}
+
+void AValleyWorld::PlaceShelter(int32 Index)
+{
+	if (Index < 0 || Index >= Brain.ShelterCount)
+	{
+		return;
+	}
+	UStaticMesh* Cyl = Valley::CylinderMesh();
+	UStaticMesh* Cube = Valley::CubeMesh();
+	UMaterialInterface* Wood = Valley::Material(TEXT("M_Wood"));
+	UMaterialInterface* Hide = Valley::Material(TEXT("M_Hide"));
+	if (!Cyl)
+	{
+		return;
+	}
+	const FVector G = Terrain ? Terrain->StandAt(Brain.ShelterX[Index], Brain.ShelterY[Index])
+							  : FVector(Brain.ShelterX[Index], Brain.ShelterY[Index], AValleyTerrain::OffMeshStandZ);
+	Place(Cyl, G + FVector(-70.f, -40.f, 80.f), FRotator::ZeroRotator, FVector(0.14f, 0.14f, 1.55f), Wood, FName(*FString::Printf(TEXT("PoleA%d"), Index)));
+	Place(Cyl, G + FVector(70.f, -40.f, 80.f), FRotator::ZeroRotator, FVector(0.14f, 0.14f, 1.55f), Wood, FName(*FString::Printf(TEXT("PoleB%d"), Index)));
+	Place(Cyl, G + FVector(0.f, 55.f, 50.f), FRotator(0.f, 0.f, 55.f), FVector(0.12f, 0.12f, 1.7f), Wood, FName(*FString::Printf(TEXT("PoleC%d"), Index)));
+	Place(Cyl, G + FVector(-40.f, 20.f, 110.f), FRotator(0.f, 90.f, 18.f), FVector(0.08f, 0.08f, 1.4f), Wood, FName(*FString::Printf(TEXT("Ridge%d"), Index)));
+	if (Cube)
+	{
+		Place(Cube, G + FVector(0.f, 8.f, 128.f), FRotator(-30.f, 0.f, 0.f), FVector(2.3f, 2.1f, 0.07f), Hide, FName(*FString::Printf(TEXT("Roof%d"), Index)));
+		Place(Cube, G + FVector(0.f, -20.f, 70.f), FRotator(0.f, 0.f, 8.f), FVector(1.6f, 0.08f, 1.1f), Hide, FName(*FString::Printf(TEXT("Wall%d"), Index)));
+	}
+}
+
 void AValleyWorld::SpawnSheltersAndFire()
 {
 	UStaticMesh* Cyl = Valley::CylinderMesh();
@@ -502,26 +616,18 @@ void AValleyWorld::SpawnSheltersAndFire()
 	UMaterialInterface* Hide = Valley::Material(TEXT("M_Hide"));
 	UMaterialInterface* Fire = Valley::Material(TEXT("M_Fire"));
 	UMaterialInterface* Stone = Valley::Material(TEXT("M_Stone"));
-	if (!Cyl || !Terrain)
+	if (!Cyl)
 	{
 		return;
 	}
 
 	for (int32 I = 0; I < Brain.ShelterCount; ++I)
 	{
-		const FVector G = Terrain->GroundAt(FVector(Brain.ShelterX[I], Brain.ShelterY[I], 0.f));
-		Place(Cyl, G + FVector(-70.f, -40.f, 80.f), FRotator::ZeroRotator, FVector(0.14f, 0.14f, 1.55f), Wood, FName(*FString::Printf(TEXT("PoleA%d"), I)));
-		Place(Cyl, G + FVector(70.f, -40.f, 80.f), FRotator::ZeroRotator, FVector(0.14f, 0.14f, 1.55f), Wood, FName(*FString::Printf(TEXT("PoleB%d"), I)));
-		Place(Cyl, G + FVector(0.f, 55.f, 50.f), FRotator(0.f, 0.f, 55.f), FVector(0.12f, 0.12f, 1.7f), Wood, FName(*FString::Printf(TEXT("PoleC%d"), I)));
-		Place(Cyl, G + FVector(-40.f, 20.f, 110.f), FRotator(0.f, 90.f, 18.f), FVector(0.08f, 0.08f, 1.4f), Wood, FName(*FString::Printf(TEXT("Ridge%d"), I)));
-		if (Cube)
-		{
-			Place(Cube, G + FVector(0.f, 8.f, 128.f), FRotator(-30.f, 0.f, 0.f), FVector(2.3f, 2.1f, 0.07f), Hide, FName(*FString::Printf(TEXT("Roof%d"), I)));
-			Place(Cube, G + FVector(0.f, -20.f, 70.f), FRotator(0.f, 0.f, 8.f), FVector(1.6f, 0.08f, 1.1f), Hide, FName(*FString::Printf(TEXT("Wall%d"), I)));
-		}
+		PlaceShelter(I);
 	}
+	SpawnedShelters = Brain.ShelterCount;
 
-	const FVector FireG = Terrain->GroundAt(FVector(Brain.FireX, Brain.FireY, 0.f));
+	const FVector FireG = Terrain ? Terrain->StandAt(Brain.FireX, Brain.FireY) : FVector(Brain.FireX, Brain.FireY, 0.f);
 	Place(Cyl, FireG + FVector(0.f, 0.f, 10.f), FRotator::ZeroRotator, FVector(0.85f, 0.85f, 0.08f), Stone, TEXT("Hearth"));
 	for (int32 S = 0; S < 7; ++S)
 	{
@@ -558,17 +664,185 @@ void AValleyWorld::SpawnSheltersAndFire()
 	FireLight->SetCastShadows(true);
 	FireLight->SetupAttachment(GetRootComponent());
 	FireLight->RegisterComponent();
+
+	for (int32 T = 1; T < Brain.TribeCount; ++T)
+	{
+		const vg::Tribe& Tribe = Brain.Tribes[T];
+		const FVector G = Terrain ? Terrain->StandAt(Tribe.FireX, Tribe.FireY) : FVector(Tribe.FireX, Tribe.FireY, AValleyTerrain::OffMeshStandZ);
+		Place(Cyl, G + FVector(0.f, 0.f, 8.f), FRotator::ZeroRotator, FVector(0.7f, 0.7f, 0.06f), Stone, FName(*FString::Printf(TEXT("Hearth%d"), T)));
+		if (Cube)
+		{
+			Place(Cube, G + FVector(0.f, 0.f, 28.f), FRotator::ZeroRotator, FVector(0.28f, 0.28f, 0.36f), Fire, FName(*FString::Printf(TEXT("Flame%d"), T)));
+		}
+	}
+}
+
+void AValleyWorld::EnsureWorkVisuals()
+{
+	UStaticMesh* Cyl = Valley::CylinderMesh();
+	UStaticMesh* Cube = Valley::CubeMesh();
+	UStaticMesh* Sphere = Valley::SphereMesh();
+	UMaterialInterface* Wood = Valley::Material(TEXT("M_Wood"));
+	UMaterialInterface* Foliage = Valley::Material(TEXT("M_Foliage"));
+	UMaterialInterface* Stone = Valley::Material(TEXT("M_Stone"));
+	UMaterialInterface* Hide = Valley::Material(TEXT("M_Hide"));
+	if (!Cyl)
+	{
+		return;
+	}
+
+	// Kit pieces hang off the stage root so hiding that stage hides the whole module.
+	// These are log, thatch, and stone parts. A finished building is not its own imported mesh.
+	auto AddPiece = [&](UStaticMeshComponent* Parent, UStaticMesh* Mesh, const FVector& Loc, const FRotator& Rot, const FVector& Scale, UMaterialInterface* Mat, const FName& Name)
+	{
+		if (!Parent || !Mesh)
+		{
+			return;
+		}
+		if (UStaticMeshComponent* Piece = Place(Mesh, Loc, Rot, Scale, Mat, Name))
+		{
+			Piece->AttachToComponent(Parent, FAttachmentTransformRules::KeepWorldTransform);
+		}
+	};
+
+	while (HarvestTrunks.Num() < Brain.TreeCount)
+	{
+		const int32 I = HarvestTrunks.Num();
+		const vg::Timber& Tree = Brain.Trees[I];
+		const FVector G = Terrain ? Terrain->StandAt(Tree.X, Tree.Y) : FVector(Tree.X, Tree.Y, AValleyTerrain::OffMeshStandZ);
+		UStaticMeshComponent* Trunk = Place(Cyl, G + FVector(0.f, 0.f, 90.f), FRotator::ZeroRotator, FVector(0.22f, 0.22f, 1.8f), Wood,
+			FName(*FString::Printf(TEXT("HarvestTrunk%d"), I)));
+		UStaticMeshComponent* Crown = Place(Sphere ? Sphere : Cyl, G + FVector(0.f, 0.f, 230.f), FRotator::ZeroRotator, FVector(1.15f, 1.15f, 0.9f), Foliage,
+			FName(*FString::Printf(TEXT("HarvestCrown%d"), I)));
+		HarvestTrunks.Add(Trunk);
+		HarvestCrowns.Add(Crown);
+	}
+	for (int32 I = 0; I < HarvestTrunks.Num() && I < Brain.TreeCount; ++I)
+	{
+		if (Brain.Trees[I].Standing)
+		{
+			continue;
+		}
+		if (HarvestCrowns.IsValidIndex(I) && HarvestCrowns[I])
+		{
+			HarvestCrowns[I]->DestroyComponent();
+			HarvestCrowns[I] = nullptr;
+		}
+		if (HarvestTrunks[I])
+		{
+			HarvestTrunks[I]->DestroyComponent();
+			HarvestTrunks[I] = nullptr;
+		}
+	}
+
+	while (CampSpearShafts.Num() < Brain.TribeCount * 2)
+	{
+		const int32 I = CampSpearShafts.Num();
+		const int32 TribeId = I / 2;
+		const int32 Which = I % 2;
+		const vg::Tribe& Tribe = Brain.Tribes[TribeId];
+		const FVector G = Terrain ? Terrain->StandAt(Tribe.FireX, Tribe.FireY) : FVector(Tribe.FireX, Tribe.FireY, AValleyTerrain::OffMeshStandZ);
+		const FVector Offset(70.f + Which * 18.f, -40.f, 40.f);
+		UStaticMeshComponent* Shaft = Place(Cyl, G + Offset, FRotator(0.f, 20.f, 78.f), FVector(0.05f, 0.05f, 1.15f), Wood,
+			FName(*FString::Printf(TEXT("CampSpear%d"), I)));
+		UStaticMeshComponent* Tip = Place(Cube ? Cube : Cyl, G + Offset + FVector(8.f, 0.f, 52.f), FRotator(0.f, 20.f, 78.f), FVector(0.08f, 0.08f, 0.16f),
+			Valley::Material(TEXT("M_Stone")), FName(*FString::Printf(TEXT("CampSpearTip%d"), I)));
+		if (Shaft)
+		{
+			Shaft->SetHiddenInGame(true);
+		}
+		if (Tip)
+		{
+			Tip->SetHiddenInGame(true);
+		}
+		CampSpearShafts.Add(Shaft);
+		CampSpearTips.Add(Tip);
+	}
+	for (int32 I = 0; I < CampSpearShafts.Num(); ++I)
+	{
+		const int32 TribeId = I / 2;
+		const int32 Which = I % 2;
+		const bool bShow = TribeId < Brain.TribeCount && Brain.Tribes[TribeId].Spears > Which;
+		if (CampSpearShafts[I])
+		{
+			CampSpearShafts[I]->SetHiddenInGame(!bShow, true);
+		}
+		if (CampSpearTips.IsValidIndex(I) && CampSpearTips[I])
+		{
+			CampSpearTips[I]->SetHiddenInGame(!bShow, true);
+		}
+	}
+
+	while (SitePads.Num() < Brain.SiteCount)
+	{
+		const int32 I = SitePads.Num();
+		const vg::WorkSite& Site = Brain.Sites[I];
+		const FVector G = Terrain ? Terrain->StandAt(Site.X, Site.Y) : FVector(Site.X, Site.Y, AValleyTerrain::OffMeshStandZ);
+		UStaticMeshComponent* Pad = Place(Cube ? Cube : Cyl, G + FVector(0.f, 0.f, 8.f), FRotator::ZeroRotator, FVector(2.6f, 2.4f, 0.1f), Stone,
+			FName(*FString::Printf(TEXT("SitePad%d"), I)));
+		const FVector Corners[4] = {FVector(-90.f, -80.f, 16.f), FVector(90.f, -80.f, 16.f), FVector(-90.f, 80.f, 16.f), FVector(90.f, 80.f, 16.f)};
+		for (int32 C = 0; C < 4; ++C)
+		{
+			AddPiece(Pad, Cube ? Cube : Cyl, G + Corners[C], FRotator::ZeroRotator, FVector(0.28f, 0.28f, 0.16f), Stone,
+				FName(*FString::Printf(TEXT("SiteStone%d_%d"), I, C)));
+		}
+		UStaticMeshComponent* Frame = Place(Cyl, G + Corners[0] + FVector(0.f, 0.f, 70.f), FRotator::ZeroRotator, FVector(0.14f, 0.14f, 1.5f), Wood,
+			FName(*FString::Printf(TEXT("SiteFrame%d"), I)));
+		for (int32 C = 1; C < 4; ++C)
+		{
+			AddPiece(Frame, Cyl, G + Corners[C] + FVector(0.f, 0.f, 70.f), FRotator::ZeroRotator, FVector(0.14f, 0.14f, 1.5f), Wood,
+				FName(*FString::Printf(TEXT("SiteLog%d_%d"), I, C)));
+		}
+		AddPiece(Frame, Cyl, G + FVector(0.f, -80.f, 145.f), FRotator(0.f, 90.f, 90.f), FVector(0.1f, 0.1f, 1.9f), Wood,
+			FName(*FString::Printf(TEXT("SiteBeamA%d"), I)));
+		AddPiece(Frame, Cyl, G + FVector(0.f, 80.f, 145.f), FRotator(0.f, 90.f, 90.f), FVector(0.1f, 0.1f, 1.9f), Wood,
+			FName(*FString::Printf(TEXT("SiteBeamB%d"), I)));
+		UStaticMeshComponent* Wall = Place(Cube ? Cube : Cyl, G + FVector(0.f, -80.f, 78.f), FRotator::ZeroRotator, FVector(1.7f, 0.08f, 1.15f), Hide,
+			FName(*FString::Printf(TEXT("SiteWall%d"), I)));
+		AddPiece(Wall, Cube ? Cube : Cyl, G + FVector(0.f, 80.f, 78.f), FRotator::ZeroRotator, FVector(1.7f, 0.08f, 1.15f), Hide,
+			FName(*FString::Printf(TEXT("SiteWallB%d"), I)));
+		AddPiece(Wall, Cube ? Cube : Cyl, G + FVector(-90.f, 0.f, 78.f), FRotator(0.f, 90.f, 0.f), FVector(1.5f, 0.08f, 1.15f), Hide,
+			FName(*FString::Printf(TEXT("SiteWallC%d"), I)));
+		UStaticMeshComponent* Roof = Place(Cube ? Cube : Cyl, G + FVector(0.f, -40.f, 168.f), FRotator(-22.f, 0.f, 0.f), FVector(2.9f, 1.35f, 0.08f), Hide,
+			FName(*FString::Printf(TEXT("SiteRoof%d"), I)));
+		AddPiece(Roof, Cube ? Cube : Cyl, G + FVector(0.f, 40.f, 168.f), FRotator(22.f, 0.f, 0.f), FVector(2.9f, 1.35f, 0.08f), Hide,
+			FName(*FString::Printf(TEXT("SiteRoofB%d"), I)));
+		SitePads.Add(Pad);
+		SiteFrames.Add(Frame);
+		SiteWalls.Add(Wall);
+		SiteRoofs.Add(Roof);
+	}
+	for (int32 I = 0; I < SitePads.Num() && I < Brain.SiteCount; ++I)
+	{
+		const vg::WorkSite& Site = Brain.Sites[I];
+		const int32 Stage = Site.Stage;
+		if (SitePads[I])
+		{
+			SitePads[I]->SetHiddenInGame(Stage < 1, true);
+		}
+		if (SiteFrames.IsValidIndex(I) && SiteFrames[I])
+		{
+			SiteFrames[I]->SetHiddenInGame(Stage < 2, true);
+		}
+		if (SiteWalls.IsValidIndex(I) && SiteWalls[I])
+		{
+			SiteWalls[I]->SetHiddenInGame(Stage < 3, true);
+		}
+		if (SiteRoofs.IsValidIndex(I) && SiteRoofs[I])
+		{
+			SiteRoofs[I]->SetHiddenInGame(Stage < 4, true);
+		}
+	}
 }
 
 void AValleyWorld::SpawnPeople()
 {
-	// These eight adults are the entire human population on Earth this slice.
-	// Do not spawn extra tribes, camps, or background people.
-	const int32 Humans = FMath::Min(Brain.VillagerCount, vg::kEarthHumans);
-	for (int32 I = 0; I < Humans; ++I)
+	for (int32 I = 0; I < Brain.VillagerCount; ++I)
 	{
 		AValleyVillager* V = GetWorld()->SpawnActor<AValleyVillager>();
-		UClass* Presentation = vg::UsesMetaHumanSlot(I) ? MaraMetaHumanClass.Get() : nullptr;
+		UClass* Presentation = (I == vg::kMetaHumanMilestoneSlot && Brain.Villagers[I].bTeacher)
+			? MaraMetaHumanClass.Get()
+			: nullptr;
 		V->Arm(Brain.Villagers[I], Presentation);
 		V->SyncFromSim(Brain.Villagers[I], Terrain, 0.f);
 		Villagers.Add(V);
@@ -580,6 +854,36 @@ void AValleyWorld::SpawnPeople()
 		A->Arm(I);
 		A->SyncFromSim(Brain.Animals[I], Terrain, 0.f);
 		Animals.Add(A);
+	}
+}
+
+void AValleyWorld::EnsureSpawnedPopulation()
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+	while (Villagers.Num() < Brain.VillagerCount)
+	{
+		const int32 I = Villagers.Num();
+		if (I < 0 || I >= vg::kMaxHumans)
+		{
+			break;
+		}
+		AValleyVillager* V = World->SpawnActor<AValleyVillager>();
+		if (!V)
+		{
+			break;
+		}
+		V->Arm(Brain.Villagers[I], nullptr);
+		V->SyncFromSim(Brain.Villagers[I], Terrain, 0.f);
+		Villagers.Add(V);
+	}
+	while (SpawnedShelters < Brain.ShelterCount)
+	{
+		PlaceShelter(SpawnedShelters);
+		SpawnedShelters += 1;
 	}
 }
 
@@ -746,6 +1050,8 @@ void AValleyWorld::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 	vg::TickWorld(Brain, DeltaSeconds);
+	EnsureSpawnedPopulation();
+	EnsureWorkVisuals();
 	UpdateSky();
 	UpdateWeatherVisuals(DeltaSeconds);
 

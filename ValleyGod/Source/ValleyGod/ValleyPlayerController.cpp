@@ -93,6 +93,7 @@ void AValleyPlayerController::BuildMapping()
 	PinAction = MakeButton(TEXT("Pin"));
 	CycleAction = MakeButton(TEXT("Cycle"));
 	OverviewAction = MakeButton(TEXT("Overview"));
+	NextLandAction = MakeButton(TEXT("NextLand"));
 
 	MapKey(MoveAction, EKeys::W);
 	MapKey(MoveAction, EKeys::S, true);
@@ -115,6 +116,7 @@ void AValleyPlayerController::BuildMapping()
 	MapKey(PinAction, EKeys::LeftMouseButton);
 	MapKey(CycleAction, EKeys::Tab);
 	MapKey(OverviewAction, EKeys::F);
+	MapKey(NextLandAction, EKeys::G);
 }
 
 void AValleyPlayerController::SetupInputComponent()
@@ -145,6 +147,7 @@ void AValleyPlayerController::SetupInputComponent()
 		EIC->BindAction(PinAction, ETriggerEvent::Started, this, &ThisClass::OnPin);
 		EIC->BindAction(CycleAction, ETriggerEvent::Started, this, &ThisClass::OnCycle);
 		EIC->BindAction(OverviewAction, ETriggerEvent::Started, this, &ThisClass::OnOverview);
+		EIC->BindAction(NextLandAction, ETriggerEvent::Started, this, &ThisClass::OnNextLand);
 	}
 }
 
@@ -340,4 +343,25 @@ void AValleyPlayerController::OnOverview()
 	{
 		Watcher->GoOverview();
 	}
+}
+
+void AValleyPlayerController::OnNextLand()
+{
+	AValleyWorld* W = Valley();
+	AValleyGodPawn* Watcher = Cast<AValleyGodPawn>(GetPawn());
+	if (!W || !Watcher)
+	{
+		return;
+	}
+	W->PinVillager(-1);
+	Watcher->StopFollow();
+	const int32 Index = W->CycleContinent();
+	const vg::World& Sim = W->Sim();
+	if (Index < 0 || Index >= Sim.ContinentCount)
+	{
+		return;
+	}
+	const vg::Continent& Land = Sim.Continents[Index];
+	Watcher->SetActorLocation(FVector(Land.X, Land.Y - 1400.f, 1680.f));
+	SetControlRotation(FRotator(-32.f, 90.f, 0.f));
 }

@@ -109,11 +109,7 @@ void AValleyAnimal::SyncFromSim(const vg::Animal& Sim, AValleyTerrain* Terrain, 
 	{
 		return;
 	}
-	FVector Loc(Sim.X, Sim.Y, 0.f);
-	if (Terrain)
-	{
-		Loc.Z = Terrain->HeightAt(Sim.X, Sim.Y);
-	}
+	FVector Loc = Terrain ? Terrain->StandAt(Sim.X, Sim.Y) : FVector(Sim.X, Sim.Y, 0.f);
 	Hop = WorldTime * 7.f;
 	Loc.Z += FMath::Abs(FMath::Sin(Hop)) * 6.f;
 	SetActorLocation(Loc);
