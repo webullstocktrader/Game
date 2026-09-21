@@ -2,6 +2,10 @@
 
 This is the rule for harvest, buildings, people, and the look of the world. The miniature Earth and the eight tribes ship first. This lock rides along with that scaffold. It does not wait on a finished graphics pass.
 
+## Research
+
+The teacher runs `TickResearch` on `vg::Tech` (`ValleyTechTree.h`). The watchable start is Fire, Stone tools, Shelter craft. One tier unlocks at a time. Stone tools spends wood to craft a spear the person carries, and a spare shows by the fire. Shelter craft sends an adult into the Build activity on a site. Animal husbandry sets `bRidingUnlocked` and does not spawn a horse.
+
 ## Harvest
 
 Chopping a tree removes **that** world tree instance and adds one wood to the tribe stock. The sim marks the timber down. The world destroys the trunk and crown components for that tree. They do not grow back.

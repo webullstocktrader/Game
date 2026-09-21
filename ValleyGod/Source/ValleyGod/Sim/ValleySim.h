@@ -6,6 +6,9 @@
 // Babies do not pair. Lie, cheat, and steal are personal; war is a teacher choice.
 // Harvest: chopping a tree removes that timber instance and adds tribe wood.
 // Buildings: watchable stages site, frame, walls, roof. Pieces are a kit, not a unique mesh.
+// Teachers research the tech tree. Stone tools craft a spear. Shelter craft raises a site.
+
+#include "ValleyTechTree.h"
 
 namespace vg
 {
@@ -28,7 +31,6 @@ namespace vg
 	constexpr int kMaxTrees = 32;
 	constexpr int kTreesPerTribe = 3;
 	constexpr int kMaxSites = 16;
-	constexpr int kTechCount = 8;
 	constexpr float kBabyYearSeconds = 6.f;
 
 	enum class Activity
@@ -44,7 +46,8 @@ namespace vg
 		HighGround,
 		Teach,
 		Build,
-		Chop
+		Chop,
+		Craft
 	};
 
 	enum class Sex
@@ -84,7 +87,8 @@ namespace vg
 		Clear,
 		Teach,
 		Build,
-		Birth
+		Birth,
+		Craft
 	};
 
 	struct Villager
@@ -121,18 +125,8 @@ namespace vg
 		bool bWorked = false;
 		float AgeCarry = 0.f;
 		int WorkTarget = -1;
-	};
-
-	enum class TechId
-	{
-		FireTools = 0,
-		Farming,
-		PotteryWeaving,
-		Metal,
-		Writing,
-		Machines,
-		Electricity,
-		Computing
+		float Craft = 0.f;
+		bool bCarriesSpear = false;
 	};
 
 	struct Timber
@@ -196,10 +190,13 @@ namespace vg
 		float Ambition = 0.15f;
 		const char* Temper = "";
 		int Wood = 0;
+		int Spears = 0;
 		int TechTier = 0;
 		bool TechUnlocked[kTechCount]{};
 		float TechCooldown = 0.f;
+		float Research = 0.f;
 		int ActiveSite = -1;
+		bool bRidingUnlocked = false;
 	};
 
 	enum class Stance

@@ -116,6 +116,12 @@ private:
 	TArray<TObjectPtr<UStaticMeshComponent>> SiteRoofs;
 
 	UPROPERTY()
+	TArray<TObjectPtr<UStaticMeshComponent>> CampSpearShafts;
+
+	UPROPERTY()
+	TArray<TObjectPtr<UStaticMeshComponent>> CampSpearTips;
+
+	UPROPERTY()
 	TArray<TObjectPtr<UHierarchicalInstancedStaticMeshComponent>> FoliagePools;
 
 	TArray<float> TreeBaseYaw;

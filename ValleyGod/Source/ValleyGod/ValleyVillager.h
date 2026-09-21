@@ -30,6 +30,7 @@ public:
 
 private:
 	void BuildBody(const struct vg::Villager& Sim);
+	void EnsureCraftedSpear();
 	void AttachLabels(const struct vg::Villager& Sim);
 	void SpawnPresentation(UClass* PresentationClass);
 	UStaticMeshComponent* AddPart(const FName& Name, UStaticMesh* Mesh, const FVector& Loc, const FRotator& Rot, const FVector& Scale, UMaterialInterface* Mat);
@@ -54,6 +55,12 @@ private:
 
 	UPROPERTY()
 	TObjectPtr<UStaticMeshComponent> ThighR;
+
+	UPROPERTY()
+	TObjectPtr<UStaticMeshComponent> StoneSpear;
+
+	UPROPERTY()
+	TObjectPtr<UStaticMeshComponent> StoneSpearTip;
 
 	UPROPERTY()
 	TObjectPtr<UCapsuleComponent> ClickProbe;

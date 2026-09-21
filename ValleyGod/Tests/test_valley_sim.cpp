@@ -142,7 +142,7 @@ int main()
 		const SpeechContext Pools[] = {
 			SpeechContext::Hunt, SpeechContext::Eat, SpeechContext::Sleep, SpeechContext::Talk,
 			SpeechContext::Rain, SpeechContext::Tornado, SpeechContext::Hurricane, SpeechContext::Flood,
-			SpeechContext::Clear, SpeechContext::Teach, SpeechContext::Build
+			SpeechContext::Clear, SpeechContext::Teach, SpeechContext::Build, SpeechContext::Craft
 		};
 		for (SpeechContext Context : Pools)
 		{
@@ -253,9 +253,12 @@ int main()
 		{
 			CHECK(W.Tribes[A].Temper && W.Tribes[A].Temper[0], "each tribe has a temper");
 			CHECK(!SpeechForbidden(W.Tribes[A].Temper), "temper has no cosmos/god");
-			CHECK(W.Tribes[A].TechUnlocked[0], "fire and tools start unlocked");
+			CHECK(W.Tribes[A].TechUnlocked[static_cast<int>(TechId::Fire)], "fire starts unlocked");
+			CHECK(!W.Tribes[A].TechUnlocked[static_cast<int>(TechId::StoneTools)], "stone tools wait on research");
 			CHECK(!W.Tribes[A].TechUnlocked[static_cast<int>(TechId::Computing)], "computing stays locked");
-			CHECK(W.Tribes[A].TechTier == 0, "tech starts at fire and tools");
+			CHECK(!W.Tribes[A].bRidingUnlocked, "riding stays locked");
+			CHECK(W.Tribes[A].Spears == 0, "no spears yet");
+			CHECK(W.Tribes[A].TechTier == 0, "tech starts at fire");
 			for (int B = 0; B < W.TribeCount; ++B)
 			{
 				const Relation& R = RelationBetween(W, A, B);
@@ -563,47 +566,67 @@ int main()
 	{
 		World W;
 		InitWorld(W);
-		CHECK(TechCount() == kTechCount, "eight tech tiers");
-		CHECK(std::strcmp(TechName(0), "Fire and tools") == 0, "stone-age start");
-		CHECK(std::strcmp(TechName(1), "Farming") == 0, "farming follows tools");
-		CHECK(std::strcmp(TechName(7), "Computing") == 0, "computing is the far tier");
-		CHECK(!SpeechForbidden(TechName(7)), "tech names stay out of cosmos talk");
+		CHECK(TechCount() == kTechCount, "tech tree length");
+		CHECK(std::strcmp(TechName(static_cast<int>(TechId::Fire)), "Fire") == 0, "research starts at fire");
+		CHECK(std::strcmp(TechName(static_cast<int>(TechId::StoneTools)), "Stone tools") == 0, "stone tools follow fire");
+		CHECK(std::strcmp(TechName(static_cast<int>(TechId::ShelterCraft)), "Shelter craft") == 0, "shelter craft follows tools");
+		CHECK(std::strcmp(TechName(static_cast<int>(TechId::Computing)), "Computing") == 0, "computing is a far tier");
+		CHECK(std::strcmp(TechName(static_cast<int>(TechId::AnimalHusbandry)), "Animal husbandry") == 0, "husbandry is on the tree");
+		CHECK(!SpeechForbidden(TechName(static_cast<int>(TechId::Computing))), "tech names stay out of cosmos talk");
 		const int Teacher = W.Tribes[0].TeacherId;
-		float LearnerBefore = 0.f;
-		for (int I = 0; I < W.VillagerCount; ++I)
-		{
-			if (W.Villagers[I].TribeId == 0 && !W.Villagers[I].bTeacher)
-			{
-				W.Villagers[I].Knowledge = 50.f;
-				LearnerBefore = 50.f;
-			}
-		}
-		W.Villagers[Teacher].Knowledge = 90.f;
+		float LearnerBefore = W.Villagers[Teacher + 1].Knowledge;
+		TickWorld(W, 3.f);
+		CHECK(W.Tribes[0].TechTier == static_cast<int>(TechId::StoneTools), "teacher research unlocks stone tools");
+		CHECK(W.Tribes[0].TechUnlocked[static_cast<int>(TechId::StoneTools)], "stone tools turn on");
+		CHECK(!W.Tribes[0].TechUnlocked[static_cast<int>(TechId::ShelterCraft)], "shelter craft waits out the cooldown");
+		CHECK(W.Villagers[Teacher + 1].Knowledge > LearnerBefore, "a new tier lifts a learner");
+		TickWorld(W, 0.5f);
+		CHECK(W.Tribes[0].TechTier == static_cast<int>(TechId::StoneTools), "cooldown blocks a second unlock");
+		W.Tribes[0].TechCooldown = 0.f;
+		W.Tribes[0].Research = TechTierAt(static_cast<int>(TechId::ShelterCraft)).ResearchNeed;
 		TickWorld(W, 0.2f);
-		CHECK(W.Tribes[0].TechTier == 1, "one tier unlocks when knowledge crosses it");
-		CHECK(W.Tribes[0].TechUnlocked[1], "farming turns on");
-		CHECK(!W.Tribes[0].TechUnlocked[2], "the next tier waits");
-		bool bSmarter = false;
-		for (int I = 0; I < W.VillagerCount; ++I)
-		{
-			if (W.Villagers[I].TribeId == 0 && !W.Villagers[I].bTeacher && W.Villagers[I].Knowledge > LearnerBefore + 1.f)
-			{
-				bSmarter = true;
-			}
-		}
-		CHECK(bSmarter, "a new tier lifts the people the teacher leads");
-		TickWorld(W, 0.2f);
-		CHECK(W.Tribes[0].TechTier == 1, "cooldown blocks a second unlock");
-		for (int I = 0; I < W.VillagerCount; ++I)
-		{
-			if (W.Villagers[I].TribeId == 0)
-			{
-				W.Villagers[I].Knowledge = 99.f;
-			}
-		}
-		TickWorld(W, 4.5f);
-		CHECK(W.Tribes[0].TechTier == 2, "the next tick unlocks only one more tier");
+		CHECK(W.Tribes[0].TechTier == static_cast<int>(TechId::ShelterCraft), "the next tick unlocks only shelter craft");
 		CHECK(!W.Tribes[0].TechUnlocked[static_cast<int>(TechId::Computing)], "computing is not a single tick away");
+		CHECK(!W.Tribes[0].bRidingUnlocked, "horses are not unlocked with shelter craft");
+	}
+
+	{
+		World W;
+		InitWorld(W);
+		const int Animals = W.AnimalCount;
+		Tribe& T = W.Tribes[0];
+		T.TechTier = static_cast<int>(TechId::Computing);
+		T.TechCooldown = 0.f;
+		T.Research = TechTierAt(static_cast<int>(TechId::AnimalHusbandry)).ResearchNeed;
+		for (int I = 0; I <= static_cast<int>(TechId::Computing); ++I)
+		{
+			T.TechUnlocked[I] = true;
+		}
+		TickWorld(W, 0.2f);
+		CHECK(T.bRidingUnlocked, "animal husbandry stubs riding");
+		CHECK(W.AnimalCount == Animals, "the stub does not spawn a mount");
+		CHECK(!W.Tribes[1].bRidingUnlocked, "another camp does not ride");
+	}
+
+	{
+		World W;
+		InitWorld(W);
+		Villager& Maker = W.Villagers[W.Tribes[0].TeacherId + 1];
+		W.Tribes[0].TechUnlocked[static_cast<int>(TechId::StoneTools)] = true;
+		W.Tribes[0].Wood = 2;
+		Maker.Current = Activity::Craft;
+		Maker.Craft = 0.f;
+		Maker.X = W.Tribes[0].FireX;
+		Maker.Y = W.Tribes[0].FireY;
+		Maker.TargetX = Maker.X;
+		Maker.TargetY = Maker.Y;
+		Maker.Hunger = 95.f;
+		Maker.Energy = 95.f;
+		const int Before = W.Tribes[0].Wood;
+		TickWorld(W, 2.5f);
+		CHECK(W.Villagers[Maker.Id].bCarriesSpear, "stone tools put a spear in hand");
+		CHECK(W.Tribes[0].Spears >= 1, "the camp keeps a spear");
+		CHECK(W.Tribes[0].Wood == Before - 1, "a spear spends one wood");
 	}
 
 	{

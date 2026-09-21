@@ -43,6 +43,7 @@ void AValleyVillager::Arm(const vg::Villager& Sim, UClass* PresentationClass)
 	{
 		BuildBody(Sim);
 	}
+	EnsureCraftedSpear();
 }
 
 void AValleyVillager::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -252,10 +253,31 @@ void AValleyVillager::BuildBody(const vg::Villager& Sim)
 		AddPart(TEXT("Beard"), Sphere, FVector(10.f, 0.f, 142.f), FRotator::ZeroRotator, FVector(0.16f, 0.18f, 0.14f), HairUse);
 	}
 
-	if (Cone && Sim.Role == vg::Habit::Hunter)
+}
+
+void AValleyVillager::EnsureCraftedSpear()
+{
+	if (StoneSpear)
 	{
-		AddPart(TEXT("Spear"), Cyl, FVector(18.f, ArmY + 6.f, 96.f), FRotator(8.f, 0.f, 12.f), FVector(0.035f, 0.035f, 1.15f), WoodUse);
-		AddPart(TEXT("SpearTip"), Cone ? Cone : Cyl, FVector(22.f, ArmY + 8.f, 154.f), FRotator(8.f, 0.f, 12.f), FVector(0.06f, 0.06f, 0.14f), Valley::Material(TEXT("M_Stone")));
+		return;
+	}
+	UStaticMesh* Cyl = Valley::CylinderMesh();
+	UStaticMesh* Cone = Valley::ConeMesh();
+	if (!Cyl)
+	{
+		return;
+	}
+	UMaterialInterface* Wood = Valley::Material(TEXT("M_Wood"));
+	UMaterialInterface* Stone = Valley::Material(TEXT("M_Stone"));
+	StoneSpear = AddPart(TEXT("CraftedSpear"), Cyl, FVector(22.f, 28.f, 96.f), FRotator(8.f, 0.f, 14.f), FVector(0.04f, 0.04f, 1.25f), Wood);
+	StoneSpearTip = AddPart(TEXT("CraftedSpearTip"), Cone ? Cone : Cyl, FVector(28.f, 32.f, 158.f), FRotator(8.f, 0.f, 14.f), FVector(0.07f, 0.07f, 0.16f), Stone);
+	if (StoneSpear)
+	{
+		StoneSpear->SetHiddenInGame(true);
+	}
+	if (StoneSpearTip)
+	{
+		StoneSpearTip->SetHiddenInGame(true);
 	}
 }
 
@@ -298,7 +320,7 @@ void AValleyVillager::SyncFromSim(const vg::Villager& Sim, AValleyTerrain* Terra
 		|| Sim.Current == vg::Activity::Panic || Sim.Current == vg::Activity::Shelter
 		|| Sim.Current == vg::Activity::HighGround || Sim.Current == vg::Activity::Eat
 		|| Sim.Current == vg::Activity::Teach || Sim.Current == vg::Activity::Build
-		|| Sim.Current == vg::Activity::Chop;
+		|| Sim.Current == vg::Activity::Chop || Sim.Current == vg::Activity::Craft;
 
 	if (bMoving && !Presentation)
 	{
@@ -314,6 +336,15 @@ void AValleyVillager::SyncFromSim(const vg::Villager& Sim, AValleyTerrain* Terra
 			ThighL->SetRelativeRotation(FRotator(-12.f * FMath::Sin(WalkPhase), 0.f, 0.f));
 			ThighR->SetRelativeRotation(FRotator(12.f * FMath::Sin(WalkPhase), 0.f, 0.f));
 		}
+	}
+
+	if (StoneSpear)
+	{
+		StoneSpear->SetHiddenInGame(!Sim.bCarriesSpear, true);
+	}
+	if (StoneSpearTip)
+	{
+		StoneSpearTip->SetHiddenInGame(!Sim.bCarriesSpear, true);
 	}
 
 	const float Grown = Sim.AgeYears >= vg::kMinAdultAge

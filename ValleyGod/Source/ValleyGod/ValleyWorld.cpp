@@ -735,6 +735,44 @@ void AValleyWorld::EnsureWorkVisuals()
 		}
 	}
 
+	while (CampSpearShafts.Num() < Brain.TribeCount * 2)
+	{
+		const int32 I = CampSpearShafts.Num();
+		const int32 TribeId = I / 2;
+		const int32 Which = I % 2;
+		const vg::Tribe& Tribe = Brain.Tribes[TribeId];
+		const FVector G = Terrain ? Terrain->StandAt(Tribe.FireX, Tribe.FireY) : FVector(Tribe.FireX, Tribe.FireY, AValleyTerrain::OffMeshStandZ);
+		const FVector Offset(70.f + Which * 18.f, -40.f, 40.f);
+		UStaticMeshComponent* Shaft = Place(Cyl, G + Offset, FRotator(0.f, 20.f, 78.f), FVector(0.05f, 0.05f, 1.15f), Wood,
+			FName(*FString::Printf(TEXT("CampSpear%d"), I)));
+		UStaticMeshComponent* Tip = Place(Cube ? Cube : Cyl, G + Offset + FVector(8.f, 0.f, 52.f), FRotator(0.f, 20.f, 78.f), FVector(0.08f, 0.08f, 0.16f),
+			Valley::Material(TEXT("M_Stone")), FName(*FString::Printf(TEXT("CampSpearTip%d"), I)));
+		if (Shaft)
+		{
+			Shaft->SetHiddenInGame(true);
+		}
+		if (Tip)
+		{
+			Tip->SetHiddenInGame(true);
+		}
+		CampSpearShafts.Add(Shaft);
+		CampSpearTips.Add(Tip);
+	}
+	for (int32 I = 0; I < CampSpearShafts.Num(); ++I)
+	{
+		const int32 TribeId = I / 2;
+		const int32 Which = I % 2;
+		const bool bShow = TribeId < Brain.TribeCount && Brain.Tribes[TribeId].Spears > Which;
+		if (CampSpearShafts[I])
+		{
+			CampSpearShafts[I]->SetHiddenInGame(!bShow, true);
+		}
+		if (CampSpearTips.IsValidIndex(I) && CampSpearTips[I])
+		{
+			CampSpearTips[I]->SetHiddenInGame(!bShow, true);
+		}
+	}
+
 	while (SitePads.Num() < Brain.SiteCount)
 	{
 		const int32 I = SitePads.Num();

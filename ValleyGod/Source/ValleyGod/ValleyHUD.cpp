@@ -87,7 +87,7 @@ void AValleyHUD::DrawHUD()
 			Stage = vg::BuildStageName(Sim.Sites[Home.ActiveSite].Stage);
 		}
 		ShadowText(PanelX + 16.f, 204.f,
-			FString::Printf(TEXT("%s  wood %d  %s"), UTF8_TO_TCHAR(vg::TechName(Home.TechTier)), Home.Wood, UTF8_TO_TCHAR(Stage)),
+			FString::Printf(TEXT("%s  wood %d  spears %d  %s"), UTF8_TO_TCHAR(vg::TechName(Home.TechTier)), Home.Wood, Home.Spears, UTF8_TO_TCHAR(Stage)),
 			FLinearColor(0.7f, 0.72f, 0.65f), 0.75f);
 	}
 	if (Sim.Sky != vg::Weather::Clear)
@@ -165,7 +165,7 @@ void AValleyHUD::DrawHUD()
 				Stage = vg::BuildStageName(Sim.Sites[Tribe->ActiveSite].Stage);
 			}
 			ShadowText(W - 344.f, H - 132.f,
-				FString::Printf(TEXT("%s  wood %d  %s"), UTF8_TO_TCHAR(vg::TechName(Tribe->TechTier)), Tribe->Wood, UTF8_TO_TCHAR(Stage)),
+				FString::Printf(TEXT("%s  wood %d  spears %d  %s"), UTF8_TO_TCHAR(vg::TechName(Tribe->TechTier)), Tribe->Wood, Tribe->Spears, UTF8_TO_TCHAR(Stage)),
 				FLinearColor(0.7f, 0.72f, 0.65f), 0.75f);
 			ShadowText(W - 344.f, H - 110.f,
 				FString::Printf(TEXT("Shelters %d   claim %dm"), Tribe->ShelterCount, FMath::RoundToInt(Tribe->ClaimRadius / 100.f)),

@@ -17,7 +17,8 @@ namespace vg
 		constexpr float kTeachRange = 420.f;
 		constexpr float kChopPerSecond = 50.f;
 		constexpr float kBuildPerSecond = 24.f;
-		constexpr float kTechNeed[kTechCount] = {0.f, 38.f, 50.f, 62.f, 74.f, 84.f, 92.f, 97.f};
+		constexpr float kCraftPerSecond = 45.f;
+		constexpr float kResearchPerSecond = 3.f;
 
 		const char* kHuntLines[] = {
 			"Tracks go into the brush.",
@@ -143,6 +144,15 @@ namespace vg
 			"Our camp can take one more.",
 		};
 
+		const char* kCraftLines[] = {
+			"This stone will bite.",
+			"Bind it tight. The edge is sharp.",
+			"A spear for the brush.",
+			"Hold the shaft. I have the point.",
+			"The point sits on the wood.",
+			"One spear by the fire.",
+		};
+
 		const char* kBirthLines[] = {
 			"Another pair of hands by the fire.",
 			"They are grown. They eat with us.",
@@ -171,6 +181,7 @@ namespace vg
 			{SpeechContext::Teach, kTeachLines, static_cast<int>(sizeof(kTeachLines) / sizeof(kTeachLines[0]))},
 			{SpeechContext::Build, kBuildLines, static_cast<int>(sizeof(kBuildLines) / sizeof(kBuildLines[0]))},
 			{SpeechContext::Birth, kBirthLines, static_cast<int>(sizeof(kBirthLines) / sizeof(kBirthLines[0]))},
+			{SpeechContext::Craft, kCraftLines, static_cast<int>(sizeof(kCraftLines) / sizeof(kCraftLines[0]))},
 		};
 
 		const char* kTeacherNames[] = {
@@ -917,7 +928,8 @@ namespace vg
 			{
 				ChooseNeed(W, V);
 			}
-			if (!Storm && (V.Current == Activity::Build || V.Current == Activity::Chop) && (NeedsFood || NeedsSleep))
+			if (!Storm && (V.Current == Activity::Build || V.Current == Activity::Chop || V.Current == Activity::Craft)
+				&& (NeedsFood || NeedsSleep))
 			{
 				ChooseNeed(W, V);
 			}
@@ -950,7 +962,7 @@ namespace vg
 			{
 				Speed = 360.f;
 			}
-			else if (V.Current == Activity::Build || V.Current == Activity::Chop)
+			else if (V.Current == Activity::Build || V.Current == Activity::Chop || V.Current == Activity::Craft)
 			{
 				Speed = 140.f;
 			}
@@ -1056,6 +1068,31 @@ namespace vg
 				}
 			}
 
+			if (V.Current == Activity::Craft && T && IsAdult(V))
+			{
+				V.TargetX = T->FireX;
+				V.TargetY = T->FireY;
+				const bool bCanCraft = T->TechUnlocked[static_cast<int>(TechId::StoneTools)] && T->Wood > 0 && T->Spears < 4;
+				if (!bCanCraft)
+				{
+					V.Current = Activity::Idle;
+				}
+				else if (Dist(V.X, V.Y, T->FireX, T->FireY) < 120.f)
+				{
+					Speed = 0.f;
+					V.Craft += Dt * kCraftPerSecond;
+					if (V.Craft >= 100.f)
+					{
+						V.Craft = 0.f;
+						T->Wood -= 1;
+						T->Spears += 1;
+						V.bCarriesSpear = true;
+						V.Current = Activity::Idle;
+						Speak(V, PickFresh(W, V, SpeechContext::Craft), 3.f);
+					}
+				}
+			}
+
 			if (V.Current == Activity::Build && T && IsAdult(V))
 			{
 				if (T->ActiveSite < 0 || T->ActiveSite >= W.SiteCount || !W.Sites[T->ActiveSite].Live)
@@ -1142,8 +1179,17 @@ namespace vg
 			}
 		}
 
-		void TickTech(World& W, Tribe& T, float Dt)
+		void TickResearch(World& W, Tribe& T, float Dt)
 		{
+			if (T.TeacherId < 0 || T.TeacherId >= W.VillagerCount)
+			{
+				return;
+			}
+			Villager& Teacher = W.Villagers[T.TeacherId];
+			if (!Teacher.bTeacher || !IsAdult(Teacher))
+			{
+				return;
+			}
 			if (T.TechCooldown > 0.f)
 			{
 				T.TechCooldown -= Dt;
@@ -1158,23 +1204,19 @@ namespace vg
 			{
 				return;
 			}
-			if (T.Knowledge < kTechNeed[Next])
-			{
-				return;
-			}
-			if (T.TeacherId < 0 || T.TeacherId >= W.VillagerCount)
-			{
-				return;
-			}
-			Villager& Teacher = W.Villagers[T.TeacherId];
-			if (!Teacher.bTeacher || Teacher.Knowledge < kTechNeed[Next])
+			T.Research += Dt * kResearchPerSecond;
+			if (T.Research < TechTierAt(Next).ResearchNeed)
 			{
 				return;
 			}
 			T.TechUnlocked[Next] = true;
 			T.TechTier = Next;
 			T.TechCooldown = 4.f;
-			const float Lift = 1.5f + static_cast<float>(Next);
+			if (Next == static_cast<int>(TechId::AnimalHusbandry))
+			{
+				T.bRidingUnlocked = true;
+			}
+			const float Lift = 1.5f + static_cast<float>(Next) * 0.15f;
 			for (int I = 0; I < W.VillagerCount; ++I)
 			{
 				Villager& Member = W.Villagers[I];
@@ -1255,7 +1297,7 @@ namespace vg
 					}
 				}
 				RefreshTribeKnowledge(W, T);
-				TickTech(W, T, Dt);
+				TickResearch(W, T, Dt);
 
 				if (!Storm)
 				{
@@ -1291,14 +1333,33 @@ namespace vg
 							break;
 						}
 					}
-					const bool bNeedWood = Standing > 0 && T.Wood < 3;
+					bool bCrafter = false;
+					for (int I = 0; I < W.VillagerCount; ++I)
+					{
+						if (W.Villagers[I].TribeId == T.Id && W.Villagers[I].Current == Activity::Craft)
+						{
+							bCrafter = true;
+						}
+					}
+					const bool bNeedWood = Standing > 0 && (T.Wood < 1 || (bHasLive && T.Wood <= 0));
 					const bool bSiteWaiting = bHasLive && W.Sites[T.ActiveSite].Progress >= 100.f
 						&& W.Sites[T.ActiveSite].Stage < 4 && T.Wood <= 0;
+					const bool bWantSpear = T.TechUnlocked[static_cast<int>(TechId::StoneTools)] && T.Spears < 2 && T.Wood >= 1;
 					if ((bNeedWood || bSiteWaiting) && !bChopper && IdleAdult)
 					{
 						AssignChop(W, *IdleAdult);
 					}
-					else if (!bHasLive && T.BuildCooldown <= 0.f && T.Knowledge >= 36.f
+					else if (bWantSpear && !bCrafter && IdleAdult)
+					{
+						IdleAdult->Current = Activity::Craft;
+						IdleAdult->Craft = 0.f;
+						IdleAdult->TargetX = T.FireX;
+						IdleAdult->TargetY = T.FireY;
+						IdleAdult->StateTimer = 4.f;
+						Speak(*IdleAdult, PickFresh(W, *IdleAdult, SpeechContext::Craft), 3.f);
+					}
+					else if (!bHasLive && T.BuildCooldown <= 0.f
+						&& T.TechUnlocked[static_cast<int>(TechId::ShelterCraft)] && T.Wood >= 1
 						&& T.StructureCount < kMaxStructuresPerTribe && IdleAdult)
 					{
 						const float Ang = static_cast<float>(T.StructureCount) * 0.9f;
@@ -1760,7 +1821,7 @@ namespace vg
 			TribeSlot.ActiveSite = -1;
 			for (int Tech = 0; Tech < kTechCount; ++Tech)
 			{
-				TribeSlot.TechUnlocked[Tech] = Tech == static_cast<int>(TechId::FireTools);
+				TribeSlot.TechUnlocked[Tech] = Tech == static_cast<int>(TechId::Fire);
 			}
 			RefreshClaim(W, TribeSlot);
 		}
@@ -2032,6 +2093,7 @@ namespace vg
 		case Activity::Teach: return "Teach";
 		case Activity::Build: return "Build";
 		case Activity::Chop: return "Chop";
+		case Activity::Craft: return "Craft";
 		case Activity::Idle:
 		default: return "Idle";
 		}
@@ -2039,18 +2101,11 @@ namespace vg
 
 	const char* TechName(int Index)
 	{
-		switch (Index)
+		if (Index < 0 || Index >= kTechCount)
 		{
-		case 0: return "Fire and tools";
-		case 1: return "Farming";
-		case 2: return "Pottery and weaving";
-		case 3: return "Metal";
-		case 4: return "Writing";
-		case 5: return "Machines";
-		case 6: return "Electricity";
-		case 7: return "Computing";
-		default: return "";
+			return "";
 		}
+		return TechTierAt(Index).Name;
 	}
 
 	const char* BuildStageName(int Stage)
