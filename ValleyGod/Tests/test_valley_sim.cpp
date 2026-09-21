@@ -249,43 +249,119 @@ int main()
 		CHECK(ContinentAt(W, EdgeX, EdgeY) == 0, "outer basin is still land");
 		CHECK(!IsClaimedLand(W, EdgeX, EdgeY, Claimed), "outer basin is unclaimed");
 
-		int Wars = 0;
 		for (int A = 0; A < W.TribeCount; ++A)
 		{
 			CHECK(W.Tribes[A].Temper && W.Tribes[A].Temper[0], "each tribe has a temper");
 			CHECK(!SpeechForbidden(W.Tribes[A].Temper), "temper has no cosmos/god");
-			CHECK(W.Tribes[A].Ambition < 0.8f, "ambition is too small to fight");
-			CHECK(!ConflictReady(W, A), "starter tribe is not ready for war");
+			CHECK(W.Tribes[A].TechUnlocked[0], "fire and tools start unlocked");
+			CHECK(!W.Tribes[A].TechUnlocked[static_cast<int>(TechId::Computing)], "computing stays locked");
+			CHECK(W.Tribes[A].TechTier == 0, "tech starts at fire and tools");
 			for (int B = 0; B < W.TribeCount; ++B)
 			{
 				const Relation& R = RelationBetween(W, A, B);
-				CHECK(!R.Hostile, "no pair starts hostile");
+				CHECK(R.State == Stance::Neutral, "every stance starts neutral");
 				CHECK(!TribesAtWar(W, A, B), "no war at the start");
+				CHECK(!TribesAllied(W, A, B), "no alliance at the start");
 				if (A != B)
 				{
 					CHECK(R.Trust >= 45.f && R.Trust <= 65.f, "trust starts neutral");
 					CHECK(R.Trade >= 40.f, "they can trade");
 					CHECK(R.Betrayal > 0.f && R.Betrayal <= 40.f, "betrayal is only a potential");
-				}
-				if (R.Hostile)
-				{
-					++Wars;
+					CHECK(!R.Met, "they have not met");
 				}
 			}
 		}
-		CHECK(Wars == 0, "diplomacy starts with zero wars");
+		W.Tribes[0].Ambition = 1.f;
+		W.Tribes[0].Greed = 1.f;
+		W.Tribes[0].StructureCount = kMaxStructuresPerTribe;
 		for (int Step = 0; Step < 40; ++Step)
 		{
 			TickWorld(W, 0.5f);
 		}
 		for (int A = 0; A < W.TribeCount; ++A)
 		{
-			CHECK(!ConflictReady(W, A), "time alone does not make a war");
 			for (int B = 0; B < W.TribeCount; ++B)
 			{
-				CHECK(!TribesAtWar(W, A, B), "neighbors stay unhostile");
+				CHECK(RelationBetween(W, A, B).State == Stance::Neutral, "time apart stays neutral");
+				CHECK(!TribesAtWar(W, A, B), "ambition alone does not start a war");
 			}
 		}
+	}
+
+	{
+		World W;
+		InitWorld(W);
+		W.Tribes[0].Honesty = 0.f;
+		W.Tribes[0].Ambition = 1.f;
+		W.Relations[1].Trust = 0.f;
+		int NeutralN = 0;
+		int EnemyN = 0;
+		int AllyN = 0;
+		for (int I = 0; I < 200; ++I)
+		{
+			const Stance Pick = TeacherStance(W, 0, 1);
+			if (Pick == Stance::Neutral)
+			{
+				++NeutralN;
+			}
+			else if (Pick == Stance::Enemy)
+			{
+				++EnemyN;
+			}
+			else
+			{
+				++AllyN;
+			}
+		}
+		CHECK(NeutralN > 0 && EnemyN > 0, "a harsh teacher can still stay neutral");
+		CHECK(NeutralN > EnemyN, "neutral stays more likely than war");
+		CHECK(AllyN == 0, "no trust and no honesty does not make an ally");
+
+		World Peace;
+		InitWorld(Peace);
+		Peace.Tribes[3].Honesty = 1.f;
+		Peace.Tribes[3].Ambition = 0.f;
+		Peace.Relations[3 * kTribeCount + 4].Trust = 100.f;
+		int PeaceNeutral = 0;
+		int PeaceAlly = 0;
+		int PeaceEnemy = 0;
+		for (int I = 0; I < 80; ++I)
+		{
+			const Stance Pick = TeacherStance(Peace, 3, 4);
+			if (Pick == Stance::Neutral)
+			{
+				++PeaceNeutral;
+			}
+			else if (Pick == Stance::Ally)
+			{
+				++PeaceAlly;
+			}
+			else
+			{
+				++PeaceEnemy;
+			}
+		}
+		CHECK(PeaceEnemy == 0, "a calm teacher does not choose war");
+		CHECK(PeaceAlly > 0 && PeaceNeutral > 0, "alliance is a choice, not a rule");
+	}
+
+	{
+		World W;
+		InitWorld(W);
+		Villager& A = W.Villagers[W.Tribes[0].TeacherId];
+		Villager& B = W.Villagers[W.Tribes[1].TeacherId];
+		A.X = B.X = W.Tribes[0].CampX;
+		A.Y = B.Y = W.Tribes[0].CampY;
+		A.Current = B.Current = Activity::Talk;
+		A.StateTimer = B.StateTimer = 30.f;
+		A.Hunger = B.Hunger = 90.f;
+		A.Energy = B.Energy = 90.f;
+		TickWorld(W, 0.2f);
+		const Relation& AB = RelationBetween(W, 0, 1);
+		const Relation& BA = RelationBetween(W, 1, 0);
+		CHECK(AB.Met && BA.Met, "teachers notice each other");
+		CHECK(AB.State == Stance::Neutral || AB.State == Stance::Ally || AB.State == Stance::Enemy, "stance is one of three");
+		CHECK(BA.State == Stance::Neutral || BA.State == Stance::Ally || BA.State == Stance::Enemy, "the other teacher answers");
 	}
 
 	{
@@ -330,8 +406,12 @@ int main()
 		Builder.Hunger = 80.f;
 		Builder.Energy = 80.f;
 		TickWorld(W, 0.3f);
-		CHECK(W.Tribes[2].StructureCount == Before + 1, "building adds a structure");
-		CHECK(W.Tribes[2].ClaimRadius >= Claim, "claim grows or holds at the cap");
+		CHECK(W.Tribes[2].ActiveSite >= 0, "building opens a site");
+		CHECK(W.Sites[W.Tribes[2].ActiveSite].Live, "the site is still going up");
+		CHECK(W.Sites[W.Tribes[2].ActiveSite].Stage == 1, "first watchable stage is the site");
+		CHECK(std::strcmp(BuildStageName(1), "Site") == 0, "site stage name");
+		CHECK(W.Tribes[2].StructureCount == Before, "a fresh site is not a finished shelter");
+		CHECK(W.Tribes[2].ClaimRadius == Claim, "claim waits for a finished roof");
 	}
 
 	{
@@ -383,9 +463,147 @@ int main()
 		CHECK(W.Births == 1, "two adults can add kin");
 		CHECK(W.VillagerCount == Frozen + 1, "kin takes a spare slot");
 		const Villager& Kin = W.Villagers[W.VillagerCount - 1];
-		CHECK(Kin.AgeYears >= kMinAdultAge, "new kin is an adult");
+		CHECK(Kin.AgeYears == 0, "a birth is a baby");
+		CHECK(!IsAdult(Kin), "a baby cannot pair");
 		CHECK(!Kin.bTeacher, "new kin is not a second teacher");
 		CHECK(Kin.TribeId == 0, "kin stays with the camp");
+		CHECK(!SpeechForbidden(Kin.Trait), "baby trait has no cosmos/god");
+	}
+
+	{
+		World W;
+		InitWorld(W);
+		Villager& Child = W.Villagers[W.Tribes[4].TeacherId + 1];
+		Child.AgeYears = 0;
+		Child.AgeCarry = 0.f;
+		Child.Current = Activity::Talk;
+		Child.StateTimer = 400.f;
+		Child.Hunger = 90.f;
+		Child.Energy = 90.f;
+		TickWorld(W, kBabyYearSeconds);
+		CHECK(W.Villagers[Child.Id].AgeYears == 1, "a baby ages one year on the compressed clock");
+		CHECK(!IsAdult(W.Villagers[Child.Id]), "one year is still a child");
+		for (int Step = 0; Step < 20; ++Step)
+		{
+			TickWorld(W, kBabyYearSeconds);
+		}
+		CHECK(W.Villagers[Child.Id].AgeYears == kMinAdultAge, "the child reaches pairing age");
+		CHECK(IsAdult(W.Villagers[Child.Id]), "21 is an adult");
+	}
+
+	{
+		World W;
+		InitWorld(W);
+		CHECK(W.TreeCount == kTribeCount * kTreesPerTribe, "each camp has standing timber");
+		CHECK(W.Tribes[0].Wood == 0, "wood stock starts empty");
+		int Tree = -1;
+		for (int I = 0; I < W.TreeCount; ++I)
+		{
+			if (W.Trees[I].TribeId == 0 && W.Trees[I].Standing)
+			{
+				Tree = I;
+				break;
+			}
+		}
+		CHECK(Tree >= 0, "willow has a tree");
+		Villager& Cutter = W.Villagers[W.Tribes[0].TeacherId + 1];
+		Cutter.Current = Activity::Chop;
+		Cutter.WorkTarget = Tree;
+		Cutter.X = W.Trees[Tree].X;
+		Cutter.Y = W.Trees[Tree].Y;
+		Cutter.TargetX = Cutter.X;
+		Cutter.TargetY = Cutter.Y;
+		Cutter.Hunger = 95.f;
+		Cutter.Energy = 95.f;
+		TickWorld(W, 2.5f);
+		CHECK(!W.Trees[Tree].Standing, "chopping removes the tree");
+		CHECK(W.Tribes[0].Wood >= 1, "a felled tree becomes wood");
+	}
+
+	{
+		World W;
+		InitWorld(W);
+		Villager& Builder = W.Villagers[W.Tribes[5].TeacherId + 1];
+		const int Before = W.Tribes[5].StructureCount;
+		W.Tribes[5].Wood = 10;
+		W.Tribes[5].BuildCooldown = 1000.f;
+		for (int I = 0; I < W.VillagerCount; ++I)
+		{
+			if (W.Villagers[I].TribeId == 5 && I != Builder.Id)
+			{
+				W.Villagers[I].Current = Activity::Talk;
+				W.Villagers[I].StateTimer = 100.f;
+				W.Villagers[I].Hunger = 100.f;
+				W.Villagers[I].Energy = 100.f;
+			}
+		}
+		Builder.Current = Activity::Build;
+		Builder.X = W.Tribes[5].CampX + 200.f;
+		Builder.Y = W.Tribes[5].CampY;
+		Builder.TargetX = Builder.X;
+		Builder.TargetY = Builder.Y;
+		Builder.Hunger = 100.f;
+		Builder.Energy = 100.f;
+		SetDayLength(W, 240.f);
+		TickWorld(W, 20.f);
+		CHECK(W.Tribes[5].StructureCount == Before + 1, "roof finishes a structure");
+		CHECK(W.Tribes[5].ActiveSite < 0, "finished site closes");
+		bool bRoof = false;
+		for (int I = 0; I < W.SiteCount; ++I)
+		{
+			if (W.Sites[I].TribeId == 5 && W.Sites[I].Stage == 4 && !W.Sites[I].Live)
+			{
+				bRoof = true;
+			}
+		}
+		CHECK(bRoof, "the watched building reached a roof");
+		CHECK(W.Tribes[5].Wood < 10, "frame, walls, and roof spend wood");
+	}
+
+	{
+		World W;
+		InitWorld(W);
+		CHECK(TechCount() == kTechCount, "eight tech tiers");
+		CHECK(std::strcmp(TechName(0), "Fire and tools") == 0, "stone-age start");
+		CHECK(std::strcmp(TechName(1), "Farming") == 0, "farming follows tools");
+		CHECK(std::strcmp(TechName(7), "Computing") == 0, "computing is the far tier");
+		CHECK(!SpeechForbidden(TechName(7)), "tech names stay out of cosmos talk");
+		const int Teacher = W.Tribes[0].TeacherId;
+		float LearnerBefore = 0.f;
+		for (int I = 0; I < W.VillagerCount; ++I)
+		{
+			if (W.Villagers[I].TribeId == 0 && !W.Villagers[I].bTeacher)
+			{
+				W.Villagers[I].Knowledge = 50.f;
+				LearnerBefore = 50.f;
+			}
+		}
+		W.Villagers[Teacher].Knowledge = 90.f;
+		TickWorld(W, 0.2f);
+		CHECK(W.Tribes[0].TechTier == 1, "one tier unlocks when knowledge crosses it");
+		CHECK(W.Tribes[0].TechUnlocked[1], "farming turns on");
+		CHECK(!W.Tribes[0].TechUnlocked[2], "the next tier waits");
+		bool bSmarter = false;
+		for (int I = 0; I < W.VillagerCount; ++I)
+		{
+			if (W.Villagers[I].TribeId == 0 && !W.Villagers[I].bTeacher && W.Villagers[I].Knowledge > LearnerBefore + 1.f)
+			{
+				bSmarter = true;
+			}
+		}
+		CHECK(bSmarter, "a new tier lifts the people the teacher leads");
+		TickWorld(W, 0.2f);
+		CHECK(W.Tribes[0].TechTier == 1, "cooldown blocks a second unlock");
+		for (int I = 0; I < W.VillagerCount; ++I)
+		{
+			if (W.Villagers[I].TribeId == 0)
+			{
+				W.Villagers[I].Knowledge = 99.f;
+			}
+		}
+		TickWorld(W, 4.5f);
+		CHECK(W.Tribes[0].TechTier == 2, "the next tick unlocks only one more tier");
+		CHECK(!W.Tribes[0].TechUnlocked[static_cast<int>(TechId::Computing)], "computing is not a single tick away");
 	}
 
 	{

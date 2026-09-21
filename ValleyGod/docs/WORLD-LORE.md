@@ -12,9 +12,11 @@ The god camera can fly the whole miniature Earth (Shift to move faster, **G** to
 
 ## People
 
-Eight tribes, one on each continent. Each tribe has one teacher and learners who pick up that teacher’s skill over time. Starter characters are adults, 21 or older.
+Eight tribes, one on each continent. Each tribe has one teacher and learners who pick up that teacher’s skill over time. Starter characters are adults, 21 or older. They begin Neutral toward every other tribe. Ally or Enemy happens only when a teacher decides it after people meet.
 
-Pairing is adults-only. This slice does not place child characters. When two adults of the same tribe stay fed and near each other, a new adult can join that camp. There is no intimacy scene.
+Pairing is adults-only. A birth is a baby who grows up in compressed time and cannot pair until 21. There is no intimacy scene. People may lie, cheat, or steal; that does not by itself start a war.
+
+Camps chop timber into a wood stock and raise shelters in stages: site, frame, walls, roof. Teachers unlock knowledge from fire and tools toward later human crafts. Early tiers are the ones you can watch; later names are on the tree so the run can continue.
 
 ## Same sky, later
 
@@ -26,5 +28,5 @@ Not in this slice:
 - Leaving Earth for orbit or another world
 - A named cosmos, star charts, or planet list
 - Invented worlds or moons of fiction
-- Child characters, or pairing for anyone under 21
+- Pairing for anyone under 21, or any sexual content
 - Nudity or intimacy scenes

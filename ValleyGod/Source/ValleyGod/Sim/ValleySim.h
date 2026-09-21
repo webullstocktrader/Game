@@ -2,8 +2,8 @@
 
 // Engine-free stone-age simulation on a miniature Earth.
 // Eight continents, one starter tribe each, oceans between.
-// Adults only (21+). Pairing never runs for anyone younger, and this slice
-// does not place child bodies — a birth resolves as a new adult.
+// Pairing is adults only (21+). A birth is a baby who grows in compressed time.
+// Babies do not pair. Lie, cheat, and steal are personal; war is a teacher choice.
 
 namespace vg
 {
@@ -23,6 +23,11 @@ namespace vg
 	constexpr int kMaxStructuresPerTribe = 8;
 	constexpr int kMaxAnimals = 24;
 	constexpr int kAnimalsPerTribe = 2;
+	constexpr int kMaxTrees = 32;
+	constexpr int kTreesPerTribe = 3;
+	constexpr int kMaxSites = 16;
+	constexpr int kTechCount = 8;
+	constexpr float kBabyYearSeconds = 6.f;
 
 	enum class Activity
 	{
@@ -36,7 +41,8 @@ namespace vg
 		Panic,
 		HighGround,
 		Teach,
-		Build
+		Build,
+		Chop
 	};
 
 	enum class Sex
@@ -111,6 +117,40 @@ namespace vg
 		float Skill[kSkillCount]{};
 		float Bond = 0.f;
 		bool bWorked = false;
+		float AgeCarry = 0.f;
+		int WorkTarget = -1;
+	};
+
+	enum class TechId
+	{
+		FireTools = 0,
+		Farming,
+		PotteryWeaving,
+		Metal,
+		Writing,
+		Machines,
+		Electricity,
+		Computing
+	};
+
+	struct Timber
+	{
+		int Id = 0;
+		int TribeId = 0;
+		float X = 0.f;
+		float Y = 0.f;
+		bool Standing = true;
+		float Chop = 0.f;
+	};
+
+	struct WorkSite
+	{
+		int TribeId = -1;
+		float X = 0.f;
+		float Y = 0.f;
+		int Stage = 0; // 1 site, 2 frame, 3 walls, 4 roof
+		float Progress = 0.f;
+		bool Live = false;
 	};
 
 	struct Animal
@@ -147,21 +187,36 @@ namespace vg
 		float SurvivalSeconds = 0.f;
 		float ScarceSeconds = 0.f;
 		int Births = 0;
-		// Personality. They can lie, cheat, or steal later. None of this starts a war.
+		// Personal temper. Greed and low honesty can lie, cheat, or steal.
+		// That is not an inter-tribe war.
 		float Honesty = 0.5f;
 		float Greed = 0.3f;
 		float Ambition = 0.15f;
 		const char* Temper = "";
+		int Wood = 0;
+		int TechTier = 0;
+		bool TechUnlocked[kTechCount]{};
+		float TechCooldown = 0.f;
+		int ActiveSite = -1;
 	};
 
-	// One directed link. Hostile stays false until a later slice, when population,
-	// skill, and ambition are all high. Starter camps are neighbors, not enemies.
+	enum class Stance
+	{
+		Neutral,
+		Ally,
+		Enemy
+	};
+
+	// What tribe From thinks of tribe To. The teacher decides this on contact.
+	// Every pair starts Neutral. War is one possible result, never a schedule.
 	struct Relation
 	{
+		Stance State = Stance::Neutral;
 		float Trust = 55.f;
 		float Trade = 50.f;
 		float Betrayal = 12.f;
-		bool Hostile = false;
+		float MeetCooldown = 0.f;
+		bool Met = false;
 	};
 
 	struct Continent
@@ -192,6 +247,10 @@ namespace vg
 		int VillagerCount = 0;
 		Animal Animals[kMaxAnimals];
 		int AnimalCount = 0;
+		Timber Trees[kMaxTrees];
+		int TreeCount = 0;
+		WorkSite Sites[kMaxSites];
+		int SiteCount = 0;
 
 		Tribe Tribes[kTribeCount];
 		int TribeCount = 0;
@@ -240,8 +299,13 @@ namespace vg
 	int ContinentAt(const World& W, float X, float Y);
 	bool IsClaimedLand(const World& W, float X, float Y, int& OutTribe);
 	const Relation& RelationBetween(const World& W, int FromTribe, int ToTribe);
+	const char* StanceName(Stance State);
 	bool TribesAtWar(const World& W, int TribeA, int TribeB);
-	bool ConflictReady(const World& W, int TribeId);
+	bool TribesAllied(const World& W, int TribeA, int TribeB);
+	Stance TeacherStance(World& W, int FromTribe, int ToTribe);
+	const char* TechName(int Index);
+	const char* BuildStageName(int Stage);
+	int TechCount();
 	bool IsNight(float Hours);
 	float HoursUntil(float Now, float TargetHour);
 	float Rand01(World& W);

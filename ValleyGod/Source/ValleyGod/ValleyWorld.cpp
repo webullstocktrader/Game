@@ -61,6 +61,7 @@ void AValleyWorld::BuildValley()
 	SpawnTreesAndRocks(Assets);
 	SpawnSheltersAndFire();
 	SpawnPeople();
+	EnsureWorkVisuals();
 	bMaraMetaHuman = false;
 	if (AValleyVillager* Mara = FindVillager(vg::kMetaHumanMilestoneSlot))
 	{
@@ -676,6 +677,86 @@ void AValleyWorld::SpawnSheltersAndFire()
 	}
 }
 
+void AValleyWorld::EnsureWorkVisuals()
+{
+	UStaticMesh* Cyl = Valley::CylinderMesh();
+	UStaticMesh* Cube = Valley::CubeMesh();
+	UStaticMesh* Sphere = Valley::SphereMesh();
+	UMaterialInterface* Wood = Valley::Material(TEXT("M_Wood"));
+	UMaterialInterface* Foliage = Valley::Material(TEXT("M_Foliage"));
+	UMaterialInterface* Dirt = Valley::Material(TEXT("M_Dirt"));
+	UMaterialInterface* Hide = Valley::Material(TEXT("M_Hide"));
+	if (!Cyl)
+	{
+		return;
+	}
+
+	while (HarvestTrunks.Num() < Brain.TreeCount)
+	{
+		const int32 I = HarvestTrunks.Num();
+		const vg::Timber& Tree = Brain.Trees[I];
+		const FVector G = Terrain ? Terrain->StandAt(Tree.X, Tree.Y) : FVector(Tree.X, Tree.Y, AValleyTerrain::OffMeshStandZ);
+		UStaticMeshComponent* Trunk = Place(Cyl, G + FVector(0.f, 0.f, 90.f), FRotator::ZeroRotator, FVector(0.22f, 0.22f, 1.8f), Wood,
+			FName(*FString::Printf(TEXT("HarvestTrunk%d"), I)));
+		UStaticMeshComponent* Crown = Place(Sphere ? Sphere : Cyl, G + FVector(0.f, 0.f, 230.f), FRotator::ZeroRotator, FVector(1.15f, 1.15f, 0.9f), Foliage,
+			FName(*FString::Printf(TEXT("HarvestCrown%d"), I)));
+		HarvestTrunks.Add(Trunk);
+		HarvestCrowns.Add(Crown);
+	}
+	for (int32 I = 0; I < HarvestTrunks.Num() && I < Brain.TreeCount; ++I)
+	{
+		const bool bHide = !Brain.Trees[I].Standing;
+		if (HarvestTrunks[I])
+		{
+			HarvestTrunks[I]->SetHiddenInGame(bHide, true);
+		}
+		if (HarvestCrowns.IsValidIndex(I) && HarvestCrowns[I])
+		{
+			HarvestCrowns[I]->SetHiddenInGame(bHide, true);
+		}
+	}
+
+	while (SitePads.Num() < Brain.SiteCount)
+	{
+		const int32 I = SitePads.Num();
+		const vg::WorkSite& Site = Brain.Sites[I];
+		const FVector G = Terrain ? Terrain->StandAt(Site.X, Site.Y) : FVector(Site.X, Site.Y, AValleyTerrain::OffMeshStandZ);
+		UStaticMeshComponent* Pad = Place(Cube ? Cube : Cyl, G + FVector(0.f, 0.f, 8.f), FRotator::ZeroRotator, FVector(2.4f, 2.2f, 0.08f), Dirt,
+			FName(*FString::Printf(TEXT("SitePad%d"), I)));
+		UStaticMeshComponent* Frame = Place(Cyl, G + FVector(0.f, 0.f, 70.f), FRotator::ZeroRotator, FVector(0.16f, 0.16f, 1.4f), Wood,
+			FName(*FString::Printf(TEXT("SiteFrame%d"), I)));
+		UStaticMeshComponent* Wall = Place(Cube ? Cube : Cyl, G + FVector(0.f, 0.f, 70.f), FRotator::ZeroRotator, FVector(2.1f, 1.8f, 1.15f), Hide,
+			FName(*FString::Printf(TEXT("SiteWall%d"), I)));
+		UStaticMeshComponent* Roof = Place(Cube ? Cube : Cyl, G + FVector(0.f, 0.f, 150.f), FRotator(-18.f, 0.f, 0.f), FVector(2.6f, 2.3f, 0.08f), Hide,
+			FName(*FString::Printf(TEXT("SiteRoof%d"), I)));
+		SitePads.Add(Pad);
+		SiteFrames.Add(Frame);
+		SiteWalls.Add(Wall);
+		SiteRoofs.Add(Roof);
+	}
+	for (int32 I = 0; I < SitePads.Num() && I < Brain.SiteCount; ++I)
+	{
+		const vg::WorkSite& Site = Brain.Sites[I];
+		const int32 Stage = Site.Stage;
+		if (SitePads[I])
+		{
+			SitePads[I]->SetHiddenInGame(Stage < 1, true);
+		}
+		if (SiteFrames.IsValidIndex(I) && SiteFrames[I])
+		{
+			SiteFrames[I]->SetHiddenInGame(Stage < 2, true);
+		}
+		if (SiteWalls.IsValidIndex(I) && SiteWalls[I])
+		{
+			SiteWalls[I]->SetHiddenInGame(Stage < 3, true);
+		}
+		if (SiteRoofs.IsValidIndex(I) && SiteRoofs[I])
+		{
+			SiteRoofs[I]->SetHiddenInGame(Stage < 4, true);
+		}
+	}
+}
+
 void AValleyWorld::SpawnPeople()
 {
 	for (int32 I = 0; I < Brain.VillagerCount; ++I)
@@ -892,6 +973,7 @@ void AValleyWorld::Tick(float DeltaSeconds)
 	Super::Tick(DeltaSeconds);
 	vg::TickWorld(Brain, DeltaSeconds);
 	EnsureSpawnedPopulation();
+	EnsureWorkVisuals();
 	UpdateSky();
 	UpdateWeatherVisuals(DeltaSeconds);
 

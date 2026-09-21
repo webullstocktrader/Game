@@ -15,6 +15,9 @@ namespace vg
 		constexpr float kBondNeed = 100.f;
 		constexpr float kBondPerSecond = 3.2f;
 		constexpr float kTeachRange = 420.f;
+		constexpr float kChopPerSecond = 50.f;
+		constexpr float kBuildPerSecond = 24.f;
+		constexpr float kTechNeed[kTechCount] = {0.f, 38.f, 50.f, 62.f, 74.f, 84.f, 92.f, 97.f};
 
 		const char* kHuntLines[] = {
 			"Tracks go into the brush.",
@@ -553,16 +556,17 @@ namespace vg
 			W.KinCursor += 1;
 			V.Body = (W.Births % 2 == 0) ? Sex::Female : Sex::Male;
 			V.Role = Habit::Wander;
-			V.AgeYears = kMinAdultAge;
-			V.Trait = "New by the fire. Still learning.";
-			V.PersonalLine = "I am here. Show me.";
+			V.AgeYears = 0;
+			V.AgeCarry = 0.f;
+			V.Trait = "New by the fire. Still small.";
+			V.PersonalLine = "I am small. I stay near the fire.";
 			V.TribeId = TribeId;
 			V.bTeacher = false;
 			V.LookId = 1 + (Id % 7);
-			V.Knowledge = 8.f;
+			V.Knowledge = 2.f;
 			for (int S = 0; S < kSkillCount; ++S)
 			{
-				V.Skill[S] = 4.f;
+				V.Skill[S] = 1.f;
 			}
 			V.X = T.CampX + 80.f;
 			V.Y = T.CampY + 40.f;
@@ -608,6 +612,13 @@ namespace vg
 				V.TargetX = W.ShelterX[Shelter];
 				V.TargetY = W.ShelterY[Shelter];
 				Speak(V, PickFresh(W, V, SpeechContext::Sleep), 3.f);
+				return;
+			}
+			if (!IsAdult(V))
+			{
+				V.Current = Activity::Walk;
+				V.TargetX = T->CampX + 50.f;
+				V.TargetY = T->CampY + 30.f;
 				return;
 			}
 			if (V.Hunger < 62.f && !V.CarryingKill && (V.Role == Habit::Hunter || Rand01(W) < 0.35f))
@@ -743,8 +754,127 @@ namespace vg
 			}
 		}
 
+		int NearestTimber(const World& W, const Villager& V)
+		{
+			int Best = -1;
+			float BestD = 1.0e9f;
+			for (int I = 0; I < W.TreeCount; ++I)
+			{
+				const Timber& Tree = W.Trees[I];
+				if (!Tree.Standing || Tree.TribeId != V.TribeId)
+				{
+					continue;
+				}
+				const float D = Dist(V.X, V.Y, Tree.X, Tree.Y);
+				if (D < BestD)
+				{
+					BestD = D;
+					Best = I;
+				}
+			}
+			return Best;
+		}
+
+		bool AssignChop(World& W, Villager& V)
+		{
+			if (!IsAdult(V))
+			{
+				return false;
+			}
+			const int Idx = NearestTimber(W, V);
+			if (Idx < 0)
+			{
+				return false;
+			}
+			V.Current = Activity::Chop;
+			V.WorkTarget = Idx;
+			V.TargetX = W.Trees[Idx].X;
+			V.TargetY = W.Trees[Idx].Y;
+			V.bWorked = false;
+			return true;
+		}
+
+		int OpenSite(World& W, Tribe& T, float X, float Y)
+		{
+			if (T.ActiveSite >= 0 && T.ActiveSite < W.SiteCount && W.Sites[T.ActiveSite].Live)
+			{
+				return T.ActiveSite;
+			}
+			if (T.StructureCount >= kMaxStructuresPerTribe || W.SiteCount >= kMaxSites)
+			{
+				return -1;
+			}
+			const int Id = W.SiteCount;
+			WorkSite& S = W.Sites[Id];
+			S = WorkSite{};
+			S.TribeId = T.Id;
+			S.X = X;
+			S.Y = Y;
+			S.Stage = 1;
+			S.Progress = 0.f;
+			S.Live = true;
+			W.SiteCount += 1;
+			T.ActiveSite = Id;
+			return Id;
+		}
+
+		void AdvanceSite(World& W, Tribe& T, Villager& V, float Dt)
+		{
+			if (T.ActiveSite < 0 || T.ActiveSite >= W.SiteCount)
+			{
+				return;
+			}
+			WorkSite& S = W.Sites[T.ActiveSite];
+			if (!S.Live)
+			{
+				return;
+			}
+			float Work = Dt * kBuildPerSecond;
+			while (Work > 0.f && S.Live)
+			{
+				const float Room = 100.f - S.Progress;
+				if (Room <= 0.01f)
+				{
+					if (S.Stage >= 4)
+					{
+						S.Live = false;
+						S.Progress = 100.f;
+						T.ActiveSite = -1;
+						AddStructure(W, T);
+						V.Current = Activity::Idle;
+						V.bWorked = true;
+						Speak(V, PickFresh(W, V, SpeechContext::Build), 3.4f);
+						return;
+					}
+					if (T.Wood <= 0)
+					{
+						S.Progress = 100.f;
+						AssignChop(W, V);
+						return;
+					}
+					T.Wood -= 1;
+					S.Stage += 1;
+					S.Progress = 0.f;
+					continue;
+				}
+				const float Step = Work < Room ? Work : Room;
+				S.Progress += Step;
+				Work -= Step;
+			}
+		}
+
 		void TickVillager(World& W, Villager& V, float Dt, float HoursPerSec)
 		{
+			if (V.AgeYears < kMinAdultAge)
+			{
+				V.AgeCarry += Dt;
+				while (V.AgeCarry >= kBabyYearSeconds && V.AgeYears < kMinAdultAge)
+				{
+					V.AgeCarry -= kBabyYearSeconds;
+					V.AgeYears += 1;
+				}
+			}
+
 			if (V.TalkTimer > 0.f)
 			{
 				V.TalkTimer -= Dt;
@@ -787,6 +917,10 @@ namespace vg
 			{
 				ChooseNeed(W, V);
 			}
+			if (!Storm && (V.Current == Activity::Build || V.Current == Activity::Chop) && (NeedsFood || NeedsSleep))
+			{
+				ChooseNeed(W, V);
+			}
 
 			if (!Storm && V.Current == Activity::Talk)
 			{
@@ -816,7 +950,7 @@ namespace vg
 			{
 				Speed = 360.f;
 			}
-			else if (V.Current == Activity::Build)
+			else if (V.Current == Activity::Build || V.Current == Activity::Chop)
 			{
 				Speed = 140.f;
 			}
@@ -880,18 +1014,65 @@ namespace vg
 				}
 			}
 
-			if (V.Current == Activity::Build && T && Dist(V.X, V.Y, V.TargetX, V.TargetY) < 90.f)
+			if (V.Current == Activity::Chop && T && IsAdult(V))
 			{
-				if (!V.bWorked)
+				int Idx = V.WorkTarget;
+				if (Idx < 0 || Idx >= W.TreeCount || !W.Trees[Idx].Standing || W.Trees[Idx].TribeId != V.TribeId)
 				{
-					V.bWorked = true;
-					AddStructure(W, *T);
-					Speak(V, PickFresh(W, V, SpeechContext::Build), 3.4f);
+					Idx = NearestTimber(W, V);
+					V.WorkTarget = Idx;
 				}
-				if (!Storm)
+				if (Idx < 0)
 				{
 					V.Current = Activity::Idle;
-					V.StateTimer = 0.4f;
+				}
+				else
+				{
+					Timber& Tree = W.Trees[Idx];
+					V.TargetX = Tree.X;
+					V.TargetY = Tree.Y;
+					if (Dist(V.X, V.Y, Tree.X, Tree.Y) < 130.f)
+					{
+						Speed = 0.f;
+						Tree.Chop += Dt * kChopPerSecond;
+						if (Tree.Chop >= 100.f)
+						{
+							Tree.Standing = false;
+							Tree.Chop = 100.f;
+							T->Wood += 1;
+							if (T->ActiveSite >= 0 && T->ActiveSite < W.SiteCount && W.Sites[T->ActiveSite].Live)
+							{
+								V.Current = Activity::Build;
+								V.WorkTarget = T->ActiveSite;
+								V.TargetX = W.Sites[T->ActiveSite].X;
+								V.TargetY = W.Sites[T->ActiveSite].Y;
+							}
+							else
+							{
+								V.Current = Activity::Idle;
+							}
+						}
+					}
+				}
+			}
+
+			if (V.Current == Activity::Build && T && IsAdult(V))
+			{
+				if (T->ActiveSite < 0 || T->ActiveSite >= W.SiteCount || !W.Sites[T->ActiveSite].Live)
+				{
+					V.WorkTarget = OpenSite(W, *T, V.TargetX, V.TargetY);
+				}
+				if (T->ActiveSite >= 0 && T->ActiveSite < W.SiteCount && W.Sites[T->ActiveSite].Live)
+				{
+					WorkSite& S = W.Sites[T->ActiveSite];
+					V.TargetX = S.X;
+					V.TargetY = S.Y;
+					V.WorkTarget = T->ActiveSite;
+					if (Dist(V.X, V.Y, S.X, S.Y) < 140.f)
+					{
+						Speed = 0.f;
+						AdvanceSite(W, *T, V, Dt);
+					}
 				}
 			}
 
@@ -961,6 +1142,55 @@ namespace vg
 			}
 		}
 
+		void TickTech(World& W, Tribe& T, float Dt)
+		{
+			if (T.TechCooldown > 0.f)
+			{
+				T.TechCooldown -= Dt;
+				if (T.TechCooldown > 0.f)
+				{
+					return;
+				}
+				T.TechCooldown = 0.f;
+			}
+			const int Next = T.TechTier + 1;
+			if (Next < 0 || Next >= kTechCount)
+			{
+				return;
+			}
+			if (T.Knowledge < kTechNeed[Next])
+			{
+				return;
+			}
+			if (T.TeacherId < 0 || T.TeacherId >= W.VillagerCount)
+			{
+				return;
+			}
+			Villager& Teacher = W.Villagers[T.TeacherId];
+			if (!Teacher.bTeacher || Teacher.Knowledge < kTechNeed[Next])
+			{
+				return;
+			}
+			T.TechUnlocked[Next] = true;
+			T.TechTier = Next;
+			T.TechCooldown = 4.f;
+			const float Lift = 1.5f + static_cast<float>(Next);
+			for (int I = 0; I < W.VillagerCount; ++I)
+			{
+				Villager& Member = W.Villagers[I];
+				if (Member.TribeId != T.Id || Member.bTeacher)
+				{
+					continue;
+				}
+				Member.Knowledge = std::min(Teacher.Knowledge, Member.Knowledge + Lift);
+				const int Sk = SkillFor(Member.Role);
+				if (Sk >= 0 && Sk < kSkillCount)
+				{
+					Member.Skill[Sk] = std::min(100.f, Member.Skill[Sk] + Lift);
+				}
+			}
+		}
+
 		void TickProgress(World& W, float Dt)
 		{
 			const bool Storm = W.Sky != Weather::Clear;
@@ -999,7 +1229,7 @@ namespace vg
 					Villager& Teacher = W.Villagers[T.TeacherId];
 					if (Teacher.bTeacher && IsAdult(Teacher))
 					{
-						const float Scale = bScarce ? 0.25f : 1.f;
+						const float Scale = (bScarce ? 0.25f : 1.f) * (1.f + 0.15f * static_cast<float>(T.TechTier));
 						const int Sk = SkillFor(Teacher.Role);
 						for (int I = 0; I < W.VillagerCount; ++I)
 						{
@@ -1025,34 +1255,68 @@ namespace vg
 					}
 				}
 				RefreshTribeKnowledge(W, T);
+				TickTech(W, T, Dt);
 
 				if (!Storm)
 				{
 					T.BuildCooldown -= Dt;
-					if (T.BuildCooldown <= 0.f && T.Knowledge >= 36.f && T.StructureCount < kMaxStructuresPerTribe)
+					const bool bHasLive = T.ActiveSite >= 0 && T.ActiveSite < W.SiteCount && W.Sites[T.ActiveSite].Live;
+					bool bChopper = false;
+					int Standing = 0;
+					for (int I = 0; I < W.VillagerCount; ++I)
 					{
-						for (int I = 0; I < W.VillagerCount; ++I)
+						if (W.Villagers[I].TribeId == T.Id && W.Villagers[I].Current == Activity::Chop)
 						{
-							Villager& V = W.Villagers[I];
-							if (V.TribeId != T.Id)
-							{
-								continue;
-							}
-							if (V.Current != Activity::Idle && V.Current != Activity::Walk)
-							{
-								continue;
-							}
-							const float Ang = static_cast<float>(T.StructureCount) * 0.9f;
-							const float Rad = 180.f + static_cast<float>(T.StructureCount) * 40.f;
-							V.Current = Activity::Build;
-							V.bWorked = false;
-							V.TargetX = T.CampX + std::cos(Ang) * Rad;
-							V.TargetY = T.CampY + std::sin(Ang) * Rad;
-							ClampTargetToLand(W, V);
-							V.StateTimer = 6.f;
-							Speak(V, PickFresh(W, V, SpeechContext::Build), 3.2f);
-							T.BuildCooldown = 16.f;
+							bChopper = true;
+						}
+					}
+					for (int I = 0; I < W.TreeCount; ++I)
+					{
+						if (W.Trees[I].Standing && W.Trees[I].TribeId == T.Id)
+						{
+							Standing += 1;
+						}
+					}
+					Villager* IdleAdult = nullptr;
+					for (int I = 0; I < W.VillagerCount; ++I)
+					{
+						Villager& V = W.Villagers[I];
+						if (V.TribeId != T.Id || !IsAdult(V))
+						{
+							continue;
+						}
+						if (V.Current == Activity::Idle || V.Current == Activity::Walk)
+						{
+							IdleAdult = &V;
 							break;
+						}
+					}
+					const bool bNeedWood = Standing > 0 && T.Wood < 3;
+					const bool bSiteWaiting = bHasLive && W.Sites[T.ActiveSite].Progress >= 100.f
+						&& W.Sites[T.ActiveSite].Stage < 4 && T.Wood <= 0;
+					if ((bNeedWood || bSiteWaiting) && !bChopper && IdleAdult)
+					{
+						AssignChop(W, *IdleAdult);
+					}
+					else if (!bHasLive && T.BuildCooldown <= 0.f && T.Knowledge >= 36.f
+						&& T.StructureCount < kMaxStructuresPerTribe && IdleAdult)
+					{
+						const float Ang = static_cast<float>(T.StructureCount) * 0.9f;
+						const float Rad = 180.f + static_cast<float>(T.StructureCount) * 40.f;
+						const float X = T.CampX + std::cos(Ang) * Rad;
+						const float Y = T.CampY + std::sin(Ang) * Rad;
+						const int Id = OpenSite(W, T, X, Y);
+						if (Id >= 0)
+						{
+							IdleAdult->Current = Activity::Build;
+							IdleAdult->bWorked = false;
+							IdleAdult->WorkTarget = Id;
+							IdleAdult->TargetX = W.Sites[Id].X;
+							IdleAdult->TargetY = W.Sites[Id].Y;
+							ClampTargetToLand(W, *IdleAdult);
+							IdleAdult->StateTimer = 6.f;
+							Speak(*IdleAdult, PickFresh(W, *IdleAdult, SpeechContext::Build), 3.2f);
+							T.BuildCooldown = 16.f;
 						}
 					}
 				}
@@ -1159,6 +1423,8 @@ namespace vg
 			V.HuntTarget = -1;
 		}
 
+		constexpr float kMeetRange = 800.f;
+
 		void InitDiplomacy(World& W)
 		{
 			for (int A = 0; A < kTribeCount; ++A)
@@ -1166,7 +1432,8 @@ namespace vg
 				for (int B = 0; B < kTribeCount; ++B)
 				{
 					Relation& R = W.Relations[A * kTribeCount + B];
-					R.Hostile = false;
+					R = Relation{};
+					R.State = Stance::Neutral;
 					if (A == B)
 					{
 						R.Trust = 100.f;
@@ -1196,6 +1463,29 @@ namespace vg
 			}
 		}
 
+		bool PeopleInContact(const World& W, int TribeA, int TribeB)
+		{
+			for (int I = 0; I < W.VillagerCount; ++I)
+			{
+				if (W.Villagers[I].TribeId != TribeA)
+				{
+					continue;
+				}
+				for (int J = 0; J < W.VillagerCount; ++J)
+				{
+					if (W.Villagers[J].TribeId != TribeB)
+					{
+						continue;
+					}
+					if (Dist(W.Villagers[I].X, W.Villagers[I].Y, W.Villagers[J].X, W.Villagers[J].Y) <= kMeetRange)
+					{
+						return true;
+					}
+				}
+			}
+			return false;
+		}
+
 		void TickDiplomacy(World& W, float Dt)
 		{
 			for (int A = 0; A < W.TribeCount; ++A)
@@ -1204,9 +1494,14 @@ namespace vg
 				{
 					Relation& AB = W.Relations[A * kTribeCount + B];
 					Relation& BA = W.Relations[B * kTribeCount + A];
-					// This slice never opens a war. Ambition and headcount are still too small.
-					AB.Hostile = false;
-					BA.Hostile = false;
+					if (AB.MeetCooldown > 0.f)
+					{
+						AB.MeetCooldown -= Dt;
+					}
+					if (BA.MeetCooldown > 0.f)
+					{
+						BA.MeetCooldown -= Dt;
+					}
 					const bool bScarce = W.Tribes[A].ScarceSeconds > W.Tribes[A].SurvivalSeconds
 						&& W.Tribes[B].ScarceSeconds > W.Tribes[B].SurvivalSeconds;
 					const float Toward = bScarce ? 50.f : 58.f;
@@ -1218,6 +1513,19 @@ namespace vg
 						AB.Trade += Dt * 0.15f;
 					}
 					BA.Trade = AB.Trade;
+
+					// Population and shelters do not open a war. Only a meeting does,
+					// and each teacher may still pick neutral.
+					if (!PeopleInContact(W, A, B) || AB.MeetCooldown > 0.f)
+					{
+						continue;
+					}
+					AB.State = TeacherStance(W, A, B);
+					BA.State = TeacherStance(W, B, A);
+					AB.Met = true;
+					BA.Met = true;
+					AB.MeetCooldown = 24.f;
+					BA.MeetCooldown = 24.f;
 				}
 			}
 		}
@@ -1319,32 +1627,71 @@ namespace vg
 		return W.Relations[FromTribe * kTribeCount + ToTribe];
 	}
 
+	const char* StanceName(Stance State)
+	{
+		switch (State)
+		{
+		case Stance::Ally: return "Ally";
+		case Stance::Enemy: return "Enemy";
+		case Stance::Neutral:
+		default: return "Neutral";
+		}
+	}
+
 	bool TribesAtWar(const World& W, int TribeA, int TribeB)
 	{
 		if (TribeA == TribeB)
 		{
 			return false;
 		}
-		return RelationBetween(W, TribeA, TribeB).Hostile || RelationBetween(W, TribeB, TribeA).Hostile;
+		return RelationBetween(W, TribeA, TribeB).State == Stance::Enemy
+			|| RelationBetween(W, TribeB, TribeA).State == Stance::Enemy;
 	}
 
-	bool ConflictReady(const World& W, int TribeId)
+	bool TribesAllied(const World& W, int TribeA, int TribeB)
 	{
-		if (TribeId < 0 || TribeId >= W.TribeCount)
+		if (TribeA == TribeB)
 		{
 			return false;
 		}
-		const Tribe& T = W.Tribes[TribeId];
-		int Members = 0;
-		for (int I = 0; I < W.VillagerCount; ++I)
+		return RelationBetween(W, TribeA, TribeB).State == Stance::Ally
+			&& RelationBetween(W, TribeB, TribeA).State == Stance::Ally;
+	}
+
+	Stance TeacherStance(World& W, int FromTribe, int ToTribe)
+	{
+		if (FromTribe < 0 || ToTribe < 0 || FromTribe >= W.TribeCount || ToTribe >= W.TribeCount || FromTribe == ToTribe)
 		{
-			if (W.Villagers[I].TribeId == TribeId)
-			{
-				Members += 1;
-			}
+			return Stance::Neutral;
 		}
-		// Starter camps cannot reach this. Wars wait on people, building, and ambition together.
-		return T.Ambition >= 0.8f && T.StructureCount >= 12 && Members >= 12;
+		const Tribe& Leader = W.Tribes[FromTribe];
+		const Relation& Link = W.Relations[FromTribe * kTribeCount + ToTribe];
+		float TrustNorm = Link.Trust / 100.f;
+		if (TrustNorm < 0.f)
+		{
+			TrustNorm = 0.f;
+		}
+		if (TrustNorm > 1.f)
+		{
+			TrustNorm = 1.f;
+		}
+		// The teacher's own lean. Greed is how they cheat their own people, not this vote.
+		// Neutral stays the heaviest weight, so neither peace nor war is mandatory.
+		const float AllyWeight = Leader.Honesty * 0.45f + TrustNorm * 0.35f;
+		const float EnemyWeight = Leader.Ambition * 0.45f;
+		const float NeutralWeight = 0.7f;
+		const float Sum = AllyWeight + EnemyWeight + NeutralWeight;
+		float Pick = Rand01(W) * Sum;
+		if (Pick < NeutralWeight)
+		{
+			return Stance::Neutral;
+		}
+		Pick -= NeutralWeight;
+		if (Pick < AllyWeight)
+		{
+			return Stance::Ally;
+		}
+		return Stance::Enemy;
 	}
 
 	const char* TribeLabel(const World& W, int TribeId)
@@ -1407,6 +1754,14 @@ namespace vg
 			TribeSlot.Greed = kGreed[T];
 			TribeSlot.Ambition = kAmbition[T];
 			TribeSlot.Temper = kTempers[T];
+			TribeSlot.Wood = 0;
+			TribeSlot.TechTier = 0;
+			TribeSlot.TechCooldown = 0.f;
+			TribeSlot.ActiveSite = -1;
+			for (int Tech = 0; Tech < kTechCount; ++Tech)
+			{
+				TribeSlot.TechUnlocked[Tech] = Tech == static_cast<int>(TechId::FireTools);
+			}
 			RefreshClaim(W, TribeSlot);
 		}
 		InitDiplomacy(W);
@@ -1521,6 +1876,28 @@ namespace vg
 				AnimalSlot.X = W.Tribes[T].HuntX + (A == 0 ? -220.f : 260.f);
 				AnimalSlot.Y = W.Tribes[T].HuntY + (A == 0 ? 80.f : -140.f);
 				W.AnimalCount += 1;
+			}
+		}
+
+		W.TreeCount = 0;
+		W.SiteCount = 0;
+		for (int T = 0; T < W.TribeCount; ++T)
+		{
+			for (int N = 0; N < kTreesPerTribe; ++N)
+			{
+				if (W.TreeCount >= kMaxTrees)
+				{
+					break;
+				}
+				Timber& Tree = W.Trees[W.TreeCount];
+				Tree = Timber{};
+				Tree.Id = W.TreeCount;
+				Tree.TribeId = T;
+				const float Ang = 0.4f + static_cast<float>(N) * 2.05f;
+				Tree.X = W.Tribes[T].CampX + std::cos(Ang) * 460.f;
+				Tree.Y = W.Tribes[T].CampY + std::sin(Ang) * 380.f;
+				Tree.Standing = true;
+				W.TreeCount += 1;
 			}
 		}
 
@@ -1654,9 +2031,43 @@ namespace vg
 		case Activity::HighGround: return "High ground";
 		case Activity::Teach: return "Teach";
 		case Activity::Build: return "Build";
+		case Activity::Chop: return "Chop";
 		case Activity::Idle:
 		default: return "Idle";
 		}
+	}
+
+	const char* TechName(int Index)
+	{
+		switch (Index)
+		{
+		case 0: return "Fire and tools";
+		case 1: return "Farming";
+		case 2: return "Pottery and weaving";
+		case 3: return "Metal";
+		case 4: return "Writing";
+		case 5: return "Machines";
+		case 6: return "Electricity";
+		case 7: return "Computing";
+		default: return "";
+		}
+	}
+
+	const char* BuildStageName(int Stage)
+	{
+		switch (Stage)
+		{
+		case 1: return "Site";
+		case 2: return "Frame";
+		case 3: return "Walls";
+		case 4: return "Roof";
+		default: return "";
+		}
+	}
+
+	int TechCount()
+	{
+		return kTechCount;
 	}
 
 	const char* SexName(Sex Body)

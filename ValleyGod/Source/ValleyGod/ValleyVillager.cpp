@@ -297,7 +297,8 @@ void AValleyVillager::SyncFromSim(const vg::Villager& Sim, AValleyTerrain* Terra
 	const bool bMoving = Sim.Current == vg::Activity::Walk || Sim.Current == vg::Activity::Hunt
 		|| Sim.Current == vg::Activity::Panic || Sim.Current == vg::Activity::Shelter
 		|| Sim.Current == vg::Activity::HighGround || Sim.Current == vg::Activity::Eat
-		|| Sim.Current == vg::Activity::Teach || Sim.Current == vg::Activity::Build;
+		|| Sim.Current == vg::Activity::Teach || Sim.Current == vg::Activity::Build
+		|| Sim.Current == vg::Activity::Chop;
 
 	if (bMoving && !Presentation)
 	{
@@ -314,6 +315,11 @@ void AValleyVillager::SyncFromSim(const vg::Villager& Sim, AValleyTerrain* Terra
 			ThighR->SetRelativeRotation(FRotator(12.f * FMath::Sin(WalkPhase), 0.f, 0.f));
 		}
 	}
+
+	const float Grown = Sim.AgeYears >= vg::kMinAdultAge
+		? 1.f
+		: (0.42f + (static_cast<float>(Sim.AgeYears) / static_cast<float>(vg::kMinAdultAge)) * 0.58f);
+	SetActorScale3D(FVector(HeightScale * Grown));
 
 	if (bSleep)
 	{

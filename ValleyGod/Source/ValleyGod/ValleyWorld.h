@@ -55,6 +55,7 @@ private:
 	void PlaceShelter(int32 Index);
 	void SpawnPeople();
 	void EnsureSpawnedPopulation();
+	void EnsureWorkVisuals();
 	void SpawnRain();
 	void SpawnTornado();
 	void UpdateSky();
@@ -95,6 +96,24 @@ private:
 
 	UPROPERTY()
 	TArray<TObjectPtr<UStaticMeshComponent>> Trees;
+
+	UPROPERTY()
+	TArray<TObjectPtr<UStaticMeshComponent>> HarvestTrunks;
+
+	UPROPERTY()
+	TArray<TObjectPtr<UStaticMeshComponent>> HarvestCrowns;
+
+	UPROPERTY()
+	TArray<TObjectPtr<UStaticMeshComponent>> SitePads;
+
+	UPROPERTY()
+	TArray<TObjectPtr<UStaticMeshComponent>> SiteFrames;
+
+	UPROPERTY()
+	TArray<TObjectPtr<UStaticMeshComponent>> SiteWalls;
+
+	UPROPERTY()
+	TArray<TObjectPtr<UStaticMeshComponent>> SiteRoofs;
 
 	UPROPERTY()
 	TArray<TObjectPtr<UHierarchicalInstancedStaticMeshComponent>> FoliagePools;
