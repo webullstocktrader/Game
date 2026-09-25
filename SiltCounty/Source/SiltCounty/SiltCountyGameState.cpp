@@ -2,6 +2,7 @@
 
 #include "Misc/CommandLine.h"
 #include "Net/UnrealNetwork.h"
+#include "SiltCounty.h"
 
 ASiltCountyGameState::ASiltCountyGameState()
 {
@@ -40,6 +41,35 @@ void ASiltCountyGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>&
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(ASiltCountyGameState, IntroPhase);
 	DOREPLIFETIME(ASiltCountyGameState, PhaseStartServerTime);
+	DOREPLIFETIME(ASiltCountyGameState, CashCollected);
+	DOREPLIFETIME(ASiltCountyGameState, bChiefGarageUnlocked);
+}
+
+void ASiltCountyGameState::AuthorityAwardCash(float Amount)
+{
+	if (!HasAuthority() || Amount <= 0.f)
+	{
+		return;
+	}
+
+	CashCollected += Amount;
+	UE_LOG(LogSiltCounty, Display, TEXT("CashCollected $%.2f (awarded $%.2f)."), CashCollected, Amount);
+	ForceNetUpdate();
+}
+
+void ASiltCountyGameState::AuthorityTryUnlockChiefGarage()
+{
+	if (!HasAuthority() || bChiefGarageUnlocked)
+	{
+		return;
+	}
+
+	if (CashCollected >= SiltGarage::ChiefGarageUnlockPrice)
+	{
+		bChiefGarageUnlocked = true;
+		UE_LOG(LogSiltCounty, Display, TEXT("Chief personal garage unlocked at $%.2f (price $%.2f)."), CashCollected, SiltGarage::ChiefGarageUnlockPrice);
+		ForceNetUpdate();
+	}
 }
 
 float ASiltCountyGameState::PhaseDuration() const

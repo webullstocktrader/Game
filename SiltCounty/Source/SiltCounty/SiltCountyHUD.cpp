@@ -135,4 +135,21 @@ void ASiltCountyHUD::DrawHUD()
 	{
 		DrawShadowedText(Small, TEXT("F9  —  local co-op, spawn Gooch"), 28.f, 100.f, FLinearColor(0.65f, 0.7f, 0.65f), 0.9f);
 	}
+
+	if (GameState)
+	{
+		const float Cash = GameState->GetCashCollected();
+		const FString GarageLine = FString::Printf(
+			TEXT("$%.2f / $%.2f toward Chief's garage"),
+			Cash,
+			SiltGarage::ChiefGarageUnlockPrice);
+		const FLinearColor GarageColor = GameState->IsChiefGarageUnlocked()
+			? FLinearColor(0.55f, 0.95f, 0.5f)
+			: FLinearColor(0.95f, 0.82f, 0.35f);
+		DrawShadowedText(Small, GarageLine, 28.f, 124.f, GarageColor);
+		if (GameState->IsChiefGarageUnlocked())
+		{
+			DrawShadowedText(Small, TEXT("Chief's garage unlocked."), 28.f, 146.f, FLinearColor(0.55f, 0.95f, 0.5f), 0.9f);
+		}
+	}
 }

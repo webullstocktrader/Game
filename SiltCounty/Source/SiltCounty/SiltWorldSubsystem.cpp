@@ -266,11 +266,11 @@ void USiltWorldSubsystem::BuildDressing(UWorld& World) const
 		return Actor;
 	};
 
-	auto Label = [&](const FVector& Location, const FString& Text, const FColor& Color, float Size)
+	auto Label = [&](const FVector& Location, const FString& Text, const FColor& Color, float Size, float Yaw = 90.f)
 	{
 		FActorSpawnParameters Params;
 		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-		ATextRenderActor* Sign = World.SpawnActor<ATextRenderActor>(Location, FRotator(0.f, 90.f, 0.f), Params);
+		ATextRenderActor* Sign = World.SpawnActor<ATextRenderActor>(Location, FRotator(0.f, Yaw, 0.f), Params);
 		if (!Sign)
 		{
 			return;
@@ -293,11 +293,44 @@ void USiltWorldSubsystem::BuildDressing(UWorld& World) const
 	const FLinearColor Concrete(0.22f, 0.21f, 0.19f);
 	const FLinearColor Timber(0.18f, 0.10f, 0.06f);
 	const FLinearColor Roof(0.12f, 0.13f, 0.14f);
+	const FLinearColor DampWall(0.30f, 0.28f, 0.24f);
+	const FLinearColor ShopRoofTint(0.52f, 0.38f, 0.26f);
+	const FLinearColor BenchWood(0.46f, 0.28f, 0.14f);
+	const FLinearColor BenchSteel(0.58f, 0.46f, 0.30f);
+	const TCHAR* ShopPaintPath = TEXT("/Game/SiltCounty/Materials/M_TruckPaint.M_TruckPaint");
+	UMaterialInterface* ShopWallMat = LoadMat(TEXT("/Game/SiltCounty/Materials/M_ShopWall.M_ShopWall"), ShopPaintPath);
+	UMaterialInterface* ShopFloorMat = LoadMat(TEXT("/Game/SiltCounty/Materials/M_ShopFloor.M_ShopFloor"), ShopPaintPath);
 
-	Place(Cube, FVector(-1100.f, 86000.f, GarageZ + 280.f), FRotator::ZeroRotator, FVector(0.5f, 4.6f, 5.6f), Concrete, 0.55f, true);
-	Place(Cube, FVector(1100.f, 86000.f, GarageZ + 280.f), FRotator::ZeroRotator, FVector(0.5f, 4.6f, 5.6f), Concrete, 0.55f, true);
-	Place(Cube, FVector(0.f, 90000.f, GarageZ + 280.f), FRotator::ZeroRotator, FVector(22.f, 0.5f, 5.6f), Concrete, 0.55f, true);
-	Place(Cube, FVector(0.f, 86000.f, GarageZ + 620.f), FRotator::ZeroRotator, FVector(24.f, 9.f, 0.35f), Roof, 0.4f, true);
+	auto ApplyShopMat = [&](AStaticMeshActor* Actor, UMaterialInterface* Material)
+	{
+		if (Actor && Material && Material != Paint)
+		{
+			Actor->GetStaticMeshComponent()->SetMaterial(0, Material);
+		}
+	};
+
+	// Lock B shop shell stays on this footprint. Truck spawns and the bay light stay put.
+	ApplyShopMat(Place(Cube, FVector(-1100.f, 86000.f, GarageZ + 280.f), FRotator::ZeroRotator, FVector(0.5f, 4.6f, 5.6f), DampWall, 0.32f, true), ShopWallMat);
+	ApplyShopMat(Place(Cube, FVector(1100.f, 86000.f, GarageZ + 280.f), FRotator::ZeroRotator, FVector(0.5f, 4.6f, 5.6f), DampWall, 0.32f, true), ShopWallMat);
+	ApplyShopMat(Place(Cube, FVector(0.f, 90000.f, GarageZ + 280.f), FRotator::ZeroRotator, FVector(22.f, 0.5f, 5.6f), DampWall, 0.32f, true), ShopWallMat);
+	Place(Cube, FVector(0.f, 86000.f, GarageZ + 620.f), FRotator::ZeroRotator, FVector(24.f, 9.f, 0.35f), ShopRoofTint, 0.46f, true);
+
+	auto PlaceShop = [&](UStaticMesh* Mesh, const FVector& Location, const FVector& Scale, UMaterialInterface* Material, const FLinearColor& FallbackColor, float Roughness, FName Name)
+	{
+		UMaterialInterface* Surface = Material;
+		if (!Surface || Surface == Paint)
+		{
+			Surface = Tint(Paint, FallbackColor, this, Roughness);
+		}
+		const FTransform Xform(FRotator::ZeroRotator, Location, Scale);
+		return SpawnMesh(World, Mesh, Xform, Surface, Name);
+	};
+
+	PlaceShop(Cube, FVector(0.f, 86000.f, GarageZ + 8.f), FVector(20.f, 7.6f, 0.16f), ShopFloorMat, FLinearColor(0.18f, 0.17f, 0.15f), 0.12f, TEXT("ShopFloor"));
+	const FVector Bench(-860.f, 86080.f, GarageZ);
+	PlaceShop(Cube, Bench + FVector(0.f, 0.f, 42.f), FVector(1.15f, 2.0f, 0.72f), nullptr, FLinearColor(0.32f, 0.20f, 0.10f), 0.58f, TEXT("ShopBench"));
+	PlaceShop(Cube, Bench + FVector(0.f, 0.f, 84.f), FVector(1.35f, 2.2f, 0.10f), nullptr, BenchWood, 0.48f, TEXT("ShopBenchTop"));
+	PlaceShop(Cube, Bench + FVector(0.f, -40.f, 96.f), FVector(0.42f, 0.55f, 0.06f), nullptr, BenchSteel, 0.28f, TEXT("ShopBenchTray"));
 
 	const FVector TownCenter(0.f, 52000.f, SiltTerrain::SampleHeight(0.f, 52000.f));
 	const FVector HouseOffsets[] = {
@@ -323,6 +356,147 @@ void USiltWorldSubsystem::BuildDressing(UWorld& World) const
 	}
 	Label(FVector(0.f, 56000.f, SiltTerrain::GetWaterLevel() + 900.f), TEXT("SOUTH TOWN  —  FLOODED"), FColor(210, 220, 230), 160.f);
 
+	const TCHAR* TruckPaintPath = TEXT("/Game/SiltCounty/Materials/M_TruckPaint.M_TruckPaint");
+	UMaterialInterface* TownBrick = LoadMat(TEXT("/Game/SiltCounty/Materials/M_TownBrick.M_TownBrick"), TruckPaintPath);
+	UMaterialInterface* TownClapboard = LoadMat(TEXT("/Game/SiltCounty/Materials/M_TownClapboard.M_TownClapboard"), TruckPaintPath);
+	UMaterialInterface* ConcreteBlock = LoadMat(TEXT("/Game/SiltCounty/Materials/M_ConcreteBlock.M_ConcreteBlock"), TruckPaintPath);
+	UMaterialInterface* Municipal = LoadMat(TEXT("/Game/SiltCounty/Materials/M_MunicipalPaint.M_MunicipalPaint"), TruckPaintPath);
+
+	auto PlaceMat = [&](UStaticMesh* Mesh, const FVector& Location, const FRotator& Rotation, const FVector& Scale, UMaterialInterface* Material, const FLinearColor& FallbackColor, FName Name)
+	{
+		UMaterialInterface* Surface = Material;
+		if (!Surface || Surface == Paint)
+		{
+			Surface = Tint(Paint, FallbackColor, this, 0.72f);
+		}
+		const FTransform Xform(Rotation, Location, Scale);
+		return SpawnMesh(World, Mesh, Xform, Surface, Name);
+	};
+
+	// Pass A exterior landmarks. Garage blockout at Y≈86000 stays above.
+	{
+		const FVector BankAnchor = TownCenter + FVector(-4200.f, 900.f, 0.f);
+		const float BankZ = SiltTerrain::SampleHeight(BankAnchor.X, BankAnchor.Y);
+		const FVector Bank(BankAnchor.X, BankAnchor.Y, BankZ);
+		const FLinearColor BrickFallback(0.34f, 0.13f, 0.09f);
+		const FLinearColor BlockFallback(0.40f, 0.39f, 0.36f);
+		PlaceMat(Cube, Bank + FVector(0.f, 0.f, 22.5f), FRotator::ZeroRotator, FVector(8.2f, 5.6f, 0.45f), ConcreteBlock, BlockFallback, TEXT("CountyTrustPlinth"));
+		PlaceMat(Cube, Bank + FVector(0.f, 0.f, 255.f), FRotator::ZeroRotator, FVector(7.5f, 5.0f, 4.2f), TownBrick, BrickFallback, TEXT("CountyTrustBank"));
+		const FVector PierSW(-280.f, -180.f, 0.f);
+		const FVector PierNE(280.f, 180.f, 0.f);
+		PlaceMat(Cube, Bank + PierSW + FVector(0.f, 0.f, 27.5f), FRotator::ZeroRotator, FVector(1.5f, 1.5f, 0.55f), ConcreteBlock, BlockFallback, TEXT("CountyTrustBaseSW"));
+		PlaceMat(Cube, Bank + PierNE + FVector(0.f, 0.f, 27.5f), FRotator::ZeroRotator, FVector(1.5f, 1.5f, 0.55f), ConcreteBlock, BlockFallback, TEXT("CountyTrustBaseNE"));
+		PlaceMat(Cube, Bank + PierSW + FVector(0.f, 0.f, 385.f), FRotator::ZeroRotator, FVector(1.15f, 1.15f, 6.6f), TownBrick, BrickFallback, TEXT("CountyTrustPierSW"));
+		PlaceMat(Cube, Bank + PierNE + FVector(0.f, 0.f, 385.f), FRotator::ZeroRotator, FVector(1.15f, 1.15f, 6.6f), TownBrick, BrickFallback, TEXT("CountyTrustPierNE"));
+		Label(Bank + FVector(0.f, 310.f, 500.f), TEXT("COUNTY TRUST"), FColor(236, 224, 196), 78.f);
+
+		const FVector HallAnchor = TownCenter + FVector(3900.f, 1100.f, 0.f);
+		const float HallZ = SiltTerrain::SampleHeight(HallAnchor.X, HallAnchor.Y);
+		const FVector Hall(HallAnchor.X, HallAnchor.Y, HallZ);
+		const FLinearColor ClapboardFallback(0.38f, 0.31f, 0.22f);
+		PlaceMat(Cube, Hall + FVector(0.f, 0.f, 240.f), FRotator::ZeroRotator, FVector(6.5f, 5.5f, 4.8f), TownClapboard, ClapboardFallback, TEXT("TownHall"));
+		const FVector TurretNW(-260.f, 220.f, 0.f);
+		const FVector TurretNE(260.f, 220.f, 0.f);
+		PlaceMat(Cylinder, Hall + TurretNW + FVector(0.f, 0.f, 450.f), FRotator::ZeroRotator, FVector(1.6f, 1.6f, 9.f), TownClapboard, ClapboardFallback, TEXT("TownHallTurretNW"));
+		PlaceMat(Cylinder, Hall + TurretNE + FVector(0.f, 0.f, 450.f), FRotator::ZeroRotator, FVector(1.6f, 1.6f, 9.f), TownClapboard, ClapboardFallback, TEXT("TownHallTurretNE"));
+		const FLinearColor Civic(0.36f, 0.42f, 0.38f);
+		auto PlaceCivic = [&](UStaticMesh* Mesh, const FVector& Location, const FVector& Scale, FName Name)
+		{
+			UMaterialInterface* Surface = Tint(Municipal ? Municipal : Paint, Civic, this, 0.48f);
+			const FTransform Xform(FRotator::ZeroRotator, Location, Scale);
+			SpawnMesh(World, Mesh, Xform, Surface, Name);
+		};
+		PlaceCivic(Cylinder, Hall + TurretNW + FVector(0.f, 0.f, 935.f), FVector(2.05f, 2.05f, 0.55f), TEXT("TownHallCapNW"));
+		PlaceCivic(Cylinder, Hall + TurretNE + FVector(0.f, 0.f, 935.f), FVector(2.05f, 2.05f, 0.55f), TEXT("TownHallCapNE"));
+		PlaceCivic(Cube, Hall + FVector(0.f, 0.f, 488.f), FVector(6.9f, 5.9f, 0.16f), TEXT("TownHallTrim"));
+		Label(Hall + FVector(0.f, 340.f, 620.f), TEXT("TOWN HALL"), FColor(236, 228, 206), 84.f);
+	}
+
+	// Town silhouettes. House boxes, County Trust, and Town Hall stay secondary.
+	const FLinearColor Galvanized(0.73f, 0.74f, 0.71f);
+	const FLinearColor Barn(0.34f, 0.13f, 0.07f);
+	const FLinearColor Brick(0.58f, 0.24f, 0.16f);
+	const FLinearColor TankWhite(0.80f, 0.82f, 0.84f);
+	const FLinearColor Steel(0.22f, 0.23f, 0.25f);
+
+	const FVector Coop(9800.f, 58500.f, 0.f);
+	const float CoopZ = SiltTerrain::SampleHeight(Coop.X, Coop.Y);
+	constexpr float SiloHeightCm = 4800.f;
+	constexpr float SiloSpacing = 780.f;
+	Place(Cube, FVector(Coop.X, Coop.Y, CoopZ + 40.f), FRotator::ZeroRotator, FVector(10.f, 34.f, 0.8f), Concrete, 0.62f, true);
+	for (int32 Silo = 0; Silo < 4; ++Silo)
+	{
+		const float SiloY = Coop.Y + (static_cast<float>(Silo) - 1.5f) * SiloSpacing;
+		Place(Cylinder, FVector(Coop.X, SiloY, CoopZ + SiloHeightCm * 0.5f), FRotator::ZeroRotator, FVector(6.2f, 6.2f, SiloHeightCm / 100.f), Galvanized, 0.32f, true);
+		Place(Cylinder, FVector(Coop.X, SiloY, CoopZ + SiloHeightCm - 280.f), FRotator::ZeroRotator, FVector(6.45f, 6.45f, 0.55f), FLinearColor(0.42f, 0.20f, 0.10f), 0.55f, false);
+	}
+	Place(Cube, FVector(Coop.X, Coop.Y, CoopZ + SiloHeightCm + 220.f), FRotator::ZeroRotator, FVector(8.f, 30.f, 5.2f), Barn, 0.58f, true);
+	Place(Cube, FVector(Coop.X + 520.f, Coop.Y, CoopZ + 2700.f), FRotator::ZeroRotator, FVector(2.4f, 2.6f, 54.f), Barn, 0.5f, true);
+	Label(FVector(Coop.X - 900.f, Coop.Y, CoopZ + SiloHeightCm + 980.f), TEXT("APACHE FARMERS COOP"), FColor(230, 210, 140), 210.f, 180.f);
+
+	const FVector TowerBase(-11000.f, 58500.f, 0.f);
+	const float TowerZ = SiltTerrain::SampleHeight(TowerBase.X, TowerBase.Y);
+	constexpr float LegHeight = 2800.f;
+	constexpr float LegSpread = 320.f;
+	const FVector LegOffsets[] = {
+		FVector(-LegSpread, -LegSpread, 0.f),
+		FVector(LegSpread, -LegSpread, 0.f),
+		FVector(-LegSpread, LegSpread, 0.f),
+		FVector(LegSpread, LegSpread, 0.f)
+	};
+	for (const FVector& Leg : LegOffsets)
+	{
+		Place(
+			Cylinder,
+			FVector(TowerBase.X, TowerBase.Y, TowerZ + LegHeight * 0.5f) + Leg,
+			FRotator::ZeroRotator,
+			FVector(0.7f, 0.7f, LegHeight / 100.f),
+			Steel,
+			0.45f,
+			true);
+	}
+	Place(Cylinder, FVector(TowerBase.X, TowerBase.Y, TowerZ + LegHeight), FRotator::ZeroRotator, FVector(8.2f, 8.2f, 0.35f), FLinearColor(0.30f, 0.31f, 0.33f), 0.4f, true);
+	Place(Cylinder, FVector(TowerBase.X, TowerBase.Y, TowerZ + LegHeight + 260.f), FRotator::ZeroRotator, FVector(7.2f, 7.2f, 4.8f), TankWhite, 0.28f, true);
+	Place(Cylinder, FVector(TowerBase.X, TowerBase.Y, TowerZ + LegHeight + 560.f), FRotator::ZeroRotator, FVector(5.4f, 5.4f, 1.4f), FLinearColor(0.55f, 0.57f, 0.60f), 0.35f, true);
+	Label(FVector(TowerBase.X + 700.f, TowerBase.Y, TowerZ + LegHeight + 1100.f), TEXT("WATER TOWER"), FColor(210, 225, 235), 180.f, 0.f);
+
+	const FVector School(15800.f, 49000.f, 0.f);
+	const float SchoolZ = SiltTerrain::SampleHeight(School.X, School.Y);
+	Place(Cube, FVector(School.X, School.Y, SchoolZ + 340.f), FRotator::ZeroRotator, FVector(16.f, 92.f, 6.8f), Brick, 0.62f, true);
+	Place(Cube, FVector(School.X, School.Y, SchoolZ + 710.f), FRotator::ZeroRotator, FVector(18.f, 94.f, 0.45f), Roof, 0.42f, true);
+	Place(Cube, FVector(School.X - 820.f, School.Y, SchoolZ + 520.f), FRotator::ZeroRotator, FVector(0.35f, 90.f, 1.15f), FLinearColor(0.86f, 0.82f, 0.70f), 0.5f, false);
+	Place(Cube, FVector(School.X + 200.f, School.Y - 5200.f, SchoolZ + 420.f), FRotator::ZeroRotator, FVector(22.f, 18.f, 8.4f), FLinearColor(0.48f, 0.20f, 0.14f), 0.55f, true);
+	Place(Cylinder, FVector(School.X - 1400.f, School.Y + 4200.f, SchoolZ + 700.f), FRotator::ZeroRotator, FVector(0.22f, 0.22f, 14.f), FLinearColor(0.75f, 0.76f, 0.74f), 0.3f, false);
+	Place(Cube, FVector(School.X - 1580.f, School.Y + 4200.f, SchoolZ + 1360.f), FRotator::ZeroRotator, FVector(0.9f, 0.12f, 0.55f), FLinearColor(0.55f, 0.08f, 0.06f), 0.4f, false);
+	Label(FVector(School.X - 1700.f, School.Y, SchoolZ + 1200.f), TEXT("BOONE-APACHE HIGH SCHOOL"), FColor(245, 236, 210), 190.f, 180.f);
+
+	// Fiction locked lot. No street address and no house mesh.
+	const FVector Lot(-6200.f, 70500.f, 0.f);
+	const float LotZ = SiltTerrain::SampleHeight(Lot.X, Lot.Y);
+	constexpr float LotHalfX = 640.f;
+	constexpr float LotHalfY = 440.f;
+	Place(Cube, FVector(Lot.X, Lot.Y, LotZ + 10.f), FRotator::ZeroRotator, FVector(14.f, 10.f, 0.16f), FLinearColor(0.30f, 0.29f, 0.26f), 0.72f, true);
+	const FVector LotCorners[] = {
+		FVector(-LotHalfX, -LotHalfY, 0.f),
+		FVector(LotHalfX, -LotHalfY, 0.f),
+		FVector(-LotHalfX, LotHalfY, 0.f),
+		FVector(LotHalfX, LotHalfY, 0.f)
+	};
+	for (const FVector& Corner : LotCorners)
+	{
+		Place(
+			Cylinder,
+			FVector(Lot.X, Lot.Y, LotZ + 90.f) + Corner,
+			FRotator::ZeroRotator,
+			FVector(0.38f, 0.38f, 1.8f),
+			FLinearColor(0.45f, 0.075f, 0.05f),
+			0.55f,
+			true);
+	}
+	Place(Cube, FVector(Lot.X + LotHalfX, Lot.Y, LotZ + 70.f), FRotator::ZeroRotator, FVector(0.12f, 8.6f, 0.12f), FLinearColor(0.12f, 0.12f, 0.13f), 0.4f, true);
+	Place(Cube, FVector(Lot.X + LotHalfX, Lot.Y, LotZ + 130.f), FRotator::ZeroRotator, FVector(0.12f, 8.6f, 0.12f), FLinearColor(0.12f, 0.12f, 0.13f), 0.4f, true);
+	Label(FVector(Lot.X + LotHalfX + 80.f, Lot.Y, LotZ + 360.f), TEXT("CHIEF'S PERSONAL GARAGE — LOCKED"), FColor(255, 196, 64), 120.f, 0.f);
+
 	const FVector Bridge(6000.f, 24000.f, SiltTerrain::SampleHeight(6000.f, 24000.f));
 	Place(Cube, Bridge + FVector(-900.f, 1800.f, 80.f), FRotator(0.f, 70.f, -12.f), FVector(6.f, 1.6f, 0.35f), Concrete, 0.5f, true);
 	Place(Cube, Bridge + FVector(900.f, -1600.f, 40.f), FRotator(0.f, 70.f, 14.f), FVector(5.f, 1.6f, 0.35f), Concrete, 0.5f, true);
@@ -332,10 +506,6 @@ void USiltWorldSubsystem::BuildDressing(UWorld& World) const
 	Place(Cylinder, Culvert + FVector(0.f, 400.f, 40.f), FRotator(90.f, 0.f, 90.f), FVector(1.3f, 1.3f, 2.4f), FLinearColor(0.25f, 0.22f, 0.18f), 0.45f, true);
 	Place(Cylinder, Culvert + FVector(0.f, -400.f, 20.f), FRotator(80.f, 15.f, 90.f), FVector(1.1f, 1.1f, 2.0f), FLinearColor(0.18f, 0.16f, 0.13f), 0.35f, false);
 	Label(Culvert + FVector(0.f, 0.f, 500.f), TEXT("CULVERT"), FColor(190, 190, 170), 120.f);
-
-	const FVector Tower(140000.f, 150000.f, SiltTerrain::SampleHeight(140000.f, 150000.f));
-	Place(Cylinder, Tower + FVector(0.f, 0.f, 900.f), FRotator::ZeroRotator, FVector(1.4f, 1.4f, 18.f), Concrete, 0.6f, true);
-	Place(Cylinder, Tower + FVector(0.f, 0.f, 1900.f), FRotator::ZeroRotator, FVector(4.5f, 4.5f, 2.2f), FLinearColor(0.35f, 0.36f, 0.38f), 0.35f, true);
 
 	const FVector Drop = SiltTerrain::GetDropZone();
 	if (AStaticMeshActor* Marker = Place(Cylinder, Drop + FVector(0.f, 0.f, 1600.f), FRotator::ZeroRotator, FVector(0.35f, 0.35f, 32.f), FLinearColor(1.f, 0.7f, 0.2f), 0.2f, false))
@@ -417,15 +587,15 @@ void USiltWorldSubsystem::BuildWeather(UWorld& World) const
 		TagSilt(Fog);
 		if (UExponentialHeightFogComponent* Comp = Fog->GetComponent())
 		{
-			Comp->SetFogDensity(0.012f);
+			Comp->SetFogDensity(0.017f);
 			Comp->SetFogHeightFalloff(0.18f);
-			Comp->SetFogInscatteringColor(FLinearColor(0.55f, 0.60f, 0.58f));
+			Comp->SetFogInscatteringColor(FLinearColor(0.50f, 0.46f, 0.40f));
 			Comp->SetFogMaxOpacity(0.92f);
-			Comp->SetStartDistance(2000.f);
+			Comp->SetStartDistance(800.f);
 			Comp->bEnableVolumetricFog = true;
 			Comp->VolumetricFogScatteringDistribution = 0.35f;
 			Comp->VolumetricFogDistance = 8000.f;
-			Comp->VolumetricFogAlbedo = FColor(210, 215, 215);
+			Comp->VolumetricFogAlbedo = FColor(187, 181, 170);
 		}
 	}
 
