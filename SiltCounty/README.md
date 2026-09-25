@@ -12,7 +12,7 @@ The county is **8 km × 8 km**. The garage, flooded town, causeway, and south sl
 - Visual Studio 2022 with the **Desktop development with C++** workload, so the editor can compile the game module
 - Windows is the desktop target. Quote every path. Windows usernames and folders often contain spaces.
 
-Quixel / Megascans / Fab kits are not bundled. The first time the editor opens, it generates wet-ground, floodwater, truck paint, beacon, and rain materials under `Content/SiltCounty/Materials`. Lumen and Nanite are turned on in the project. The runtime terrain is a procedural mesh, so it is not Nanite; Lumen still lights the wet surfaces, water, and rain.
+Quixel / Megascans / Fab kits are not bundled. The first time the editor opens, it generates wet-ground, floodwater, truck paint, beacon, rain, and the town materials (`M_TownBrick`, `M_TownClapboard`, `M_ConcreteBlock`, `M_MunicipalPaint`) under `Content/SiltCounty/Materials`. Lumen and Nanite are turned on in the project. The runtime terrain is a procedural mesh, so it is not Nanite; Lumen still lights the wet surfaces, water, and rain.
 
 ## Open the project
 

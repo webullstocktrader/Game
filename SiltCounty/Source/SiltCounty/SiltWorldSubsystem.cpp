@@ -309,6 +309,62 @@ void USiltWorldSubsystem::BuildDressing(UWorld& World) const
 	}
 	Label(FVector(0.f, 56000.f, SiltTerrain::GetWaterLevel() + 900.f), TEXT("SOUTH TOWN  —  FLOODED"), FColor(210, 220, 230), 160.f);
 
+	const TCHAR* TruckPaintPath = TEXT("/Game/SiltCounty/Materials/M_TruckPaint.M_TruckPaint");
+	UMaterialInterface* TownBrick = LoadMat(TEXT("/Game/SiltCounty/Materials/M_TownBrick.M_TownBrick"), TruckPaintPath);
+	UMaterialInterface* TownClapboard = LoadMat(TEXT("/Game/SiltCounty/Materials/M_TownClapboard.M_TownClapboard"), TruckPaintPath);
+	UMaterialInterface* ConcreteBlock = LoadMat(TEXT("/Game/SiltCounty/Materials/M_ConcreteBlock.M_ConcreteBlock"), TruckPaintPath);
+	UMaterialInterface* Municipal = LoadMat(TEXT("/Game/SiltCounty/Materials/M_MunicipalPaint.M_MunicipalPaint"), TruckPaintPath);
+
+	auto PlaceMat = [&](UStaticMesh* Mesh, const FVector& Location, const FRotator& Rotation, const FVector& Scale, UMaterialInterface* Material, const FLinearColor& FallbackColor, FName Name)
+	{
+		UMaterialInterface* Surface = Material;
+		if (!Surface || Surface == Paint)
+		{
+			Surface = Tint(Paint, FallbackColor, this, 0.72f);
+		}
+		const FTransform Xform(Rotation, Location, Scale);
+		return SpawnMesh(World, Mesh, Xform, Surface, Name);
+	};
+
+	// Pass A exterior landmarks. Garage blockout at Y≈86000 stays above.
+	{
+		const FVector BankAnchor = TownCenter + FVector(-4200.f, 900.f, 0.f);
+		const float BankZ = SiltTerrain::SampleHeight(BankAnchor.X, BankAnchor.Y);
+		const FVector Bank(BankAnchor.X, BankAnchor.Y, BankZ);
+		const FLinearColor BrickFallback(0.34f, 0.13f, 0.09f);
+		const FLinearColor BlockFallback(0.40f, 0.39f, 0.36f);
+		PlaceMat(Cube, Bank + FVector(0.f, 0.f, 22.5f), FRotator::ZeroRotator, FVector(8.2f, 5.6f, 0.45f), ConcreteBlock, BlockFallback, TEXT("CountyTrustPlinth"));
+		PlaceMat(Cube, Bank + FVector(0.f, 0.f, 255.f), FRotator::ZeroRotator, FVector(7.5f, 5.0f, 4.2f), TownBrick, BrickFallback, TEXT("CountyTrustBank"));
+		const FVector PierSW(-375.f, -250.f, 0.f);
+		const FVector PierNE(375.f, 250.f, 0.f);
+		PlaceMat(Cube, Bank + PierSW + FVector(0.f, 0.f, 27.5f), FRotator::ZeroRotator, FVector(1.5f, 1.5f, 0.55f), ConcreteBlock, BlockFallback, TEXT("CountyTrustBaseSW"));
+		PlaceMat(Cube, Bank + PierNE + FVector(0.f, 0.f, 27.5f), FRotator::ZeroRotator, FVector(1.5f, 1.5f, 0.55f), ConcreteBlock, BlockFallback, TEXT("CountyTrustBaseNE"));
+		PlaceMat(Cube, Bank + PierSW + FVector(0.f, 0.f, 385.f), FRotator::ZeroRotator, FVector(1.15f, 1.15f, 6.6f), TownBrick, BrickFallback, TEXT("CountyTrustPierSW"));
+		PlaceMat(Cube, Bank + PierNE + FVector(0.f, 0.f, 385.f), FRotator::ZeroRotator, FVector(1.15f, 1.15f, 6.6f), TownBrick, BrickFallback, TEXT("CountyTrustPierNE"));
+		Label(Bank + FVector(0.f, 310.f, 500.f), TEXT("COUNTY TRUST"), FColor(236, 224, 196), 78.f);
+
+		const FVector HallAnchor = TownCenter + FVector(3900.f, 1100.f, 0.f);
+		const float HallZ = SiltTerrain::SampleHeight(HallAnchor.X, HallAnchor.Y);
+		const FVector Hall(HallAnchor.X, HallAnchor.Y, HallZ);
+		const FLinearColor ClapboardFallback(0.38f, 0.31f, 0.22f);
+		PlaceMat(Cube, Hall + FVector(0.f, 0.f, 240.f), FRotator::ZeroRotator, FVector(6.5f, 5.5f, 4.8f), TownClapboard, ClapboardFallback, TEXT("TownHall"));
+		const FVector TurretNW(-325.f, 275.f, 0.f);
+		const FVector TurretNE(325.f, 275.f, 0.f);
+		PlaceMat(Cylinder, Hall + TurretNW + FVector(0.f, 0.f, 450.f), FRotator::ZeroRotator, FVector(1.6f, 1.6f, 9.f), TownClapboard, ClapboardFallback, TEXT("TownHallTurretNW"));
+		PlaceMat(Cylinder, Hall + TurretNE + FVector(0.f, 0.f, 450.f), FRotator::ZeroRotator, FVector(1.6f, 1.6f, 9.f), TownClapboard, ClapboardFallback, TEXT("TownHallTurretNE"));
+		const FLinearColor Civic(0.52f, 0.50f, 0.40f);
+		auto PlaceCivic = [&](UStaticMesh* Mesh, const FVector& Location, const FVector& Scale, FName Name)
+		{
+			UMaterialInterface* Surface = Tint(Municipal ? Municipal : Paint, Civic, this, 0.48f);
+			const FTransform Xform(FRotator::ZeroRotator, Location, Scale);
+			SpawnMesh(World, Mesh, Xform, Surface, Name);
+		};
+		PlaceCivic(Cylinder, Hall + TurretNW + FVector(0.f, 0.f, 935.f), FVector(2.05f, 2.05f, 0.55f), TEXT("TownHallCapNW"));
+		PlaceCivic(Cylinder, Hall + TurretNE + FVector(0.f, 0.f, 935.f), FVector(2.05f, 2.05f, 0.55f), TEXT("TownHallCapNE"));
+		PlaceCivic(Cube, Hall + FVector(0.f, 0.f, 488.f), FVector(6.9f, 5.9f, 0.16f), TEXT("TownHallTrim"));
+		Label(Hall + FVector(0.f, 340.f, 620.f), TEXT("TOWN HALL"), FColor(236, 228, 206), 84.f);
+	}
+
 	const FVector Bridge(6000.f, 24000.f, SiltTerrain::SampleHeight(6000.f, 24000.f));
 	Place(Cube, Bridge + FVector(-900.f, 1800.f, 80.f), FRotator(0.f, 70.f, -12.f), FVector(6.f, 1.6f, 0.35f), Concrete, 0.5f, true);
 	Place(Cube, Bridge + FVector(900.f, -1600.f, 40.f), FRotator(0.f, 70.f, 14.f), FVector(5.f, 1.6f, 0.35f), Concrete, 0.5f, true);
