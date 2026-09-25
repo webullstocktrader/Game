@@ -7,11 +7,11 @@
 #include "Components/SpotLightComponent.h"
 #include "Components/TextRenderComponent.h"
 #include "Components/VolumetricCloudComponent.h"
-#include "Components/PointLightComponent.h"
 #include "Engine/Font.h"
 #include "Engine/DirectionalLight.h"
 #include "Engine/ExponentialHeightFog.h"
 #include "Engine/PointLight.h"
+#include "Engine/SpotLight.h"
 #include "Engine/PostProcessVolume.h"
 #include "Engine/SkyAtmosphere.h"
 #include "Engine/SkyLight.h"
@@ -40,6 +40,45 @@ namespace
 		{
 			Actor->Tags.AddUnique(TEXT("SiltCounty"));
 		}
+	}
+
+	// Shop practical. Temperature carries warm or cool. A wide source radius keeps the pool and its shadow soft.
+	void SpawnShopSpot(UWorld& World, const FVector& Location, const FRotator& Rotation, const TCHAR* Tag, float Lumens, float RadiusCm, float TemperatureK, float InnerConeDeg, float OuterConeDeg, float SourceRadiusCm, float Specular, float Scatter, float Indirect, bool bSoftShadows)
+	{
+		ASpotLight* Spot = World.SpawnActor<ASpotLight>(Location, Rotation);
+		if (!Spot)
+		{
+			return;
+		}
+		TagSilt(Spot);
+		Spot->Tags.AddUnique(Tag);
+		USpotLightComponent* Light = Cast<USpotLightComponent>(Spot->GetLightComponent());
+		if (!Light)
+		{
+			return;
+		}
+		Light->SetMobility(EComponentMobility::Movable);
+		Light->SetIntensityUnits(ELightUnits::Lumens);
+		Light->SetIntensity(Lumens);
+		Light->SetAttenuationRadius(RadiusCm);
+		Light->SetUseTemperature(true);
+		Light->SetTemperature(TemperatureK);
+		Light->SetLightColor(FLinearColor::White);
+		Light->SetInnerConeAngle(InnerConeDeg);
+		Light->SetOuterConeAngle(OuterConeDeg);
+		Light->SetSourceRadius(SourceRadiusCm);
+		Light->SetCastShadows(bSoftShadows);
+		if (bSoftShadows)
+		{
+			Light->ContactShadowLength = 0.f;
+			Light->ShadowResolutionScale = 0.65f;
+		}
+		Light->SetCastVolumetricShadow(false);
+		Light->SetSpecularScale(Specular);
+		Light->SetVolumetricScatteringIntensity(Scatter);
+		Light->SetIndirectLightingIntensity(Indirect);
+		Light->bUseInverseSquaredFalloff = true;
+		Light->MarkRenderStateDirty();
 	}
 
 	template <typename TActor>
@@ -161,6 +200,7 @@ void USiltWorldSubsystem::ClearTemplateActors(UWorld& World) const
 	DestroyUntagged<APlayerStart>(World);
 	DestroyUntagged<ASphereReflectionCapture>(World);
 	DestroyUntagged<APointLight>(World);
+	DestroyUntagged<ASpotLight>(World);
 }
 
 UMaterialInterface* USiltWorldSubsystem::LoadMat(const TCHAR* ProjectPath, const TCHAR* Fallback) const
@@ -389,17 +429,20 @@ void USiltWorldSubsystem::BuildDressing(UWorld& World) const
 	}
 	Label(Drop + FVector(0.f, 0.f, 360.f), TEXT("DROP ZONE"), FColor(255, 210, 90), 140.f);
 
-	if (APointLight* Bay = World.SpawnActor<APointLight>(FVector(0.f, 84000.f, GarageZ + 480.f), FRotator::ZeroRotator))
-	{
-		TagSilt(Bay);
-		if (UPointLightComponent* Light = Cast<UPointLightComponent>(Bay->GetLightComponent()))
-		{
-			Light->SetMobility(EComponentMobility::Movable);
-			Light->SetIntensity(8000.f);
-			Light->SetAttenuationRadius(2800.f);
-			Light->SetLightColor(FLinearColor(1.f, 0.85f, 0.65f));
-		}
-	}
+	// Roof is centered at Y=86000 (about 9 m deep). Open bay faces -Y. Spots hang just under that roof.
+	const FRotator Down(-90.f, 0.f, 0.f);
+	const float BayZ = GarageZ + 540.f;
+	SpawnShopSpot(World, FVector(-550.f, 85880.f, BayZ), Down, TEXT("SiltShopSouth"), 2600.f, 900.f, 3300.f, 36.f, 58.f, 42.f, 0.42f, 0.08f, 1.1f, true);
+	SpawnShopSpot(World, FVector(550.f, 85880.f, BayZ), Down, TEXT("SiltShopNorth"), 2600.f, 900.f, 3300.f, 36.f, 58.f, 42.f, 0.42f, 0.08f, 1.1f, true);
+	SpawnShopSpot(World, FVector(0.f, 86300.f, BayZ), Down, TEXT("SiltShopBack"), 1800.f, 850.f, 3200.f, 40.f, 62.f, 50.f, 0.38f, 0.06f, 1.05f, true);
+
+	const FVector BenchFrom(-820.f, 86140.f, GarageZ + 430.f);
+	const FVector BenchTarget(-1020.f, 86260.f, GarageZ + 130.f);
+	SpawnShopSpot(World, BenchFrom, (BenchTarget - BenchFrom).Rotation(), TEXT("SiltShopWorkbench"), 1400.f, 700.f, 3000.f, 22.f, 40.f, 32.f, 0.4f, 0.06f, 1.f, true);
+
+	// Apron only. 900 lm is about a 36% cut from a 1400 lm door spot, so step-out stays overcast.
+	SpawnShopSpot(World, FVector(0.f, 84150.f, GarageZ + 220.f), FRotator(-70.f, -90.f, 0.f), TEXT("SiltShopDoorRain"), 900.f, 650.f, 8500.f, 32.f, 52.f, 36.f, 0.28f, 0.12f, 0.45f, false);
+	UE_LOG(LogSiltCounty, Display, TEXT("Shop lights: south/north 2600 lm 3300K soft shadows, back 1800 lm 3200K, bench 1400 lm 3000K, door rain 900 lm 8500K. No point light."));
 }
 
 void USiltWorldSubsystem::BuildWeather(UWorld& World) const
@@ -411,7 +454,7 @@ void USiltWorldSubsystem::BuildWeather(UWorld& World) const
 		if (UDirectionalLightComponent* Light = Cast<UDirectionalLightComponent>(Sun->GetLightComponent()))
 		{
 			Light->SetMobility(EComponentMobility::Movable);
-			Light->SetIntensity(10.f);
+			Light->SetIntensity(4.6f);
 			Light->SetLightColor(FLinearColor(0.72f, 0.78f, 0.88f));
 			Light->SetAtmosphereSunLight(true);
 			Light->SetCastShadows(true);
@@ -432,7 +475,7 @@ void USiltWorldSubsystem::BuildWeather(UWorld& World) const
 		if (USkyLightComponent* Light = Sky->GetLightComponent())
 		{
 			Light->SetMobility(EComponentMobility::Movable);
-			Light->SetIntensity(1.35f);
+			Light->SetIntensity(0.88f);
 			Light->SetRealTimeCapture(true);
 			Light->RecaptureSky();
 			Light->bLowerHemisphereIsBlack = false;
@@ -482,7 +525,7 @@ void USiltWorldSubsystem::BuildWeather(UWorld& World) const
 		Post->Settings.bOverride_ColorGamma = true;
 		Post->Settings.ColorGamma = FVector4(0.98f, 1.0f, 1.02f, 1.f);
 		Post->Settings.bOverride_AutoExposureBias = true;
-		Post->Settings.AutoExposureBias = -0.15f;
+		Post->Settings.AutoExposureBias = 0.05f;
 		Post->Settings.bOverride_VignetteIntensity = true;
 		Post->Settings.VignetteIntensity = 0.28f;
 		Post->Settings.bOverride_BloomIntensity = true;
