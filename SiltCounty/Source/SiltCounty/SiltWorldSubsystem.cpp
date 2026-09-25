@@ -279,11 +279,44 @@ void USiltWorldSubsystem::BuildDressing(UWorld& World) const
 	const FLinearColor Concrete(0.22f, 0.21f, 0.19f);
 	const FLinearColor Timber(0.18f, 0.10f, 0.06f);
 	const FLinearColor Roof(0.12f, 0.13f, 0.14f);
+	const FLinearColor DampWall(0.30f, 0.28f, 0.24f);
+	const FLinearColor ShopRoofTint(0.52f, 0.38f, 0.26f);
+	const FLinearColor BenchWood(0.46f, 0.28f, 0.14f);
+	const FLinearColor BenchSteel(0.58f, 0.46f, 0.30f);
+	const TCHAR* ShopPaintPath = TEXT("/Game/SiltCounty/Materials/M_TruckPaint.M_TruckPaint");
+	UMaterialInterface* ShopWallMat = LoadMat(TEXT("/Game/SiltCounty/Materials/M_ShopWall.M_ShopWall"), ShopPaintPath);
+	UMaterialInterface* ShopFloorMat = LoadMat(TEXT("/Game/SiltCounty/Materials/M_ShopFloor.M_ShopFloor"), ShopPaintPath);
 
-	Place(Cube, FVector(-1100.f, 86000.f, GarageZ + 280.f), FRotator::ZeroRotator, FVector(0.5f, 4.6f, 5.6f), Concrete, 0.55f, true);
-	Place(Cube, FVector(1100.f, 86000.f, GarageZ + 280.f), FRotator::ZeroRotator, FVector(0.5f, 4.6f, 5.6f), Concrete, 0.55f, true);
-	Place(Cube, FVector(0.f, 90000.f, GarageZ + 280.f), FRotator::ZeroRotator, FVector(22.f, 0.5f, 5.6f), Concrete, 0.55f, true);
-	Place(Cube, FVector(0.f, 86000.f, GarageZ + 620.f), FRotator::ZeroRotator, FVector(24.f, 9.f, 0.35f), Roof, 0.4f, true);
+	auto ApplyShopMat = [&](AStaticMeshActor* Actor, UMaterialInterface* Material)
+	{
+		if (Actor && Material && Material != Paint)
+		{
+			Actor->GetStaticMeshComponent()->SetMaterial(0, Material);
+		}
+	};
+
+	// Lock B shop shell stays on this footprint. Truck spawns and the bay light stay put.
+	ApplyShopMat(Place(Cube, FVector(-1100.f, 86000.f, GarageZ + 280.f), FRotator::ZeroRotator, FVector(0.5f, 4.6f, 5.6f), DampWall, 0.32f, true), ShopWallMat);
+	ApplyShopMat(Place(Cube, FVector(1100.f, 86000.f, GarageZ + 280.f), FRotator::ZeroRotator, FVector(0.5f, 4.6f, 5.6f), DampWall, 0.32f, true), ShopWallMat);
+	ApplyShopMat(Place(Cube, FVector(0.f, 90000.f, GarageZ + 280.f), FRotator::ZeroRotator, FVector(22.f, 0.5f, 5.6f), DampWall, 0.32f, true), ShopWallMat);
+	Place(Cube, FVector(0.f, 86000.f, GarageZ + 620.f), FRotator::ZeroRotator, FVector(24.f, 9.f, 0.35f), ShopRoofTint, 0.46f, true);
+
+	auto PlaceShop = [&](UStaticMesh* Mesh, const FVector& Location, const FVector& Scale, UMaterialInterface* Material, const FLinearColor& FallbackColor, float Roughness, FName Name)
+	{
+		UMaterialInterface* Surface = Material;
+		if (!Surface || Surface == Paint)
+		{
+			Surface = Tint(Paint, FallbackColor, this, Roughness);
+		}
+		const FTransform Xform(FRotator::ZeroRotator, Location, Scale);
+		return SpawnMesh(World, Mesh, Xform, Surface, Name);
+	};
+
+	PlaceShop(Cube, FVector(0.f, 86000.f, GarageZ + 8.f), FVector(20.f, 7.6f, 0.16f), ShopFloorMat, FLinearColor(0.18f, 0.17f, 0.15f), 0.12f, TEXT("ShopFloor"));
+	const FVector Bench(-860.f, 86080.f, GarageZ);
+	PlaceShop(Cube, Bench + FVector(0.f, 0.f, 42.f), FVector(1.15f, 2.0f, 0.72f), nullptr, FLinearColor(0.32f, 0.20f, 0.10f), 0.58f, TEXT("ShopBench"));
+	PlaceShop(Cube, Bench + FVector(0.f, 0.f, 84.f), FVector(1.35f, 2.2f, 0.10f), nullptr, BenchWood, 0.48f, TEXT("ShopBenchTop"));
+	PlaceShop(Cube, Bench + FVector(0.f, -40.f, 96.f), FVector(0.42f, 0.55f, 0.06f), nullptr, BenchSteel, 0.28f, TEXT("ShopBenchTray"));
 
 	const FVector TownCenter(0.f, 52000.f, SiltTerrain::SampleHeight(0.f, 52000.f));
 	const FVector HouseOffsets[] = {
