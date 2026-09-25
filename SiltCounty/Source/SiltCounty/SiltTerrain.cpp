@@ -159,8 +159,26 @@ namespace SiltTerrain
 	{
 		const float Height = SampleHeight(X, Y);
 		const float RoadDist = DistanceToRoad(X, Y);
+		const float TrackNoise = FMath::Abs(ValueNoise(X * 0.0022f, Y * 0.0022f));
 
-		// Standing water and deep mud still own the flood line.
+		// Highway crown: wet black asphalt. Shoulder band: crushed gravel.
+		if (Height > WaterLevel + 50.f)
+		{
+			if (RoadDist < 700.f)
+			{
+				return ESiltSurface::Asphalt;
+			}
+			if (RoadDist < 1100.f)
+			{
+				return ESiltSurface::Gravel;
+			}
+			// Soft mud tracks just off the gravel shoulder (duals leave the crown).
+			if (RoadDist < 1600.f && TrackNoise > 0.35f)
+			{
+				return ESiltSurface::Mud;
+			}
+		}
+
 		if (Height < WaterLevel - 60.f)
 		{
 			return ESiltSurface::Water;
@@ -169,32 +187,11 @@ namespace SiltTerrain
 		{
 			return ESiltSurface::DeepMud;
 		}
-
-		// Raised causeway: blacktop crown, then a wet gravel shoulder.
-		if (RoadDist < 700.f)
-		{
-			return ESiltSurface::Asphalt;
-		}
-		if (RoadDist < 1100.f)
-		{
-			return ESiltSurface::Gravel;
-		}
-
-		// Ruts just off the shoulder. Same hash on every machine.
-		if (RoadDist < 2100.f)
-		{
-			const float Band = FMath::Frac(FMath::Sin(X * 0.00042f + Y * 0.00027f) * 43758.5453f);
-			const float Rut = FMath::Frac(FMath::Sin((X * 0.71f - Y) * 0.0028f) * 12543.2f);
-			if (Band > 0.42f && Rut > 0.55f)
-			{
-				return ESiltSurface::Mud;
-			}
-		}
-
 		if (Height < WaterLevel + 240.f)
 		{
 			return ESiltSurface::Mud;
 		}
+		// Default upland: wet olive soil, not dry farm dirt.
 		return ESiltSurface::Dirt;
 	}
 
@@ -203,8 +200,8 @@ namespace SiltTerrain
 		switch (Surface)
 		{
 		case ESiltSurface::Asphalt: return TEXT("WET ASPHALT");
-		case ESiltSurface::Road:
 		case ESiltSurface::Gravel: return TEXT("WET GRAVEL");
+		case ESiltSurface::Road: return TEXT("WET GRAVEL");
 		case ESiltSurface::Dirt: return TEXT("WET SOIL");
 		case ESiltSurface::Mud: return TEXT("MUD TRACK");
 		case ESiltSurface::DeepMud: return TEXT("DEEP MUD");

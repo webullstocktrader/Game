@@ -5,44 +5,48 @@
 
 namespace
 {
-	FLinearColor GroundColor(ESiltSurface Surface, float Grain, float Patch)
+	FLinearColor GroundColor(ESiltSurface Surface, float Noise)
 	{
+		// Map-bible palette: olive mud, black wet asphalt, wet gravel, saturated soil.
+		// Vertex color RGB = albedo tint; A = roughness for M_WetGround.
 		FLinearColor Color;
 		float Roughness = 0.55f;
 		switch (Surface)
 		{
 		case ESiltSurface::Asphalt:
-			Color = FMath::Lerp(FLinearColor(0.010f, 0.011f, 0.012f), FLinearColor(0.028f, 0.029f, 0.031f), Patch);
-			Roughness = FMath::Lerp(0.06f, 0.16f, Grain);
+			Color = FLinearColor(0.045f, 0.045f, 0.048f);
+			Roughness = 0.22f;
 			break;
-		case ESiltSurface::Road:
 		case ESiltSurface::Gravel:
-			Color = FMath::Lerp(FLinearColor(0.075f, 0.078f, 0.070f), FLinearColor(0.145f, 0.138f, 0.118f), Patch);
-			Roughness = FMath::Lerp(0.26f, 0.48f, Grain);
+		case ESiltSurface::Road:
+			Color = FLinearColor(0.22f, 0.20f, 0.17f);
+			Roughness = 0.58f;
 			break;
 		case ESiltSurface::Dirt:
-			Color = FMath::Lerp(FLinearColor(0.14f, 0.12f, 0.06f), FLinearColor(0.22f, 0.17f, 0.09f), Patch);
-			Roughness = FMath::Lerp(0.55f, 0.78f, Grain);
+			// Wet olive soil (not dry brown farm dirt).
+			Color = FLinearColor(0.14f, 0.13f, 0.07f);
+			Roughness = 0.48f;
 			break;
 		case ESiltSurface::Mud:
-			Color = FMath::Lerp(FLinearColor(0.035f, 0.042f, 0.018f), FLinearColor(0.072f, 0.078f, 0.030f), Patch);
-			Roughness = FMath::Lerp(0.08f, 0.18f, Grain);
+			Color = FLinearColor(0.08f, 0.075f, 0.035f);
+			Roughness = 0.18f;
 			break;
 		case ESiltSurface::DeepMud:
-			Color = FMath::Lerp(FLinearColor(0.018f, 0.024f, 0.012f), FLinearColor(0.040f, 0.046f, 0.018f), Patch);
-			Roughness = FMath::Lerp(0.05f, 0.12f, Grain);
+			Color = FLinearColor(0.035f, 0.040f, 0.022f);
+			Roughness = 0.08f;
 			break;
 		case ESiltSurface::Water:
 		default:
-			Color = FMath::Lerp(FLinearColor(0.014f, 0.011f, 0.009f), FLinearColor(0.030f, 0.020f, 0.014f), Patch);
-			Roughness = FMath::Lerp(0.04f, 0.10f, Grain);
+			Color = FLinearColor(0.025f, 0.035f, 0.032f);
+			Roughness = 0.06f;
 			break;
 		}
 
-		const float Speck = (Grain - 0.5f) * 0.018f;
-		Color.R = FMath::Clamp(Color.R + Speck, 0.f, 1.f);
-		Color.G = FMath::Clamp(Color.G + Speck * 0.85f, 0.f, 1.f);
-		Color.B = FMath::Clamp(Color.B + Speck * 0.45f, 0.f, 1.f);
+		// Soft mottling; asphalt stays darker / tighter.
+		const float Mottling = (Surface == ESiltSurface::Asphalt) ? 0.012f : 0.028f;
+		Color.R = FMath::Clamp(Color.R + Noise * Mottling, 0.f, 1.f);
+		Color.G = FMath::Clamp(Color.G + Noise * Mottling * 0.9f, 0.f, 1.f);
+		Color.B = FMath::Clamp(Color.B + Noise * Mottling * 0.7f, 0.f, 1.f);
 		Color.A = Roughness;
 		return Color;
 	}
@@ -160,9 +164,8 @@ void ASiltGroundChunk::Build(const FVector2D& MinXY, const FVector2D& MaxXY, flo
 			Vertices[Index] = FVector(WorldX, WorldY, Height);
 			UVs[Index] = FVector2D(WorldX * 0.0004f, WorldY * 0.0004f);
 			Surfaces[Index] = SiltTerrain::SampleSurface(WorldX, WorldY);
-			const float Grain = Hash01(WorldX, WorldY);
-			const float Patch = Hash01(WorldX * 0.15f + 19.f, WorldY * 0.15f - 7.f);
-			Colors[Index] = GroundColor(Surfaces[Index], Grain, Patch);
+			const float Noise = FMath::Frac(FMath::Sin(WorldX * 0.013f + WorldY * 0.017f) * 43758.5453f) * 2.f - 1.f;
+			Colors[Index] = GroundColor(Surfaces[Index], Noise);
 		}
 	}
 

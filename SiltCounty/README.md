@@ -163,10 +163,10 @@ This is a material and dressing pass. Garage start, town blocks, bridges, and th
 
 What you should see:
 
-- **Wet asphalt crown** — near-black, low roughness, clear-coat sheen and mirror puddles. HUD: `WET ASPHALT`.
-- **Wet gravel shoulder** — darker stone color, still damp, less grip than the crown. HUD: `WET GRAVEL`.
-- **Wet soil** — the default high ground. Browner, rougher, only a light film unless it is close to the flood line. HUD: `WET SOIL`.
-- **Mud tracks and deep mud** — olive silt, low roughness, broad glossy patches. Tracks sit just off the shoulder. The basin and slough go to `DEEP MUD` and `FLOODWATER`. HUD on the ruts: `MUD TRACK`.
+- **Wet asphalt crown** — black (`RoadDist` under 700), vertex roughness 0.22, clear-coat sheen and mirror puddles. HUD: `WET ASPHALT`.
+- **Wet gravel shoulder** — crushed stone (`RoadDist` under 1100). HUD: `WET GRAVEL`. Same grip as a leftover `Road` sample.
+- **Wet soil** — olive upland, the default above the mud band. HUD: `WET SOIL`.
+- **Mud tracks and deep mud** — olive silt. Tracks are `RoadDist` under 1600 where `ValueNoise` exceeds 0.35, and only on ground above the deep-mud line. The basin and slough still go to `DEEP MUD` and `FLOODWATER`. HUD on the ruts: `MUD TRACK`.
 - **Floodwater** — opaque tea-brown sheet with a slow ripple normal, sharper reflections in the middle, and a broken dirty foam edge where the bank meets the water.
 - **Rain** — cooler, thinner streaks. They do not change the ground; the ground is already built wet.
 
@@ -189,7 +189,7 @@ Generated assets, all under `Content/SiltCounty/Materials`:
 3. Press Play and skip the intro (Enter). You spawn in the garage yard.
 4. Look at the gravel around the trucks: damp sheen and a few dark puddles. The garage and the flooded town blocks should still be there.
 5. Drive south through **SOUTH TOWN — FLOODED**. Water should ripple, shores should foam, and the houses should still stand in the basin.
-6. Leave the causeway into the slough. The HUD should step from `WET ASPHALT` to `WET GRAVEL`, then `MUD TRACK` / `WET SOIL`, and into `DEEP MUD` / `FLOODWATER`. The ground should get darker and glossier as it does. The asphalt crown is the black strip. Gravel is the shoulder. Mud tracks are the olive ruts just off the gravel.
+6. Leave the causeway into the slough. The HUD should step from `WET ASPHALT` (crown) to `WET GRAVEL` (shoulder), then broken `MUD TRACK` patches and `WET SOIL`, and into `DEEP MUD` / `FLOODWATER`. Vertex color is the palette; gloss still comes from `M_WetGround` (vertex roughness in alpha, plus `PuddleAmount` and the shore film). Shallow puddle decals stay on asphalt and gravel.
 7. Optional: on `MI_WetRoad`, raise `PuddleAmount` toward 1 and play again. The causeway should get more mirror patches without moving the town.
 
 ## Limits of this slice
