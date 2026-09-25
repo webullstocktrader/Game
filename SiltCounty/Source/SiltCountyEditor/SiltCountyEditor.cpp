@@ -191,6 +191,23 @@ namespace SiltMaterialBootstrap
 		return false;
 	}
 
+	bool HasUnitScalar(const UMaterial* Material, FName Name)
+	{
+		if (!Material)
+		{
+			return false;
+		}
+		for (UMaterialExpression* Expr : Material->GetExpressions())
+		{
+			const UMaterialExpressionScalarParameter* Scalar = Cast<UMaterialExpressionScalarParameter>(Expr);
+			if (Scalar && Scalar->ParameterName == Name)
+			{
+				return Scalar->SliderMax > 0.5f;
+			}
+		}
+		return false;
+	}
+
 	UMaterial* AcquireTruckPaint()
 	{
 		const TCHAR* ObjectPath = TEXT("/Game/SiltCounty/Materials/M_TruckPaint.M_TruckPaint");
@@ -386,6 +403,94 @@ namespace SiltMaterialBootstrap
 		UE_LOG(LogSiltEditor, Display, TEXT("Silt truck paint pass A ready"));
 	}
 
+	UMaterial* AcquirePuddle()
+	{
+		const TCHAR* ObjectPath = TEXT("/Game/SiltCounty/Materials/M_Puddle.M_Puddle");
+		if (UMaterial* Existing = LoadObject<UMaterial>(nullptr, ObjectPath))
+		{
+			if (HasUnitScalar(Existing, TEXT("Wetness")))
+			{
+				UE_LOG(LogSiltEditor, Display, TEXT("Silt shallow puddles pass A ready"));
+				return nullptr;
+			}
+			UMaterialEditingLibrary::DeleteAllMaterialExpressions(Existing);
+			return Existing;
+		}
+		return CreatePackageMaterial(TEXT("M_Puddle"));
+	}
+
+	void BuildPuddle()
+	{
+		UMaterial* Material = AcquirePuddle();
+		if (!Material)
+		{
+			return;
+		}
+		Material->MaterialDomain = MD_Surface;
+		Material->BlendMode = BLEND_Opaque;
+		Material->SetShadingModel(MSM_DefaultLit);
+		Material->TwoSided = true;
+
+		// Same mud / flood colors and fresnel as M_WetGround and M_FloodWater.
+		// Wetness 0–1 only darkens toward flood water and keeps roughness at or under 0.06.
+		UMaterialExpressionConstant3Vector* Mud = Cast<UMaterialExpressionConstant3Vector>(AddExpr(Material, UMaterialExpressionConstant3Vector::StaticClass(), -680, -20));
+		UMaterialExpressionConstant3Vector* Deep = Cast<UMaterialExpressionConstant3Vector>(AddExpr(Material, UMaterialExpressionConstant3Vector::StaticClass(), -680, 160));
+		UMaterialExpressionConstant3Vector* Pale = Cast<UMaterialExpressionConstant3Vector>(AddExpr(Material, UMaterialExpressionConstant3Vector::StaticClass(), -680, 340));
+		UMaterialExpressionScalarParameter* Wetness = Cast<UMaterialExpressionScalarParameter>(AddExpr(Material, UMaterialExpressionScalarParameter::StaticClass(), -680, 520));
+		UMaterialExpressionSaturate* SatWet = Cast<UMaterialExpressionSaturate>(AddExpr(Material, UMaterialExpressionSaturate::StaticClass(), -420, 520));
+		UMaterialExpressionLinearInterpolate* Body = Cast<UMaterialExpressionLinearInterpolate>(AddExpr(Material, UMaterialExpressionLinearInterpolate::StaticClass(), -220, 40));
+		UMaterialExpressionFresnel* Fresnel = Cast<UMaterialExpressionFresnel>(AddExpr(Material, UMaterialExpressionFresnel::StaticClass(), -420, 300));
+		UMaterialExpressionLinearInterpolate* Albedo = Cast<UMaterialExpressionLinearInterpolate>(AddExpr(Material, UMaterialExpressionLinearInterpolate::StaticClass(), 20, 80));
+		UMaterialExpressionConstant* RoughDry = Cast<UMaterialExpressionConstant>(AddExpr(Material, UMaterialExpressionConstant::StaticClass(), -220, 260));
+		UMaterialExpressionConstant* RoughWet = Cast<UMaterialExpressionConstant>(AddExpr(Material, UMaterialExpressionConstant::StaticClass(), -220, 380));
+		UMaterialExpressionLinearInterpolate* Rough = Cast<UMaterialExpressionLinearInterpolate>(AddExpr(Material, UMaterialExpressionLinearInterpolate::StaticClass(), 20, 280));
+		UMaterialExpressionConstant* SpecDry = Cast<UMaterialExpressionConstant>(AddExpr(Material, UMaterialExpressionConstant::StaticClass(), -220, 500));
+		UMaterialExpressionConstant* SpecWet = Cast<UMaterialExpressionConstant>(AddExpr(Material, UMaterialExpressionConstant::StaticClass(), -220, 620));
+		UMaterialExpressionLinearInterpolate* Spec = Cast<UMaterialExpressionLinearInterpolate>(AddExpr(Material, UMaterialExpressionLinearInterpolate::StaticClass(), 20, 500));
+		UMaterialExpressionConstant* Metallic = Cast<UMaterialExpressionConstant>(AddExpr(Material, UMaterialExpressionConstant::StaticClass(), 20, 660));
+		UMaterialEditorOnlyData* EditorData = Cast<UMaterialEditorOnlyData>(Material->GetEditorOnlyData());
+		if (!Mud || !Deep || !Pale || !Wetness || !SatWet || !Body || !Fresnel || !Albedo
+			|| !RoughDry || !RoughWet || !Rough || !SpecDry || !SpecWet || !Spec || !Metallic || !EditorData)
+		{
+			UE_LOG(LogSiltEditor, Error, TEXT("Failed to build M_Puddle graph"));
+			return;
+		}
+
+		Mud->Constant = FLinearColor(0.09f, 0.055f, 0.028f);
+		Deep->Constant = FLinearColor(0.025f, 0.055f, 0.05f);
+		Pale->Constant = FLinearColor(0.42f, 0.48f, 0.46f);
+		Wetness->ParameterName = TEXT("Wetness");
+		Wetness->DefaultValue = 0.85f;
+		SetUnitRange(Wetness);
+		Fresnel->Exponent = 5.f;
+		RoughDry->R = 0.06f;
+		RoughWet->R = 0.035f;
+		SpecDry->R = 0.72f;
+		SpecWet->R = 0.92f;
+		Metallic->R = 0.f;
+
+		SatWet->Input.Connect(0, Wetness);
+		Body->A.Connect(0, Mud);
+		Body->B.Connect(0, Deep);
+		Body->Alpha.Connect(0, SatWet);
+		Albedo->A.Connect(0, Body);
+		Albedo->B.Connect(0, Pale);
+		Albedo->Alpha.Connect(0, Fresnel);
+		Rough->A.Connect(0, RoughDry);
+		Rough->B.Connect(0, RoughWet);
+		Rough->Alpha.Connect(0, SatWet);
+		Spec->A.Connect(0, SpecDry);
+		Spec->B.Connect(0, SpecWet);
+		Spec->Alpha.Connect(0, SatWet);
+
+		EditorData->BaseColor.Connect(0, Albedo);
+		EditorData->Roughness.Connect(0, Rough);
+		EditorData->Specular.Connect(0, Spec);
+		EditorData->Metallic.Connect(0, Metallic);
+		SaveMaterial(Material);
+		UE_LOG(LogSiltEditor, Display, TEXT("Silt shallow puddles pass A ready"));
+	}
+
 	void BuildBeacon()
 	{
 		UMaterial* Material = CreatePackageMaterial(TEXT("M_Beacon"));
@@ -457,6 +562,7 @@ namespace SiltMaterialBootstrap
 		BuildWetGround();
 		BuildFloodWater();
 		BuildTruckPaint();
+		BuildPuddle();
 		BuildBeacon();
 		BuildRain();
 		UE_LOG(LogSiltEditor, Display, TEXT("Silt County materials are ready under /Game/SiltCounty/Materials"));
