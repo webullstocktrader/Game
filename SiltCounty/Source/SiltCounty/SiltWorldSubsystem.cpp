@@ -561,6 +561,12 @@ void USiltWorldSubsystem::BuildWeather(UWorld& World) const
 	if (ASkyAtmosphere* Atmosphere = World.SpawnActor<ASkyAtmosphere>())
 	{
 		TagSilt(Atmosphere);
+		if (USkyAtmosphereComponent* SkyComp = Atmosphere->FindComponentByClass<USkyAtmosphereComponent>())
+		{
+			SkyComp->SetMieScatteringScale(0.0065f);
+			SkyComp->SetRayleighScatteringScale(0.028f);
+			SkyComp->SetMultiScatteringFactor(0.6f);
+		}
 	}
 
 	if (ASkyLight* Sky = World.SpawnActor<ASkyLight>())
@@ -582,14 +588,61 @@ void USiltWorldSubsystem::BuildWeather(UWorld& World) const
 		TagSilt(Clouds);
 		if (UVolumetricCloudComponent* Comp = Clouds->FindComponentByClass<UVolumetricCloudComponent>())
 		{
-			Comp->LayerBottomAltitude = 0.8f;
-			Comp->LayerHeight = 5.5f;
+			Comp->SetLayerBottomAltitude(0.45f);
+			Comp->SetLayerHeight(9.0f);
+			Comp->SetTracingMaxDistance(50.f);
 			if (UMaterialInterface* CloudMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Engine/EngineSky/VolumetricClouds/m_SimpleVolumetricCloud_Inst.m_SimpleVolumetricCloud_Inst")))
 			{
-				Comp->SetMaterial(CloudMat);
+				UMaterialInstanceDynamic* CloudMid = UMaterialInstanceDynamic::Create(CloudMat, Comp);
+				if (CloudMid)
+				{
+					auto BumpScalar = [CloudMid](const TCHAR* ParamName) -> bool
+					{
+						float Value = 0.f;
+						if (!CloudMid->GetScalarParameterValue(FMaterialParameterInfo(ParamName), Value))
+						{
+							return false;
+						}
+						const float Tuned = Value * 1.25f;
+						CloudMid->SetScalarParameterValue(ParamName, Tuned);
+						UE_LOG(LogSiltCounty, Display, TEXT("cloud %s %.4f -> %.4f"), ParamName, Value, Tuned);
+						return true;
+					};
+
+					if (!BumpScalar(TEXT("Cloud_GlobalDensity")))
+					{
+						BumpScalar(TEXT("CloudDensity"));
+					}
+
+					bool bCoverage = BumpScalar(TEXT("Layout_GlobalCoverage"));
+					if (!bCoverage)
+					{
+						FLinearColor Coverage = FLinearColor::Black;
+						if (CloudMid->GetVectorParameterValue(FMaterialParameterInfo(TEXT("Layout_GlobalCoverage")), Coverage))
+						{
+							const FLinearColor Tuned = Coverage * 1.25f;
+							CloudMid->SetVectorParameterValue(TEXT("Layout_GlobalCoverage"), Tuned);
+							UE_LOG(LogSiltCounty, Display, TEXT("cloud Layout_GlobalCoverage (%.4f, %.4f, %.4f, %.4f) -> (%.4f, %.4f, %.4f, %.4f)"),
+								Coverage.R, Coverage.G, Coverage.B, Coverage.A, Tuned.R, Tuned.G, Tuned.B, Tuned.A);
+							bCoverage = true;
+						}
+					}
+					if (!bCoverage)
+					{
+						BumpScalar(TEXT("CloudCoverage"));
+					}
+
+					Comp->SetMaterial(CloudMid);
+				}
+				else
+				{
+					Comp->SetMaterial(CloudMat);
+				}
 			}
 		}
 	}
+
+	UE_LOG(LogSiltCounty, Display, TEXT("overcast sky ready"));
 
 	if (AExponentialHeightFog* Fog = World.SpawnActor<AExponentialHeightFog>())
 	{
