@@ -335,8 +335,8 @@ void USiltWorldSubsystem::BuildDressing(UWorld& World) const
 		const FLinearColor BlockFallback(0.40f, 0.39f, 0.36f);
 		PlaceMat(Cube, Bank + FVector(0.f, 0.f, 22.5f), FRotator::ZeroRotator, FVector(8.2f, 5.6f, 0.45f), ConcreteBlock, BlockFallback, TEXT("CountyTrustPlinth"));
 		PlaceMat(Cube, Bank + FVector(0.f, 0.f, 255.f), FRotator::ZeroRotator, FVector(7.5f, 5.0f, 4.2f), TownBrick, BrickFallback, TEXT("CountyTrustBank"));
-		const FVector PierSW(-375.f, -250.f, 0.f);
-		const FVector PierNE(375.f, 250.f, 0.f);
+		const FVector PierSW(-280.f, -180.f, 0.f);
+		const FVector PierNE(280.f, 180.f, 0.f);
 		PlaceMat(Cube, Bank + PierSW + FVector(0.f, 0.f, 27.5f), FRotator::ZeroRotator, FVector(1.5f, 1.5f, 0.55f), ConcreteBlock, BlockFallback, TEXT("CountyTrustBaseSW"));
 		PlaceMat(Cube, Bank + PierNE + FVector(0.f, 0.f, 27.5f), FRotator::ZeroRotator, FVector(1.5f, 1.5f, 0.55f), ConcreteBlock, BlockFallback, TEXT("CountyTrustBaseNE"));
 		PlaceMat(Cube, Bank + PierSW + FVector(0.f, 0.f, 385.f), FRotator::ZeroRotator, FVector(1.15f, 1.15f, 6.6f), TownBrick, BrickFallback, TEXT("CountyTrustPierSW"));
@@ -348,11 +348,11 @@ void USiltWorldSubsystem::BuildDressing(UWorld& World) const
 		const FVector Hall(HallAnchor.X, HallAnchor.Y, HallZ);
 		const FLinearColor ClapboardFallback(0.38f, 0.31f, 0.22f);
 		PlaceMat(Cube, Hall + FVector(0.f, 0.f, 240.f), FRotator::ZeroRotator, FVector(6.5f, 5.5f, 4.8f), TownClapboard, ClapboardFallback, TEXT("TownHall"));
-		const FVector TurretNW(-325.f, 275.f, 0.f);
-		const FVector TurretNE(325.f, 275.f, 0.f);
+		const FVector TurretNW(-260.f, 220.f, 0.f);
+		const FVector TurretNE(260.f, 220.f, 0.f);
 		PlaceMat(Cylinder, Hall + TurretNW + FVector(0.f, 0.f, 450.f), FRotator::ZeroRotator, FVector(1.6f, 1.6f, 9.f), TownClapboard, ClapboardFallback, TEXT("TownHallTurretNW"));
 		PlaceMat(Cylinder, Hall + TurretNE + FVector(0.f, 0.f, 450.f), FRotator::ZeroRotator, FVector(1.6f, 1.6f, 9.f), TownClapboard, ClapboardFallback, TEXT("TownHallTurretNE"));
-		const FLinearColor Civic(0.52f, 0.50f, 0.40f);
+		const FLinearColor Civic(0.36f, 0.42f, 0.38f);
 		auto PlaceCivic = [&](UStaticMesh* Mesh, const FVector& Location, const FVector& Scale, FName Name)
 		{
 			UMaterialInterface* Surface = Tint(Municipal ? Municipal : Paint, Civic, this, 0.48f);

@@ -397,7 +397,7 @@ namespace SiltMaterialBootstrap
 		}
 
 		Paint->ParameterName = TEXT("PaintColor");
-		Paint->DefaultValue = FLinearColor(0.48f, 0.50f, 0.44f);
+		Paint->DefaultValue = FLinearColor(0.36f, 0.42f, 0.38f);
 		Shade->R = 0.55f;
 		Fresnel->Exponent = 4.5f;
 		FresnelScale->R = 0.35f;
