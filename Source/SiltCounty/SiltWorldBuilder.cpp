@@ -178,29 +178,33 @@ void ASiltWorldBuilder::SpawnAtmosphere()
 
 void ASiltWorldBuilder::SpawnGarage()
 {
+	// Lock B shop start. Pad, open east bay, and key rack stay on this footprint.
+	// Truck slots are placed in BuildSlice from GetGarageCenter().
 	UStaticMesh* Cube = Silt::CubeMesh();
 	if (!Cube || !Terrain)
 	{
 		return;
 	}
-	UMaterialInterface* Metal = Silt::Material(TEXT("M_Metal"));
-	UMaterialInterface* Gravel = Silt::Material(TEXT("M_Gravel"));
+	UMaterialInterface* Steel = Silt::Material(TEXT("M_Metal"));
+	UMaterialInterface* Block = Silt::Material(TEXT("M_Cinder"));
+	UMaterialInterface* Tin = Silt::Material(TEXT("M_Corrugated"));
+	UMaterialInterface* Floor = Silt::Material(TEXT("M_ShopFloor"));
 	const FVector C = Terrain->GetGarageCenter();
 	const FSiltGroundHit Hit = Terrain->Query(C);
 	const float Z = Hit.Position.Z;
 
-	PlaceMesh(Cube, FVector(C.X - 200.f, C.Y, Z + 10.f), FRotator::ZeroRotator, FVector(22.f, 18.f, 0.2f), Gravel, TEXT("GaragePad"));
-	PlaceMesh(Cube, FVector(C.X - 400.f, C.Y, Z + 280.f), FRotator::ZeroRotator, FVector(16.f, 18.f, 0.25f), Metal, TEXT("GarageRoof"));
-	PlaceMesh(Cube, FVector(C.X - 400.f, C.Y - 900.f, Z + 200.f), FRotator::ZeroRotator, FVector(16.f, 0.25f, 4.2f), Metal, TEXT("WallS"));
-	PlaceMesh(Cube, FVector(C.X - 400.f, C.Y + 900.f, Z + 200.f), FRotator::ZeroRotator, FVector(16.f, 0.25f, 4.2f), Metal, TEXT("WallN"));
-	PlaceMesh(Cube, FVector(C.X - 1180.f, C.Y, Z + 200.f), FRotator::ZeroRotator, FVector(0.25f, 18.f, 4.2f), Metal, TEXT("WallW"));
+	PlaceMesh(Cube, FVector(C.X - 200.f, C.Y, Z + 10.f), FRotator::ZeroRotator, FVector(22.f, 18.f, 0.2f), Floor, TEXT("GaragePad"));
+	PlaceMesh(Cube, FVector(C.X - 400.f, C.Y, Z + 280.f), FRotator::ZeroRotator, FVector(16.f, 18.f, 0.25f), Tin, TEXT("GarageRoof"));
+	PlaceMesh(Cube, FVector(C.X - 400.f, C.Y - 900.f, Z + 200.f), FRotator::ZeroRotator, FVector(16.f, 0.25f, 4.2f), Block, TEXT("WallS"));
+	PlaceMesh(Cube, FVector(C.X - 400.f, C.Y + 900.f, Z + 200.f), FRotator::ZeroRotator, FVector(16.f, 0.25f, 4.2f), Block, TEXT("WallN"));
+	PlaceMesh(Cube, FVector(C.X - 1180.f, C.Y, Z + 200.f), FRotator::ZeroRotator, FVector(0.25f, 18.f, 4.2f), Block, TEXT("WallW"));
 	// Open east wall — rolling door frame only.
-	PlaceMesh(Cube, FVector(C.X + 380.f, C.Y - 900.f, Z + 200.f), FRotator::ZeroRotator, FVector(0.25f, 0.25f, 4.2f), Metal, TEXT("DoorPostS"));
-	PlaceMesh(Cube, FVector(C.X + 380.f, C.Y + 900.f, Z + 200.f), FRotator::ZeroRotator, FVector(0.25f, 0.25f, 4.2f), Metal, TEXT("DoorPostN"));
-	PlaceMesh(Cube, FVector(C.X + 380.f, C.Y, Z + 410.f), FRotator::ZeroRotator, FVector(0.25f, 18.f, 0.25f), Metal, TEXT("DoorLintel"));
+	PlaceMesh(Cube, FVector(C.X + 380.f, C.Y - 900.f, Z + 200.f), FRotator::ZeroRotator, FVector(0.25f, 0.25f, 4.2f), Steel, TEXT("DoorPostS"));
+	PlaceMesh(Cube, FVector(C.X + 380.f, C.Y + 900.f, Z + 200.f), FRotator::ZeroRotator, FVector(0.25f, 0.25f, 4.2f), Steel, TEXT("DoorPostN"));
+	PlaceMesh(Cube, FVector(C.X + 380.f, C.Y, Z + 410.f), FRotator::ZeroRotator, FVector(0.25f, 18.f, 0.25f), Steel, TEXT("DoorLintel"));
 
 	KeyRackLocation = FVector(C.X - 1100.f, C.Y - 400.f, Z + 160.f);
-	PlaceMesh(Cube, KeyRackLocation, FRotator::ZeroRotator, FVector(0.12f, 1.1f, 0.7f), Metal, TEXT("KeyRack"));
+	PlaceMesh(Cube, KeyRackLocation, FRotator::ZeroRotator, FVector(0.12f, 1.1f, 0.7f), Steel, TEXT("KeyRack"));
 	PlaceMesh(Silt::CylinderMesh(), KeyRackLocation + FVector(8.f, -20.f, 10.f), FRotator(0.f, 0.f, 90.f), FVector(0.08f, 0.08f, 0.12f), Silt::Material(TEXT("M_Chrome")), TEXT("KeyChief"));
 	PlaceMesh(Silt::CylinderMesh(), KeyRackLocation + FVector(8.f, 20.f, 10.f), FRotator(0.f, 0.f, 90.f), FVector(0.08f, 0.08f, 0.12f), Silt::Material(TEXT("M_Chrome")), TEXT("KeyGooch"));
 
@@ -225,6 +229,8 @@ void ASiltWorldBuilder::SpawnGarage()
 	Hwy->SetupAttachment(GetRootComponent());
 	Hwy->RegisterComponent();
 	(void)HwyLoc;
+
+	SpawnGarageDressing();
 }
 
 void ASiltWorldBuilder::SpawnTreesAndStumps()
@@ -251,6 +257,11 @@ void ASiltWorldBuilder::SpawnTreesAndStumps()
 		{
 			continue;
 		}
+		// Main Street blockout, including the feed store, chapel, and gas shed.
+		if (X > 8800.f && X < 17600.f && Y > 1800.f && Y < 9800.f)
+		{
+			continue;
+		}
 		const FSiltGroundHit Hit = Terrain->Query(FVector(X, Y, 0.f));
 		if (Hit.Surface == ESiltSurface::Pavement || Hit.Surface == ESiltSurface::Water)
 		{
@@ -268,32 +279,6 @@ void ASiltWorldBuilder::SpawnTreesAndStumps()
 			++StumpN;
 		}
 	}
-}
-
-void ASiltWorldBuilder::SpawnTown()
-{
-	UStaticMesh* Cube = Silt::CubeMesh();
-	if (!Cube || !Terrain)
-	{
-		return;
-	}
-	const FVector Town(12000.f, 7200.f, 0.f);
-	const FSiltGroundHit Hit = Terrain->Query(Town);
-	UMaterialInterface* Metal = Silt::Material(TEXT("M_Metal"));
-	UMaterialInterface* Wood = Silt::Material(TEXT("M_Wood"));
-	PlaceMesh(Cube, FVector(Town.X, Town.Y, Hit.Position.Z + 140.f), FRotator::ZeroRotator, FVector(4.2f, 3.1f, 2.8f), Metal, TEXT("FeedStore"));
-	PlaceMesh(Cube, FVector(Town.X + 700.f, Town.Y - 200.f, Hit.Position.Z + 110.f), FRotator(0.f, 15.f, 0.f), FVector(3.2f, 2.4f, 2.2f), Wood, TEXT("Chapel"));
-	PlaceMesh(Cube, FVector(Town.X - 600.f, Town.Y + 180.f, Hit.Position.Z + 90.f), FRotator(0.f, -8.f, 0.f), FVector(2.4f, 2.8f, 1.8f), Metal, TEXT("GasShed"));
-
-	UTextRenderComponent* Sign = NewObject<UTextRenderComponent>(this, TEXT("SiltSign"));
-	Sign->SetText(FText::FromString(TEXT("SILT")));
-	Sign->SetWorldSize(64.f);
-	Sign->SetTextRenderColor(FColor(200, 40, 40));
-	Sign->SetHorizontalAlignment(EHTA_Center);
-	Sign->SetWorldLocation(FVector(Town.X, Town.Y + 400.f, Hit.Position.Z + 260.f));
-	Sign->SetWorldRotation(FRotator(0.f, 180.f, 0.f));
-	Sign->SetupAttachment(GetRootComponent());
-	Sign->RegisterComponent();
 }
 
 void ASiltWorldBuilder::SpawnRain()

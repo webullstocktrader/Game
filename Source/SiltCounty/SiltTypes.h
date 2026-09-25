@@ -69,6 +69,7 @@ namespace Silt
 	UStaticMesh* CubeMesh();
 	UStaticMesh* SphereMesh();
 	UStaticMesh* CylinderMesh();
+	UStaticMesh* ConeMesh();
 	UStaticMesh* PlaneMesh();
 	UMaterialInterface* Material(const TCHAR* ShortName);
 	UMaterialInterface* FallbackMaterial();

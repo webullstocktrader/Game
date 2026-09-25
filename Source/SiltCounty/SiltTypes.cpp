@@ -37,6 +37,11 @@ namespace Silt
 		return LoadMesh(TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
 	}
 
+	UStaticMesh* ConeMesh()
+	{
+		return LoadMesh(TEXT("/Engine/BasicShapes/Cone.Cone"));
+	}
+
 	UStaticMesh* PlaneMesh()
 	{
 		return LoadMesh(TEXT("/Engine/BasicShapes/Plane.Plane"));

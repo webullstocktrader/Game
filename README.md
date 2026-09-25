@@ -119,6 +119,16 @@ First player is Chief. Second is Gooch.
 
 ---
 
+## Town and shop look
+
+You still start in the shop. The east bay stays open, the keys stay on the west wall, and both trucks stay in their stalls. The bay floor is oil-stained concrete, the walls are block, and the roof is corrugated tin.
+
+East of the shop, past Highway 6, Main Street is a blockout of Silt County: County Trust Bank, Town Hall with corner turrets, Millard's, Tate's Western, Silt County High, a water tower, and a grain elevator. The feed store, chapel, and gas shed are still there. The names are fiction. There are no street numbers.
+
+The editor writes these patterned materials the first time it opens the project, the same way it writes the truck paints. Until then, the shapes use a flat engine material.
+
+---
+
 ## If something goes wrong
 
 **“Unreal Engine 5.8 was not found”**  
@@ -134,7 +144,7 @@ Open the project in the editor once (not `-game`). The editor writes `/Game/Maps
 Start with **Alt+P** from the editor, or use `PLAY.bat`. Make sure **Windowed** or a wide fullscreen so the horizontal split is usable.
 
 **Looks dry / gray**  
-You launched before the editor wrote materials. Open the editor once. Wet green (Chief) and rust red (Gooch) should show after that.
+You launched before the editor wrote materials. Open the editor once. Wet green (Chief), rust red (Gooch), and the town brick, tin, and shop floor should show after that.
 
 ---
 
@@ -146,6 +156,6 @@ You launched before the editor wrote materials. Open the editor once. Wet green 
 | `PLAY.bat` | Double-click this |
 | `Config/` | Lumen, split screen, project name |
 | `Source/SiltCounty/` | The game: trucks, mud, winch, garage, contract |
-| `Source/SiltCountyEditor/` | Writes wet materials and the empty slice map the first time |
+| `Source/SiltCountyEditor/` | Writes wet materials, town and shop patterns, and the empty slice map the first time |
 
 Unreal 5.8. Latest stable. Co-op first.

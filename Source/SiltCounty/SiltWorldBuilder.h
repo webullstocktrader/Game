@@ -34,11 +34,13 @@ private:
 	void StripTemplateActors();
 	void SpawnAtmosphere();
 	void SpawnGarage();
+	void SpawnGarageDressing();
 	void SpawnTreesAndStumps();
 	void SpawnTown();
 	void SpawnRain();
 	void UpdateRain(float DeltaSeconds);
 	UStaticMeshComponent* PlaceMesh(UStaticMesh* Mesh, const FVector& Loc, const FRotator& Rot, const FVector& Scale, UMaterialInterface* Mat, const FName& Name);
+	void PlaceLabel(const FName& Name, const FString& Text, const FVector& Loc, float YawDeg, float WorldSize, const FColor& Color);
 
 	UPROPERTY()
 	TObjectPtr<ASiltTerrain> Terrain;

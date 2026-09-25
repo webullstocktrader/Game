@@ -9,6 +9,8 @@ public:
 
 private:
 	static UMaterial* CreateLit(const FString& ShortName, const FLinearColor& Color, float Metallic, float Roughness, bool bTranslucent, float Emissive);
+	static UMaterial* CreateWorldPattern(const FString& ShortName, const FString& Hlsl, float Metallic, float Roughness, bool bUseNormal);
+	static void CreateTownAndShopMaterials();
 	static bool SaveAsset(UObject* Asset, const FString& PackagePath);
 	static bool CreateSliceMap();
 	static bool AssetExists(const FString& ObjectPath);
