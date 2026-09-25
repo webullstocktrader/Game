@@ -228,7 +228,18 @@ void ASiltContractActor::StepTow(float DeltaSeconds)
 	}
 
 	const ESiltSurface Surface = SiltTerrain::SampleSurface(GetActorLocation().X, GetActorLocation().Y);
-	const float Drag = (Surface == ESiltSurface::Road) ? 350.f : (Surface == ESiltSurface::DeepMud || Surface == ESiltSurface::Water) ? 3200.f : 1400.f;
+	float Drag = 1400.f;
+	switch (Surface)
+	{
+	case ESiltSurface::Asphalt: Drag = 380.f; break;
+	case ESiltSurface::Road: Drag = 350.f; break;
+	case ESiltSurface::Gravel: Drag = 760.f; break;
+	case ESiltSurface::Dirt: Drag = 1200.f; break;
+	case ESiltSurface::Mud: Drag = 1900.f; break;
+	case ESiltSurface::DeepMud:
+	case ESiltSurface::Water: Drag = 3200.f; break;
+	default: break;
+	}
 	Van->AddForce(-Van->GetComponentVelocity() * Drag);
 	(void)DeltaSeconds;
 }

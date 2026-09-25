@@ -19,7 +19,9 @@ enum class ESiltSurface : uint8
 	Dirt,
 	Mud,
 	DeepMud,
-	Water
+	Water,
+	Gravel,
+	Asphalt
 };
 
 UENUM(BlueprintType)

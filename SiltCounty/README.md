@@ -66,7 +66,7 @@ Ignore any “lighting needs to be rebuilt” note. The county is spawned at run
 | Enter | Skip the intro |
 | F9 | Local splitscreen co-op on the host |
 
-Gravel on the causeway has grip. Shoulders, the town basin, and the south slough sink, drag, and slide. Floodwater adds buoyancy and drag. If the hull bottoms out, keep the wheels turning or press R.
+The causeway crown is wet asphalt and has the most grip. The gravel shoulder is slower. Mud tracks off the shoulder, the town basin, and the south slough sink, drag, and slide. Floodwater adds buoyancy and drag. If the hull bottoms out, keep the wheels turning or press R.
 
 ## Test two players
 
@@ -163,9 +163,10 @@ This is a material and dressing pass. Garage start, town blocks, bridges, and th
 
 What you should see:
 
-- **Causeway gravel** — damp clear-coat sheen, scattered dark mirror puddles, not a plastic gray.
-- **Wet soil** — browner, rougher, only a light film unless it is close to the flood line.
-- **Mud and deep mud** — dark silt, low roughness, broad glossy patches. Shoulders and the south slough read wetter than the high ground.
+- **Wet asphalt crown** — near-black, low roughness, clear-coat sheen and mirror puddles. HUD: `WET ASPHALT`.
+- **Wet gravel shoulder** — darker stone color, still damp, less grip than the crown. HUD: `WET GRAVEL`.
+- **Wet soil** — the default high ground. Browner, rougher, only a light film unless it is close to the flood line. HUD: `WET SOIL`.
+- **Mud tracks and deep mud** — olive silt, low roughness, broad glossy patches. Tracks sit just off the shoulder. The basin and slough go to `DEEP MUD` and `FLOODWATER`. HUD on the ruts: `MUD TRACK`.
 - **Floodwater** — opaque tea-brown sheet with a slow ripple normal, sharper reflections in the middle, and a broken dirty foam edge where the bank meets the water.
 - **Rain** — cooler, thinner streaks. They do not change the ground; the ground is already built wet.
 
@@ -188,7 +189,7 @@ Generated assets, all under `Content/SiltCounty/Materials`:
 3. Press Play and skip the intro (Enter). You spawn in the garage yard.
 4. Look at the gravel around the trucks: damp sheen and a few dark puddles. The garage and the flooded town blocks should still be there.
 5. Drive south through **SOUTH TOWN — FLOODED**. Water should ripple, shores should foam, and the houses should still stand in the basin.
-6. Leave the causeway into the slough. The HUD should still change from `CAUSED GRAVEL` to `MUD` / `DEEP MUD` / `FLOODWATER`, and the ground should look darker and glossier as it does.
+6. Leave the causeway into the slough. The HUD should step from `WET ASPHALT` to `WET GRAVEL`, then `MUD TRACK` / `WET SOIL`, and into `DEEP MUD` / `FLOODWATER`. The ground should get darker and glossier as it does. The asphalt crown is the black strip. Gravel is the shoulder. Mud tracks are the olive ruts just off the gravel.
 7. Optional: on `MI_WetRoad`, raise `PuddleAmount` toward 1 and play again. The causeway should get more mirror patches without moving the town.
 
 ## Limits of this slice

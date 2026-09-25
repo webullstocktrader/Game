@@ -39,12 +39,16 @@ namespace
 	{
 		switch (Surface)
 		{
+		case ESiltSurface::Asphalt:
+			Grip = 1.08f; Drag = 0.055f; SpringScale = 1.f; MaxSpeed = 2200.f; break;
 		case ESiltSurface::Road:
 			Grip = 1.2f; Drag = 0.045f; SpringScale = 1.f; MaxSpeed = 2300.f; break;
+		case ESiltSurface::Gravel:
+			Grip = 0.9f; Drag = 0.11f; SpringScale = 0.95f; MaxSpeed = 1650.f; break;
 		case ESiltSurface::Dirt:
 			Grip = 0.82f; Drag = 0.16f; SpringScale = 0.9f; MaxSpeed = 1500.f; break;
 		case ESiltSurface::Mud:
-			Grip = 0.4f; Drag = 0.95f; SpringScale = 0.5f; MaxSpeed = 700.f; break;
+			Grip = 0.38f; Drag = 1.15f; SpringScale = 0.48f; MaxSpeed = 640.f; break;
 		case ESiltSurface::DeepMud:
 			Grip = 0.2f; Drag = 2.6f; SpringScale = 0.32f; MaxSpeed = 380.f; break;
 		case ESiltSurface::Water:
@@ -57,10 +61,12 @@ namespace
 	{
 		switch (Surface)
 		{
-		case ESiltSurface::Water: return 4;
-		case ESiltSurface::DeepMud: return 3;
-		case ESiltSurface::Mud: return 2;
-		case ESiltSurface::Dirt: return 1;
+		case ESiltSurface::Water: return 6;
+		case ESiltSurface::DeepMud: return 5;
+		case ESiltSurface::Mud: return 4;
+		case ESiltSurface::Dirt: return 3;
+		case ESiltSurface::Gravel: return 2;
+		case ESiltSurface::Asphalt: return 1;
 		default: return 0;
 		}
 	}
@@ -615,7 +621,7 @@ void ASiltTruckPawn::StepVehicle(float DeltaSeconds, const TArray<FWheelQuery, T
 	{
 		Body->AddForce(FVector::UpVector * FMath::Min(Depth, 220.f) * 18000.f);
 		Body->AddForce(-Body->GetComponentVelocity() * 900.f);
-		if (CurrentSurface == ESiltSurface::Road || CurrentSurface == ESiltSurface::Dirt)
+		if (CurrentSurface == ESiltSurface::Road || CurrentSurface == ESiltSurface::Dirt || CurrentSurface == ESiltSurface::Asphalt || CurrentSurface == ESiltSurface::Gravel)
 		{
 			CurrentSurface = ESiltSurface::Water;
 		}

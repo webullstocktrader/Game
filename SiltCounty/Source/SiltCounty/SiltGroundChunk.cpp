@@ -11,20 +11,25 @@ namespace
 		float Roughness = 0.55f;
 		switch (Surface)
 		{
+		case ESiltSurface::Asphalt:
+			Color = FMath::Lerp(FLinearColor(0.010f, 0.011f, 0.012f), FLinearColor(0.028f, 0.029f, 0.031f), Patch);
+			Roughness = FMath::Lerp(0.06f, 0.16f, Grain);
+			break;
 		case ESiltSurface::Road:
-			Color = FMath::Lerp(FLinearColor(0.078f, 0.074f, 0.066f), FLinearColor(0.155f, 0.142f, 0.118f), Patch);
-			Roughness = FMath::Lerp(0.30f, 0.56f, Grain);
+		case ESiltSurface::Gravel:
+			Color = FMath::Lerp(FLinearColor(0.075f, 0.078f, 0.070f), FLinearColor(0.145f, 0.138f, 0.118f), Patch);
+			Roughness = FMath::Lerp(0.26f, 0.48f, Grain);
 			break;
 		case ESiltSurface::Dirt:
-			Color = FMath::Lerp(FLinearColor(0.15f, 0.10f, 0.05f), FLinearColor(0.23f, 0.16f, 0.085f), Patch);
-			Roughness = FMath::Lerp(0.62f, 0.84f, Grain);
+			Color = FMath::Lerp(FLinearColor(0.14f, 0.12f, 0.06f), FLinearColor(0.22f, 0.17f, 0.09f), Patch);
+			Roughness = FMath::Lerp(0.55f, 0.78f, Grain);
 			break;
 		case ESiltSurface::Mud:
-			Color = FMath::Lerp(FLinearColor(0.040f, 0.024f, 0.013f), FLinearColor(0.086f, 0.048f, 0.024f), Patch);
-			Roughness = FMath::Lerp(0.10f, 0.22f, Grain);
+			Color = FMath::Lerp(FLinearColor(0.035f, 0.042f, 0.018f), FLinearColor(0.072f, 0.078f, 0.030f), Patch);
+			Roughness = FMath::Lerp(0.08f, 0.18f, Grain);
 			break;
 		case ESiltSurface::DeepMud:
-			Color = FMath::Lerp(FLinearColor(0.020f, 0.013f, 0.009f), FLinearColor(0.048f, 0.028f, 0.015f), Patch);
+			Color = FMath::Lerp(FLinearColor(0.018f, 0.024f, 0.012f), FLinearColor(0.040f, 0.046f, 0.018f), Patch);
 			Roughness = FMath::Lerp(0.05f, 0.12f, Grain);
 			break;
 		case ESiltSurface::Water:
@@ -52,7 +57,11 @@ namespace
 		UMaterialInterface* Chosen = nullptr;
 		switch (Surface)
 		{
-		case ESiltSurface::Road: Chosen = Materials.Road; break;
+		case ESiltSurface::Road:
+		case ESiltSurface::Gravel:
+		case ESiltSurface::Asphalt:
+			Chosen = Materials.Road;
+			break;
 		case ESiltSurface::Dirt: Chosen = Materials.Dirt; break;
 		case ESiltSurface::Mud: Chosen = Materials.Mud; break;
 		case ESiltSurface::DeepMud: Chosen = Materials.DeepMud; break;
@@ -199,7 +208,7 @@ void ASiltGroundChunk::Build(const FVector2D& MinXY, const FVector2D& MaxXY, flo
 		Tangents.Add(FProcMeshTangent(FVector(1.f, 0.f, 0.f), false));
 	}
 
-	FGroundSection Sections[5];
+	FGroundSection Sections[7];
 	for (int32 Y = 0; Y < NumY - 1; ++Y)
 	{
 		for (int32 X = 0; X < NumX - 1; ++X)
@@ -211,7 +220,7 @@ void ASiltGroundChunk::Build(const FVector2D& MinXY, const FVector2D& MaxXY, flo
 			const float CenterX = (Vertices[I00].X + Vertices[I11].X) * 0.5f;
 			const float CenterY = (Vertices[I00].Y + Vertices[I11].Y) * 0.5f;
 			const ESiltSurface Surface = SiltTerrain::SampleSurface(CenterX, CenterY);
-			const int32 SectionIndex = FMath::Clamp(static_cast<int32>(Surface), 0, 4);
+			const int32 SectionIndex = FMath::Clamp(static_cast<int32>(Surface), 0, 6);
 			FGroundSection& Section = Sections[SectionIndex];
 			const int32 V0 = Section.Use(I00, Vertices, Normals, UVs, Colors, Tangents);
 			const int32 V1 = Section.Use(I10, Vertices, Normals, UVs, Colors, Tangents);
@@ -227,14 +236,16 @@ void ASiltGroundChunk::Build(const FVector2D& MinXY, const FVector2D& MaxXY, flo
 	}
 
 	int32 MeshSection = 0;
-	const ESiltSurface SectionSurfaces[5] = {
+	const ESiltSurface SectionSurfaces[7] = {
 		ESiltSurface::Road,
 		ESiltSurface::Dirt,
 		ESiltSurface::Mud,
 		ESiltSurface::DeepMud,
-		ESiltSurface::Water
+		ESiltSurface::Water,
+		ESiltSurface::Gravel,
+		ESiltSurface::Asphalt
 	};
-	for (int32 Index = 0; Index < 5; ++Index)
+	for (int32 Index = 0; Index < 7; ++Index)
 	{
 		FGroundSection& Section = Sections[Index];
 		if (Section.Vertices.Num() == 0)

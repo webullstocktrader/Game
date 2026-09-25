@@ -81,6 +81,14 @@ void ASiltCountyHUD::DrawHUD()
 	{
 		SurfaceColor = FLinearColor(0.85f, 0.7f, 0.35f);
 	}
+	else if (Surface == ESiltSurface::Asphalt)
+	{
+		SurfaceColor = FLinearColor(0.75f, 0.82f, 0.9f);
+	}
+	else if (Surface == ESiltSurface::Gravel || Surface == ESiltSurface::Road)
+	{
+		SurfaceColor = FLinearColor(0.82f, 0.78f, 0.68f);
+	}
 
 	DrawShadowedText(Large ? Large : Medium, FString::Printf(TEXT("%03.0f"), Speed), 36.f, Height - 156.f, FLinearColor::White, 1.2f);
 	DrawShadowedText(Small, TEXT("KM/H"), 150.f, Height - 132.f, FLinearColor(0.75f, 0.78f, 0.75f));

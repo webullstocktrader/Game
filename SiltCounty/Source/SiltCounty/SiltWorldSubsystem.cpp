@@ -223,7 +223,7 @@ void USiltWorldSubsystem::BuildPuddles(UWorld& World) const
 		float Odds = 0.f;
 		float RadiusMin = 280.f;
 		float RadiusMax = 520.f;
-		if (Surface == ESiltSurface::Road)
+		if (Surface == ESiltSurface::Road || Surface == ESiltSurface::Asphalt || Surface == ESiltSurface::Gravel)
 		{
 			Odds = 0.62f;
 			RadiusMin = 340.f;
