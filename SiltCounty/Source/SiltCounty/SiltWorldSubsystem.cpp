@@ -30,6 +30,7 @@
 #include "SiltCounty.h"
 #include "SiltGroundChunk.h"
 #include "SiltRainActor.h"
+#include "SiltShallowPuddles.h"
 #include "SiltTerrain.h"
 
 namespace
@@ -144,6 +145,7 @@ void USiltWorldSubsystem::EnsureBuilt()
 	const double Started = FPlatformTime::Seconds();
 	ClearTemplateActors(*World);
 	BuildTerrain(*World);
+	BuildShallowPuddles(*World);
 	BuildDressing(*World);
 	BuildWeather(*World);
 	UE_LOG(LogSiltCounty, Display, TEXT("Silt County world built in %.2fs"), FPlatformTime::Seconds() - Started);
@@ -227,6 +229,18 @@ void USiltWorldSubsystem::BuildTerrain(UWorld& World) const
 	}
 
 	UE_LOG(LogSiltCounty, Display, TEXT("Silt County terrain chunks: %d (8km x 8km)"), Count);
+}
+
+void USiltWorldSubsystem::BuildShallowPuddles(UWorld& World) const
+{
+	FActorSpawnParameters Params;
+	Params.Name = TEXT("SiltShallowPuddles");
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	if (ASiltShallowPuddles* Puddles = World.SpawnActor<ASiltShallowPuddles>(FVector::ZeroVector, FRotator::ZeroRotator, Params))
+	{
+		TagSilt(Puddles);
+		Puddles->BuildField();
+	}
 }
 
 void USiltWorldSubsystem::BuildDressing(UWorld& World) const

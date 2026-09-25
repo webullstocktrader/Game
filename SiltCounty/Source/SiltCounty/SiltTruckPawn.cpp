@@ -224,23 +224,38 @@ void ASiltTruckPawn::ApplyCosmetics()
 		PaintBase = LoadObject<UMaterialInterface>(nullptr, TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
 	}
 
+	auto ApplyPassA = [](UMaterialInstanceDynamic* Mid, float Wet, float Dirt)
+	{
+		if (!Mid)
+		{
+			return;
+		}
+		Mid->SetScalarParameterValue(TEXT("WetAmount"), FMath::Clamp(Wet, 0.f, 1.f));
+		Mid->SetScalarParameterValue(TEXT("DirtAmount"), FMath::Clamp(Dirt, 0.f, 1.f));
+		Mid->SetScalarParameterValue(TEXT("DirtCoverageBias"), 0.6f);
+		Mid->SetVectorParameterValue(TEXT("DirtColor"), FLinearColor(0.12f, 0.09f, 0.06f));
+	};
+
 	UMaterialInstanceDynamic* BodyMid = PaintBase ? UMaterialInstanceDynamic::Create(PaintBase, this) : nullptr;
 	if (BodyMid)
 	{
 		BodyMid->SetVectorParameterValue(TEXT("PaintColor"), PaintColor);
 		BodyMid->SetScalarParameterValue(TEXT("Roughness"), 0.34f);
+		ApplyPassA(BodyMid, 0.55f, 0.35f);
 	}
 	UMaterialInstanceDynamic* DarkMid = PaintBase ? UMaterialInstanceDynamic::Create(PaintBase, this) : nullptr;
 	if (DarkMid)
 	{
 		DarkMid->SetVectorParameterValue(TEXT("PaintColor"), FLinearColor(0.015f, 0.015f, 0.015f));
 		DarkMid->SetScalarParameterValue(TEXT("Roughness"), 0.62f);
+		ApplyPassA(DarkMid, 0.f, 0.f);
 	}
 	UMaterialInstanceDynamic* TrimMid = PaintBase ? UMaterialInstanceDynamic::Create(PaintBase, this) : nullptr;
 	if (TrimMid)
 	{
 		TrimMid->SetVectorParameterValue(TEXT("PaintColor"), FLinearColor(0.08f, 0.08f, 0.075f));
 		TrimMid->SetScalarParameterValue(TEXT("Roughness"), 0.45f);
+		ApplyPassA(TrimMid, 0.55f, 0.35f);
 	}
 
 	UStaticMeshComponent* PaintedParts[] = { VisualBody, Cab, Hood, Bed, Bumper, Stack, LightBar };
