@@ -164,7 +164,17 @@ namespace SiltMaterialBootstrap
 		SaveMaterial(Material);
 	}
 
-	bool HasScalarParam(const UMaterial* Material, FName Name)
+	void SetUnitRange(UMaterialExpressionScalarParameter* Param)
+	{
+		if (!Param)
+		{
+			return;
+		}
+		Param->SliderMin = 0.f;
+		Param->SliderMax = 1.f;
+	}
+
+	bool IsPassAClamped(const UMaterial* Material)
 	{
 		if (!Material)
 		{
@@ -173,9 +183,9 @@ namespace SiltMaterialBootstrap
 		for (UMaterialExpression* Expr : Material->GetExpressions())
 		{
 			const UMaterialExpressionScalarParameter* Scalar = Cast<UMaterialExpressionScalarParameter>(Expr);
-			if (Scalar && Scalar->ParameterName == Name)
+			if (Scalar && Scalar->ParameterName == TEXT("WetAmount"))
 			{
-				return true;
+				return Scalar->SliderMax > 0.5f;
 			}
 		}
 		return false;
@@ -186,7 +196,7 @@ namespace SiltMaterialBootstrap
 		const TCHAR* ObjectPath = TEXT("/Game/SiltCounty/Materials/M_TruckPaint.M_TruckPaint");
 		if (UMaterial* Existing = LoadObject<UMaterial>(nullptr, ObjectPath))
 		{
-			if (HasScalarParam(Existing, TEXT("WetAmount")))
+			if (IsPassAClamped(Existing))
 			{
 				UE_LOG(LogSiltEditor, Display, TEXT("Silt truck paint pass A ready"));
 				return nullptr;
@@ -238,6 +248,9 @@ namespace SiltMaterialBootstrap
 		UMaterialExpressionMultiply* BrokenVertical = Cast<UMaterialExpressionMultiply>(AddExpr(Material, UMaterialExpressionMultiply::StaticClass(), 740, 1160));
 		UMaterialExpressionScalarParameter* DirtAmount = Cast<UMaterialExpressionScalarParameter>(AddExpr(Material, UMaterialExpressionScalarParameter::StaticClass(), 740, 1360));
 		UMaterialExpressionMultiply* DirtRaw = Cast<UMaterialExpressionMultiply>(AddExpr(Material, UMaterialExpressionMultiply::StaticClass(), 920, 1220));
+		UMaterialExpressionSaturate* SatWet = Cast<UMaterialExpressionSaturate>(AddExpr(Material, UMaterialExpressionSaturate::StaticClass(), 900, 340));
+		UMaterialExpressionSaturate* SatDirt = Cast<UMaterialExpressionSaturate>(AddExpr(Material, UMaterialExpressionSaturate::StaticClass(), 900, 1360));
+		UMaterialExpressionSaturate* SatCoverage = Cast<UMaterialExpressionSaturate>(AddExpr(Material, UMaterialExpressionSaturate::StaticClass(), 40, 1160));
 		UMaterialExpressionSaturate* DirtMask = Cast<UMaterialExpressionSaturate>(AddExpr(Material, UMaterialExpressionSaturate::StaticClass(), 1100, 1220));
 		UMaterialExpressionLinearInterpolate* Albedo = Cast<UMaterialExpressionLinearInterpolate>(AddExpr(Material, UMaterialExpressionLinearInterpolate::StaticClass(), 1280, 80));
 
@@ -261,9 +274,9 @@ namespace SiltMaterialBootstrap
 		UMaterialEditorOnlyData* EditorData = Cast<UMaterialEditorOnlyData>(Material->GetEditorOnlyData());
 		if (!Paint || !DirtColor || !Shade || !Dark || !Fresnel || !FresnelScale || !FresnelMask || !WetAlbedo
 			|| !WorldPos || !ActorPos || !LocalPos || !LocalZ || !HeightLift || !LiftedZ || !HeightSpan || !HeightDiv || !Height01
-			|| !Coverage || !CoverageGap || !CoverageBand || !CoverageDiv || !Vertical || !Breakup || !BreakupMin || !BreakupMax || !BreakupScale || !BrokenVertical
-			|| !DirtAmount || !DirtRaw || !DirtMask || !Albedo
-			|| !Roughness || !WetAmount || !WetRoughTarget || !WetRough || !DirtRoughTarget || !FinalRough
+			|| !Coverage || !SatCoverage || !CoverageGap || !CoverageBand || !CoverageDiv || !Vertical || !Breakup || !BreakupMin || !BreakupMax || !BreakupScale || !BrokenVertical
+			|| !DirtAmount || !SatDirt || !DirtRaw || !DirtMask || !Albedo
+			|| !Roughness || !WetAmount || !SatWet || !WetRoughTarget || !WetRough || !DirtRoughTarget || !FinalRough
 			|| !SpecDry || !SpecWet || !WetSpec || !SpecDirt || !FinalSpec
 			|| !MetalClean || !MetalDirt || !FinalMetal || !EditorData)
 		{
@@ -282,6 +295,7 @@ namespace SiltMaterialBootstrap
 		Roughness->DefaultValue = 0.38f;
 		WetAmount->ParameterName = TEXT("WetAmount");
 		WetAmount->DefaultValue = 0.55f;
+		SetUnitRange(WetAmount);
 		WetRoughTarget->R = 0.12f;
 		DirtRoughTarget->R = 0.86f;
 		SpecDry->R = 0.42f;
@@ -291,8 +305,10 @@ namespace SiltMaterialBootstrap
 		MetalDirt->R = 0.02f;
 		DirtAmount->ParameterName = TEXT("DirtAmount");
 		DirtAmount->DefaultValue = 0.35f;
+		SetUnitRange(DirtAmount);
 		Coverage->ParameterName = TEXT("DirtCoverageBias");
 		Coverage->DefaultValue = 0.6f;
+		SetUnitRange(Coverage);
 		HeightLift->R = 50.f;
 		HeightSpan->R = 220.f;
 		CoverageBand->R = 0.35f;
@@ -324,7 +340,8 @@ namespace SiltMaterialBootstrap
 		HeightDiv->A.Connect(0, LiftedZ);
 		HeightDiv->B.Connect(0, HeightSpan);
 		Height01->Input.Connect(0, HeightDiv);
-		CoverageGap->A.Connect(0, Coverage);
+		SatCoverage->Input.Connect(0, Coverage);
+		CoverageGap->A.Connect(0, SatCoverage);
 		CoverageGap->B.Connect(0, Height01);
 		CoverageDiv->A.Connect(0, CoverageGap);
 		CoverageDiv->B.Connect(0, CoverageBand);
@@ -334,23 +351,25 @@ namespace SiltMaterialBootstrap
 		BreakupScale->Alpha.Connect(0, Breakup);
 		BrokenVertical->A.Connect(0, Vertical);
 		BrokenVertical->B.Connect(0, BreakupScale);
+		SatDirt->Input.Connect(0, DirtAmount);
 		DirtRaw->A.Connect(0, BrokenVertical);
-		DirtRaw->B.Connect(0, DirtAmount);
+		DirtRaw->B.Connect(0, SatDirt);
 		DirtMask->Input.Connect(0, DirtRaw);
 		Albedo->A.Connect(0, WetAlbedo);
 		Albedo->B.Connect(0, DirtColor);
 		Albedo->Alpha.Connect(0, DirtMask);
 
+		SatWet->Input.Connect(0, WetAmount);
 		WetRough->A.Connect(0, Roughness);
 		WetRough->B.Connect(0, WetRoughTarget);
-		WetRough->Alpha.Connect(0, WetAmount);
+		WetRough->Alpha.Connect(0, SatWet);
 		FinalRough->A.Connect(0, WetRough);
 		FinalRough->B.Connect(0, DirtRoughTarget);
 		FinalRough->Alpha.Connect(0, DirtMask);
 
 		WetSpec->A.Connect(0, SpecDry);
 		WetSpec->B.Connect(0, SpecWet);
-		WetSpec->Alpha.Connect(0, WetAmount);
+		WetSpec->Alpha.Connect(0, SatWet);
 		FinalSpec->A.Connect(0, WetSpec);
 		FinalSpec->B.Connect(0, SpecDirt);
 		FinalSpec->Alpha.Connect(0, DirtMask);

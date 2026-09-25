@@ -229,8 +229,8 @@ void ASiltTruckPawn::ApplyCosmetics()
 		{
 			return;
 		}
-		Mid->SetScalarParameterValue(TEXT("WetAmount"), Wet);
-		Mid->SetScalarParameterValue(TEXT("DirtAmount"), Dirt);
+		Mid->SetScalarParameterValue(TEXT("WetAmount"), FMath::Clamp(Wet, 0.f, 1.f));
+		Mid->SetScalarParameterValue(TEXT("DirtAmount"), FMath::Clamp(Dirt, 0.f, 1.f));
 		Mid->SetScalarParameterValue(TEXT("DirtCoverageBias"), 0.6f);
 		Mid->SetVectorParameterValue(TEXT("DirtColor"), FLinearColor(0.12f, 0.09f, 0.06f));
 	};
