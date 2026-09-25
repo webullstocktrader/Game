@@ -44,9 +44,10 @@ namespace
 		case ESiltSurface::Dirt:
 			Grip = 0.82f; Drag = 0.16f; SpringScale = 0.9f; MaxSpeed = 1500.f; break;
 		case ESiltSurface::Mud:
-			Grip = 0.4f; Drag = 0.95f; SpringScale = 0.5f; MaxSpeed = 700.f; break;
+			// Softer than dirt (0.9) but still holds the axle. Was 0.5, which let the truck fall through.
+			Grip = 0.45f; Drag = 0.85f; SpringScale = 0.82f; MaxSpeed = 750.f; break;
 		case ESiltSurface::DeepMud:
-			Grip = 0.2f; Drag = 2.6f; SpringScale = 0.32f; MaxSpeed = 380.f; break;
+			Grip = 0.28f; Drag = 1.6f; SpringScale = 0.68f; MaxSpeed = 480.f; break;
 		case ESiltSurface::Water:
 		default:
 			Grip = 0.14f; Drag = 1.7f; SpringScale = 0.38f; MaxSpeed = 320.f; break;
@@ -567,7 +568,8 @@ void ASiltTruckPawn::StepVehicle(float DeltaSeconds, const TArray<FWheelQuery, T
 
 		if (Wheel.Surface == ESiltSurface::DeepMud || Wheel.Surface == ESiltSurface::Mud)
 		{
-			Body->AddForceAtLocation(-Up * WeightPerWheel * (Wheel.Surface == ESiltSurface::DeepMud ? 0.45f : 0.18f), Wheel.MountWorld);
+			// Shallow settle only. 0.45 / 0.18 plus the soft spring crushed the axle through the mud.
+			Body->AddForceAtLocation(-Up * WeightPerWheel * (Wheel.Surface == ESiltSurface::DeepMud ? 0.10f : 0.05f), Wheel.MountWorld);
 		}
 
 		const float ForwardSpeed = FVector::DotProduct(Wheel.PointVelocity, Wheel.WheelForward);

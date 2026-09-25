@@ -5,8 +5,19 @@
 
 namespace
 {
-	FLinearColor GroundColor(ESiltSurface Surface, float Noise)
+	// Centimeters above the flood line where soil reads dry. Bank dirt stays wet; ridges fall off.
+	// This branch has no SampleWetness — height vs the existing water line is the 0-1 wetness.
+	constexpr float WetnessFalloffCm = 1600.f;
+
+	float FloodWetness(float Height)
 	{
+		const float AboveFlood = Height - SiltTerrain::GetWaterLevel();
+		return FMath::Clamp(1.f - AboveFlood / WetnessFalloffCm, 0.f, 1.f);
+	}
+
+	FLinearColor GroundColor(ESiltSurface Surface, float Noise, float Wetness)
+	{
+		// Vertex color RGB = albedo for M_WetGround. A = roughness. No second wetness parameter.
 		FLinearColor Color;
 		float Roughness = 0.55f;
 		switch (Surface)
@@ -16,16 +27,17 @@ namespace
 			Roughness = 0.48f;
 			break;
 		case ESiltSurface::Dirt:
-			Color = FLinearColor(0.20f, 0.15f, 0.09f);
-			Roughness = 0.62f;
+			// Warm muddy brown. Was (0.20, 0.15, 0.09), which went slate under wet darkening.
+			Color = FLinearColor(0.20f, 0.125f, 0.055f);
+			Roughness = 0.48f;
 			break;
 		case ESiltSurface::Mud:
-			Color = FLinearColor(0.09f, 0.055f, 0.028f);
-			Roughness = 0.24f;
+			Color = FLinearColor(0.13f, 0.078f, 0.032f);
+			Roughness = 0.18f;
 			break;
 		case ESiltSurface::DeepMud:
-			Color = FLinearColor(0.045f, 0.028f, 0.016f);
-			Roughness = 0.10f;
+			Color = FLinearColor(0.06f, 0.038f, 0.018f);
+			Roughness = 0.08f;
 			break;
 		case ESiltSurface::Water:
 		default:
@@ -37,6 +49,13 @@ namespace
 		Color.R = FMath::Clamp(Color.R + Noise * 0.03f, 0.f, 1.f);
 		Color.G = FMath::Clamp(Color.G + Noise * 0.025f, 0.f, 1.f);
 		Color.B = FMath::Clamp(Color.B + Noise * 0.015f, 0.f, 1.f);
+
+		// Wetness 0-1: darken, and crush B harder than R so soaked dirt stays brown.
+		const float Wet = FMath::Clamp(Wetness, 0.f, 1.f);
+		Color.R *= FMath::Lerp(1.f, 0.72f, Wet);
+		Color.G *= FMath::Lerp(1.f, 0.58f, Wet);
+		Color.B *= FMath::Lerp(1.f, 0.42f, Wet);
+		Roughness = FMath::Lerp(Roughness, FMath::Min(Roughness, 0.12f), Wet * 0.85f);
 		Color.A = Roughness;
 		return Color;
 	}
@@ -96,7 +115,8 @@ void ASiltGroundChunk::Build(const FVector2D& MinXY, const FVector2D& MaxXY, flo
 			Vertices[Index] = FVector(WorldX, WorldY, Height);
 			UVs[Index] = FVector2D(WorldX * 0.0004f, WorldY * 0.0004f);
 			const float Noise = FMath::Frac(FMath::Sin(WorldX * 0.013f + WorldY * 0.017f) * 43758.5453f) * 2.f - 1.f;
-			Colors[Index] = GroundColor(SiltTerrain::SampleSurface(WorldX, WorldY), Noise);
+			const float Wetness = FloodWetness(Height);
+			Colors[Index] = GroundColor(SiltTerrain::SampleSurface(WorldX, WorldY), Noise, Wetness);
 		}
 	}
 
