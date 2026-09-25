@@ -159,10 +159,26 @@ namespace SiltTerrain
 	{
 		const float Height = SampleHeight(X, Y);
 		const float RoadDist = DistanceToRoad(X, Y);
-		if (RoadDist < 1100.f && Height > WaterLevel + 50.f)
+		const float TrackNoise = FMath::Abs(ValueNoise(X * 0.0022f, Y * 0.0022f));
+
+		// Highway crown: wet black asphalt. Shoulder band: crushed gravel.
+		if (Height > WaterLevel + 50.f)
 		{
-			return ESiltSurface::Road;
+			if (RoadDist < 700.f)
+			{
+				return ESiltSurface::Asphalt;
+			}
+			if (RoadDist < 1100.f)
+			{
+				return ESiltSurface::Gravel;
+			}
+			// Soft mud tracks just off the gravel shoulder (duals leave the crown).
+			if (RoadDist < 1600.f && TrackNoise > 0.35f)
+			{
+				return ESiltSurface::Mud;
+			}
 		}
+
 		if (Height < WaterLevel - 60.f)
 		{
 			return ESiltSurface::Water;
@@ -175,16 +191,58 @@ namespace SiltTerrain
 		{
 			return ESiltSurface::Mud;
 		}
+		// Default upland: wet olive soil, not dry farm dirt.
 		return ESiltSurface::Dirt;
+	}
+
+	float SampleWetness(float X, float Y)
+	{
+		// Mud Water owns Wetness 0-1 language. Gravel/Asphalt use Road's wetness curve.
+		const ESiltSurface Surface = SampleSurface(X, Y);
+		float Wetness;
+		switch (Surface)
+		{
+		case ESiltSurface::Asphalt:
+		case ESiltSurface::Gravel:
+		case ESiltSurface::Road:
+			Wetness = 0.55f;
+			break;
+		case ESiltSurface::Dirt:
+			Wetness = 0.45f; // wet packed dirt baseline (Pass A)
+			break;
+		case ESiltSurface::Mud:
+			Wetness = 0.85f;
+			break;
+		case ESiltSurface::DeepMud:
+		case ESiltSurface::Water:
+		default:
+			Wetness = 1.0f;
+			break;
+		}
+
+		// Pass A focus: boost Dirt/Mud on driveable paths near garage + first contract.
+		if (Surface == ESiltSurface::Dirt || Surface == ESiltSurface::Mud)
+		{
+			const float GarageDist = FVector2D(X, Y - 80000.f).Size();
+			const float ContractDist = FVector2D::Distance(FVector2D(X, Y), GetContractXY());
+			const float RoadDist = DistanceToRoad(X, Y);
+			if (GarageDist < 12000.f || ContractDist < 15000.f || RoadDist < 2000.f)
+			{
+				Wetness = FMath::Min(1.f, Wetness + 0.15f);
+			}
+		}
+		return Wetness;
 	}
 
 	const TCHAR* SurfaceLabel(ESiltSurface Surface)
 	{
 		switch (Surface)
 		{
-		case ESiltSurface::Road: return TEXT("CAUSED GRAVEL");
-		case ESiltSurface::Dirt: return TEXT("WET DIRT");
-		case ESiltSurface::Mud: return TEXT("MUD");
+		case ESiltSurface::Asphalt: return TEXT("WET ASPHALT");
+		case ESiltSurface::Gravel: return TEXT("WET GRAVEL");
+		case ESiltSurface::Road: return TEXT("WET GRAVEL");
+		case ESiltSurface::Dirt: return TEXT("WET SOIL");
+		case ESiltSurface::Mud: return TEXT("MUD TRACK");
 		case ESiltSurface::DeepMud: return TEXT("DEEP MUD");
 		case ESiltSurface::Water: return TEXT("FLOODWATER");
 		default: return TEXT("GROUND");

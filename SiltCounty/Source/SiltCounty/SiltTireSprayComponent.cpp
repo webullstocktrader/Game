@@ -14,7 +14,7 @@ namespace
 	// Puffs per second at Wetness 1 and full speed. Rate is speed × Wetness, not a second wet scalar.
 	constexpr float SprayPerSecond = 16.f;
 	constexpr float KickPerSecond = 6.f;
-	// Mud, deep mud, and shallow water. Dirt and road stay under this.
+	// Mud, deep mud, and water also need Wetness at least this high. SampleWetness owns the value.
 	constexpr float KickWetness = 0.5f;
 
 	bool IsKickSurface(ESiltSurface Surface)
@@ -155,7 +155,7 @@ void USiltTireSprayComponent::Simulate(UInstancedStaticMeshComponent* Field, TAr
 	}
 }
 
-void USiltTireSprayComponent::UpdateWheels(float DeltaSeconds, float SinkAlpha, const FSiltWheelSpray* Wheels, int32 Count)
+void USiltTireSprayComponent::UpdateWheels(float DeltaSeconds, const FSiltWheelSpray* Wheels, int32 Count)
 {
 	if (!bReady || !Wheels || Count <= 0 || DeltaSeconds <= 0.f)
 	{
@@ -184,7 +184,7 @@ void USiltTireSprayComponent::UpdateWheels(float DeltaSeconds, float SinkAlpha, 
 			continue;
 		}
 
-		const float Wetness = SiltWetness::Wetness(Wheel.Surface, SinkAlpha);
+		const float Wetness = SiltWetness::Wetness(Wheel.Contact.X, Wheel.Contact.Y);
 		const float SprayIntensity = FMath::Clamp(Wetness * (Speed / 1200.f), 0.f, 1.f);
 		if (SprayIntensity < 0.045f)
 		{

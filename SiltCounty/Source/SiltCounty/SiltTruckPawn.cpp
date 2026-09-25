@@ -40,10 +40,13 @@ namespace
 	{
 		switch (Surface)
 		{
+		case ESiltSurface::Asphalt:
+			Grip = 1.25f; Drag = 0.04f; SpringScale = 1.f; MaxSpeed = 2400.f; break;
+		case ESiltSurface::Gravel:
 		case ESiltSurface::Road:
-			Grip = 1.2f; Drag = 0.045f; SpringScale = 1.f; MaxSpeed = 2300.f; break;
+			Grip = 1.05f; Drag = 0.08f; SpringScale = 0.96f; MaxSpeed = 2000.f; break;
 		case ESiltSurface::Dirt:
-			Grip = 0.82f; Drag = 0.16f; SpringScale = 0.9f; MaxSpeed = 1500.f; break;
+			Grip = 0.78f; Drag = 0.22f; SpringScale = 0.88f; MaxSpeed = 1400.f; break;
 		case ESiltSurface::Mud:
 			Grip = 0.4f; Drag = 0.95f; SpringScale = 0.5f; MaxSpeed = 700.f; break;
 		case ESiltSurface::DeepMud:
@@ -62,6 +65,9 @@ namespace
 		case ESiltSurface::DeepMud: return 3;
 		case ESiltSurface::Mud: return 2;
 		case ESiltSurface::Dirt: return 1;
+		case ESiltSurface::Gravel:
+		case ESiltSurface::Road: return 0;
+		case ESiltSurface::Asphalt:
 		default: return 0;
 		}
 	}
@@ -464,7 +470,7 @@ void ASiltTruckPawn::Tick(float DeltaSeconds)
 			Samples[Index].PointVelocity = Wheel.PointVelocity;
 			Samples[Index].Outward = Wheel.WheelRight * Side;
 		}
-		SprayFX->UpdateWheels(DeltaSeconds, SinkAlpha, Samples, SampleCount);
+		SprayFX->UpdateWheels(DeltaSeconds, Samples, SampleCount);
 	}
 
 	const bool bLookStick =
@@ -638,7 +644,7 @@ void ASiltTruckPawn::StepVehicle(float DeltaSeconds, const TArray<FWheelQuery, T
 	{
 		Body->AddForce(FVector::UpVector * FMath::Min(Depth, 220.f) * 18000.f);
 		Body->AddForce(-Body->GetComponentVelocity() * 900.f);
-		if (CurrentSurface == ESiltSurface::Road || CurrentSurface == ESiltSurface::Dirt)
+		if (CurrentSurface == ESiltSurface::Asphalt || CurrentSurface == ESiltSurface::Road || CurrentSurface == ESiltSurface::Gravel || CurrentSurface == ESiltSurface::Dirt)
 		{
 			CurrentSurface = ESiltSurface::Water;
 		}

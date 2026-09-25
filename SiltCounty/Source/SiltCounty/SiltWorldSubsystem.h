@@ -22,6 +22,7 @@ private:
 
 	void ClearTemplateActors(UWorld& World) const;
 	void BuildTerrain(UWorld& World) const;
+	void BuildPuddles(UWorld& World) const;
 	void BuildDressing(UWorld& World) const;
 	void BuildWeather(UWorld& World) const;
 	void BuildGroundMist(UWorld& World) const;

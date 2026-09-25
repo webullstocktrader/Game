@@ -14,6 +14,7 @@ namespace SiltTerrain
 	float SampleHeight(float X, float Y);
 	float DistanceToRoad(float X, float Y);
 	ESiltSurface SampleSurface(float X, float Y);
+	float SampleWetness(float X, float Y);
 	const TCHAR* SurfaceLabel(ESiltSurface Surface);
 
 	FVector GetChiefSpawn();
