@@ -448,9 +448,9 @@ namespace SiltMaterialBootstrap
 		SaveMaterial(Material);
 	}
 
-	void BuildShopFloor()
+	void BuildGarageFloor()
 	{
-		UMaterial* Material = CreatePackageMaterial(TEXT("M_ShopFloor"));
+		UMaterial* Material = CreatePackageMaterial(TEXT("M_GarageFloor"));
 		if (!Material)
 		{
 			return;
@@ -465,7 +465,7 @@ namespace SiltMaterialBootstrap
 		UMaterialExpressionMultiply* Scaled = Cast<UMaterialExpressionMultiply>(AddExpr(Material, UMaterialExpressionMultiply::StaticClass(), -540, 40));
 		UMaterialExpressionFrac* StainFrac = Cast<UMaterialExpressionFrac>(AddExpr(Material, UMaterialExpressionFrac::StaticClass(), -340, 40));
 		UMaterialExpressionConstant* StainAt = Cast<UMaterialExpressionConstant>(AddExpr(Material, UMaterialExpressionConstant::StaticClass(), -340, 200));
-		UMaterialExpressionConstant3Vector* ConcreteColor = Cast<UMaterialExpressionConstant3Vector>(AddExpr(Material, UMaterialExpressionConstant3Vector::StaticClass(), -340, 340));
+		UMaterialExpressionVectorParameter* ConcreteColor = Cast<UMaterialExpressionVectorParameter>(AddExpr(Material, UMaterialExpressionVectorParameter::StaticClass(), -340, 340));
 		UMaterialExpressionConstant3Vector* OilColor = Cast<UMaterialExpressionConstant3Vector>(AddExpr(Material, UMaterialExpressionConstant3Vector::StaticClass(), -340, 500));
 		UMaterialExpressionIf* Stain = Cast<UMaterialExpressionIf>(AddExpr(Material, UMaterialExpressionIf::StaticClass(), -80, 160));
 		UMaterialExpressionConstant3Vector* WetColor = Cast<UMaterialExpressionConstant3Vector>(AddExpr(Material, UMaterialExpressionConstant3Vector::StaticClass(), -80, 420));
@@ -473,15 +473,18 @@ namespace SiltMaterialBootstrap
 		UMaterialExpressionConstant* FresnelScale = Cast<UMaterialExpressionConstant>(AddExpr(Material, UMaterialExpressionConstant::StaticClass(), -80, 720));
 		UMaterialExpressionMultiply* FresnelMask = Cast<UMaterialExpressionMultiply>(AddExpr(Material, UMaterialExpressionMultiply::StaticClass(), 140, 560));
 		UMaterialExpressionLinearInterpolate* Albedo = Cast<UMaterialExpressionLinearInterpolate>(AddExpr(Material, UMaterialExpressionLinearInterpolate::StaticClass(), 320, 120));
-		UMaterialExpressionConstant* DryRough = Cast<UMaterialExpressionConstant>(AddExpr(Material, UMaterialExpressionConstant::StaticClass(), 140, 280));
+		UMaterialExpressionScalarParameter* DryRough = Cast<UMaterialExpressionScalarParameter>(AddExpr(Material, UMaterialExpressionScalarParameter::StaticClass(), 140, 280));
 		UMaterialExpressionConstant* WetRough = Cast<UMaterialExpressionConstant>(AddExpr(Material, UMaterialExpressionConstant::StaticClass(), 140, 400));
 		UMaterialExpressionLinearInterpolate* Roughness = Cast<UMaterialExpressionLinearInterpolate>(AddExpr(Material, UMaterialExpressionLinearInterpolate::StaticClass(), 320, 320));
-		UMaterialExpressionConstant* Specular = Cast<UMaterialExpressionConstant>(AddExpr(Material, UMaterialExpressionConstant::StaticClass(), 320, 480));
+		UMaterialExpressionConstant* SpecularDry = Cast<UMaterialExpressionConstant>(AddExpr(Material, UMaterialExpressionConstant::StaticClass(), 140, 520));
+		UMaterialExpressionConstant* SpecularWet = Cast<UMaterialExpressionConstant>(AddExpr(Material, UMaterialExpressionConstant::StaticClass(), 140, 640));
+		UMaterialExpressionLinearInterpolate* Specular = Cast<UMaterialExpressionLinearInterpolate>(AddExpr(Material, UMaterialExpressionLinearInterpolate::StaticClass(), 320, 480));
 		UMaterialEditorOnlyData* EditorData = Cast<UMaterialEditorOnlyData>(Material->GetEditorOnlyData());
 		if (!WorldPos || !SpanMask || !Frequency || !Scaled || !StainFrac || !StainAt || !ConcreteColor || !OilColor || !Stain
-			|| !WetColor || !Fresnel || !FresnelScale || !FresnelMask || !Albedo || !DryRough || !WetRough || !Roughness || !Specular || !EditorData)
+			|| !WetColor || !Fresnel || !FresnelScale || !FresnelMask || !Albedo || !DryRough || !WetRough || !Roughness
+			|| !SpecularDry || !SpecularWet || !Specular || !EditorData)
 		{
-			UE_LOG(LogSiltEditor, Error, TEXT("Failed to build M_ShopFloor graph"));
+			UE_LOG(LogSiltEditor, Error, TEXT("Failed to build M_GarageFloor graph"));
 			return;
 		}
 
@@ -489,16 +492,19 @@ namespace SiltMaterialBootstrap
 		SpanMask->G = 0;
 		SpanMask->B = 0;
 		SpanMask->A = 0;
-		Frequency->R = 0.008f;
-		StainAt->R = 0.22f;
-		ConcreteColor->Constant = FLinearColor(0.26f, 0.25f, 0.22f);
-		OilColor->Constant = FLinearColor(0.05f, 0.04f, 0.03f);
-		WetColor->Constant = FLinearColor(0.08f, 0.09f, 0.09f);
-		Fresnel->Exponent = 3.5f;
-		FresnelScale->R = 0.62f;
-		DryRough->R = 0.58f;
-		WetRough->R = 0.06f;
-		Specular->R = 0.55f;
+		Frequency->R = 0.006f;
+		StainAt->R = 0.28f;
+		ConcreteColor->ParameterName = TEXT("PaintColor");
+		ConcreteColor->DefaultValue = FLinearColor(0.30f, 0.34f, 0.36f);
+		OilColor->Constant = FLinearColor(0.045f, 0.04f, 0.038f);
+		WetColor->Constant = FLinearColor(0.12f, 0.16f, 0.19f);
+		Fresnel->Exponent = 3.2f;
+		FresnelScale->R = 0.7f;
+		DryRough->ParameterName = TEXT("Roughness");
+		DryRough->DefaultValue = 0.22f;
+		WetRough->R = 0.03f;
+		SpecularDry->R = 0.28f;
+		SpecularWet->R = 0.88f;
 
 		SpanMask->Input.Connect(0, WorldPos);
 		Scaled->A.Connect(0, SpanMask);
@@ -517,24 +523,73 @@ namespace SiltMaterialBootstrap
 		Roughness->A.Connect(0, DryRough);
 		Roughness->B.Connect(0, WetRough);
 		Roughness->Alpha.Connect(0, FresnelMask);
+		Specular->A.Connect(0, SpecularDry);
+		Specular->B.Connect(0, SpecularWet);
+		Specular->Alpha.Connect(0, FresnelMask);
 		EditorData->BaseColor.Connect(0, Albedo);
 		EditorData->Roughness.Connect(0, Roughness);
 		EditorData->Specular.Connect(0, Specular);
 		SaveMaterial(Material);
 	}
 
-	void BuildShopWall()
+	void BuildGarageWall()
 	{
 		BuildCourseMaterial(
-			TEXT("M_ShopWall"),
-			FLinearColor(0.32f, 0.30f, 0.26f),
+			TEXT("M_GarageWall"),
+			FLinearColor(0.40f, 0.41f, 0.36f),
 			FLinearColor(0.16f, 0.15f, 0.13f),
-			FLinearColor(0.12f, 0.13f, 0.12f),
-			0.05f,
-			0.14f,
-			0.82f,
-			0.18f,
-			0.28f);
+			FLinearColor(0.18f, 0.17f, 0.14f),
+			0.055f,
+			0.16f,
+			0.78f,
+			0.24f,
+			0.22f);
+	}
+
+	void BuildGarageRoof()
+	{
+		UMaterial* Material = CreatePackageMaterial(TEXT("M_GarageRoof"));
+		if (!Material)
+		{
+			return;
+		}
+		Material->MaterialDomain = MD_Surface;
+		Material->BlendMode = BLEND_Opaque;
+		Material->SetShadingModel(MSM_DefaultLit);
+
+		UMaterialExpressionConstant3Vector* Metal = Cast<UMaterialExpressionConstant3Vector>(AddExpr(Material, UMaterialExpressionConstant3Vector::StaticClass(), -520, 0));
+		UMaterialExpressionConstant3Vector* Edge = Cast<UMaterialExpressionConstant3Vector>(AddExpr(Material, UMaterialExpressionConstant3Vector::StaticClass(), -520, 160));
+		UMaterialExpressionFresnel* Fresnel = Cast<UMaterialExpressionFresnel>(AddExpr(Material, UMaterialExpressionFresnel::StaticClass(), -520, 320));
+		UMaterialExpressionConstant* FresnelScale = Cast<UMaterialExpressionConstant>(AddExpr(Material, UMaterialExpressionConstant::StaticClass(), -520, 460));
+		UMaterialExpressionMultiply* FresnelMask = Cast<UMaterialExpressionMultiply>(AddExpr(Material, UMaterialExpressionMultiply::StaticClass(), -260, 360));
+		UMaterialExpressionLinearInterpolate* Albedo = Cast<UMaterialExpressionLinearInterpolate>(AddExpr(Material, UMaterialExpressionLinearInterpolate::StaticClass(), -20, 40));
+		UMaterialExpressionConstant* Roughness = Cast<UMaterialExpressionConstant>(AddExpr(Material, UMaterialExpressionConstant::StaticClass(), -20, 200));
+		UMaterialExpressionConstant* Metallic = Cast<UMaterialExpressionConstant>(AddExpr(Material, UMaterialExpressionConstant::StaticClass(), -20, 320));
+		UMaterialExpressionConstant* Specular = Cast<UMaterialExpressionConstant>(AddExpr(Material, UMaterialExpressionConstant::StaticClass(), -20, 440));
+		UMaterialEditorOnlyData* EditorData = Cast<UMaterialEditorOnlyData>(Material->GetEditorOnlyData());
+		if (!Metal || !Edge || !Fresnel || !FresnelScale || !FresnelMask || !Albedo || !Roughness || !Metallic || !Specular || !EditorData)
+		{
+			UE_LOG(LogSiltEditor, Error, TEXT("Failed to build M_GarageRoof graph"));
+			return;
+		}
+
+		Metal->Constant = FLinearColor(0.07f, 0.075f, 0.08f);
+		Edge->Constant = FLinearColor(0.16f, 0.17f, 0.18f);
+		Fresnel->Exponent = 4.5f;
+		FresnelScale->R = 0.35f;
+		Roughness->R = 0.42f;
+		Metallic->R = 0.78f;
+		Specular->R = 0.5f;
+		FresnelMask->A.Connect(0, Fresnel);
+		FresnelMask->B.Connect(0, FresnelScale);
+		Albedo->A.Connect(0, Metal);
+		Albedo->B.Connect(0, Edge);
+		Albedo->Alpha.Connect(0, FresnelMask);
+		EditorData->BaseColor.Connect(0, Albedo);
+		EditorData->Roughness.Connect(0, Roughness);
+		EditorData->Metallic.Connect(0, Metallic);
+		EditorData->Specular.Connect(0, Specular);
+		SaveMaterial(Material);
 	}
 
 	void Ensure()
@@ -554,8 +609,9 @@ namespace SiltMaterialBootstrap
 		BuildTownClapboard();
 		BuildConcreteBlock();
 		BuildMunicipalPaint();
-		BuildShopFloor();
-		BuildShopWall();
+		BuildGarageFloor();
+		BuildGarageWall();
+		BuildGarageRoof();
 		UE_LOG(LogSiltEditor, Display, TEXT("Silt County materials are ready under /Game/SiltCounty/Materials"));
 	}
 }
