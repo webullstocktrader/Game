@@ -305,6 +305,56 @@ namespace SiltMaterialBootstrap
 		UE_LOG(LogSiltEditor, Display, TEXT("M_Rain built as a translucent streak, opacity 0.3"));
 	}
 
+	void BuildSoftCard(const TCHAR* Name, const FLinearColor& Color, float OpacityValue)
+	{
+		const FString ObjectPath = FString::Printf(TEXT("/Game/SiltCounty/Materials/%s.%s"), Name, Name);
+		UMaterial* Material = LoadObject<UMaterial>(nullptr, *ObjectPath);
+		const bool bNew = Material == nullptr;
+		if (bNew)
+		{
+			Material = CreatePackageMaterial(Name);
+		}
+		if (!Material)
+		{
+			return;
+		}
+
+		Material->MaterialDomain = MD_Surface;
+		Material->BlendMode = BLEND_Translucent;
+		Material->SetShadingModel(MSM_Unlit);
+		Material->TwoSided = true;
+		Material->bUsedWithInstancedStaticMeshes = true;
+
+		if (bNew)
+		{
+			UMaterialExpressionConstant3Vector* Tint = Cast<UMaterialExpressionConstant3Vector>(AddExpr(Material, UMaterialExpressionConstant3Vector::StaticClass(), -300, 0));
+			UMaterialExpressionConstant* Opacity = Cast<UMaterialExpressionConstant>(AddExpr(Material, UMaterialExpressionConstant::StaticClass(), -300, 160));
+			UMaterialEditorOnlyData* EditorData = Cast<UMaterialEditorOnlyData>(Material->GetEditorOnlyData());
+			if (!Tint || !Opacity || !EditorData)
+			{
+				UE_LOG(LogSiltEditor, Error, TEXT("Failed to build %s"), Name);
+				return;
+			}
+			Tint->Constant = FLinearColor(Color.R, Color.G, Color.B, 1.f);
+			Opacity->R = OpacityValue;
+			EditorData->EmissiveColor.Connect(0, Tint);
+			EditorData->Opacity.Connect(0, Opacity);
+		}
+		else if (UMaterialEditorOnlyData* EditorData = Cast<UMaterialEditorOnlyData>(Material->GetEditorOnlyData()))
+		{
+			for (UMaterialExpression* Expr : EditorData->ExpressionCollection.Expressions)
+			{
+				if (UMaterialExpressionConstant* Opacity = Cast<UMaterialExpressionConstant>(Expr))
+				{
+					Opacity->R = OpacityValue;
+				}
+			}
+		}
+
+		SaveMaterial(Material);
+		UE_LOG(LogSiltEditor, Display, TEXT("%s translucent opacity %.2f"), Name, OpacityValue);
+	}
+
 	void Ensure()
 	{
 		static bool bOnce = false;
@@ -318,6 +368,9 @@ namespace SiltMaterialBootstrap
 		BuildTruckPaint();
 		BuildBeacon();
 		BuildRain();
+		BuildSoftCard(TEXT("M_TireSpray"), FLinearColor(0.62f, 0.66f, 0.68f), 0.28f);
+		BuildSoftCard(TEXT("M_MudKick"), FLinearColor(0.18f, 0.12f, 0.07f), 0.45f);
+		BuildSoftCard(TEXT("M_GroundMist"), FLinearColor(0.58f, 0.60f, 0.56f), 0.08f);
 		UE_LOG(LogSiltEditor, Display, TEXT("Silt County materials are ready under /Game/SiltCounty/Materials"));
 	}
 }

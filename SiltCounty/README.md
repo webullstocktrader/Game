@@ -157,7 +157,7 @@ Driving is server-authoritative. Local splitscreen and the listen host simulate 
 
 ## Rain check (coop PIE)
 
-Pass A is steady light-moderate rain on the instanced streak actor. It is not a storm, and it does not add tire spray, mist, or a fog change. Niagara is not required.
+Pass A rain is steady light-moderate streaks on `ASiltRainActor`. It is not a storm. The fog volume is unchanged.
 
 What you should see: 280 thin streaks around the first local camera, wrapped about ±20 m, drifting on a light sideways wind and falling the whole session. `M_Rain` stays translucent at opacity 0.3.
 
@@ -165,7 +165,19 @@ What you should see: 280 thin streaks around the first local camera, wrapped abo
 2. If an older `Content/SiltCounty/Materials/M_Rain` is still opaque or too solid, restart the editor once. The bootstrap rewrites that material to a translucent streak at opacity 0.3.
 3. Solo: rain keeps the same density from the garage through the slough. It should not thicken over time.
 4. Local co-op: press **F9** (or `silt.AddLocalPlayer`). The streak field follows player 1's camera. Park the trucks together so both halves of the split show the same light rain.
-5. Driving, the tow, and the county fog are unchanged by this pass.
+5. Driving, the tow, and the county fog are unchanged by the rain pass.
+
+## Ambient FX check (coop PIE)
+
+Tire spray, mud kick, and low ground mist sit beside the rain. They do not add a second rain sheet, and they do not change fog density. Niagara is enabled in `SiltCounty.uproject`. This environment cannot bake Niagara systems, so Pass A uses local instanced sprites instead of a Marketplace emitter.
+
+Spray uses the truck's existing wheel surface and sink. The puff rate follows speed times that wetness: mud, deep mud, and floodwater throw the most; wet dirt is light; the causeway is almost quiet. Chunks kick up only in mud and water. Mist is a low band over the flooded town, the south slough, and other wet ground. Cards stay under about 1.2 m and use opacity 0.08 so the trucks stay readable.
+
+1. Open `SiltCounty/SiltCounty.uproject` in the editor and press Play. Let materials finish. The log should include `Silt County tire spray ready` and `Silt County ground mist`.
+2. Sit still in the garage. The tires should be quiet.
+3. Drive the causeway. Spray should be faint or absent.
+4. Drop into mud or the slough and get moving. Spray should leave the wheels opposite the travel direction, with darker chunks in deep mud and floodwater. Stop and it should die out.
+5. Press **F9** and drive both trucks through the flooded town. Each truck throws its own local spray. Mist should sit low around the town and the slough, not fill the sky. The distance haze should look the same as before this pass.
 
 ## Limits of this slice
 

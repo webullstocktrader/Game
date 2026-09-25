@@ -29,6 +29,7 @@
 #include "Materials/MaterialInterface.h"
 #include "SiltCounty.h"
 #include "SiltGroundChunk.h"
+#include "SiltGroundMist.h"
 #include "SiltRainActor.h"
 #include "SiltTerrain.h"
 
@@ -146,6 +147,7 @@ void USiltWorldSubsystem::EnsureBuilt()
 	BuildTerrain(*World);
 	BuildDressing(*World);
 	BuildWeather(*World);
+	BuildGroundMist(*World);
 	UE_LOG(LogSiltCounty, Display, TEXT("Silt County world built in %.2fs"), FPlatformTime::Seconds() - Started);
 }
 
@@ -436,4 +438,19 @@ void USiltWorldSubsystem::BuildWeather(UWorld& World) const
 	FActorSpawnParameters Params;
 	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 	World.SpawnActor<ASiltRainActor>(FVector::ZeroVector, FRotator::ZeroRotator, Params);
+}
+
+void USiltWorldSubsystem::BuildGroundMist(UWorld& World) const
+{
+	if (World.GetNetMode() == NM_DedicatedServer)
+	{
+		return;
+	}
+
+	FActorSpawnParameters Params;
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	if (ASiltGroundMist* Mist = World.SpawnActor<ASiltGroundMist>(FVector::ZeroVector, FRotator::ZeroRotator, Params))
+	{
+		TagSilt(Mist);
+	}
 }

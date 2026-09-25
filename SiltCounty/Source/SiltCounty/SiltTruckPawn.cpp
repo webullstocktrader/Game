@@ -1,4 +1,5 @@
 #include "SiltTruckPawn.h"
+#include "SiltTireSprayComponent.h"
 
 #include "Camera/CameraComponent.h"
 #include "Components/BoxComponent.h"
@@ -158,6 +159,10 @@ ASiltTruckPawn::ASiltTruckPawn()
 	};
 	HeadlightL = MakeHeadlight(TEXT("HeadlightL"), -55.f);
 	HeadlightR = MakeHeadlight(TEXT("HeadlightR"), 55.f);
+
+	SprayFX = CreateDefaultSubobject<USiltTireSprayComponent>(TEXT("SprayFX"));
+	SprayFX->SetupAttachment(Body);
+	SprayFX->SetIsReplicated(false);
 }
 
 UStaticMeshComponent* ASiltTruckPawn::MakeVisual(const FName& Name, UStaticMesh* Mesh, const FVector& RelativeLocation, const FVector& Scale, const FRotator& RelativeRotation)
@@ -443,6 +448,24 @@ void ASiltTruckPawn::Tick(float DeltaSeconds)
 	}
 
 	UpdateWheelVisuals(DeltaSeconds, WheelHits);
+
+	if (SprayFX && Body)
+	{
+		FSiltWheelSpray Samples[4];
+		const int32 SampleCount = FMath::Min(WheelHits.Num(), 4);
+		const FVector Up = Body->GetUpVector();
+		for (int32 Index = 0; Index < SampleCount; ++Index)
+		{
+			const FWheelQuery& Wheel = WheelHits[Index];
+			const float Side = (Index % 2 == 0) ? -1.f : 1.f;
+			Samples[Index].bGrounded = Wheel.bGrounded;
+			Samples[Index].Surface = Wheel.Surface;
+			Samples[Index].Contact = Wheel.MountWorld - Up * Wheel.AxleDrop + Up * 14.f;
+			Samples[Index].PointVelocity = Wheel.PointVelocity;
+			Samples[Index].Outward = Wheel.WheelRight * Side;
+		}
+		SprayFX->UpdateWheels(DeltaSeconds, SinkAlpha, Samples, SampleCount);
+	}
 
 	const bool bLookStick =
 		(Cast<APlayerController>(GetController()) &&

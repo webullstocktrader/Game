@@ -24,6 +24,7 @@ private:
 	void BuildTerrain(UWorld& World) const;
 	void BuildDressing(UWorld& World) const;
 	void BuildWeather(UWorld& World) const;
+	void BuildGroundMist(UWorld& World) const;
 
 	UMaterialInterface* LoadMat(const TCHAR* ProjectPath, const TCHAR* Fallback) const;
 	bool ChunkNeedsDetail(float CenterX, float CenterY) const;

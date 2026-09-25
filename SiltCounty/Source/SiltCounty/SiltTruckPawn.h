@@ -7,6 +7,7 @@
 
 class UBoxComponent;
 class UCameraComponent;
+class USiltTireSprayComponent;
 class USpotLightComponent;
 class USpringArmComponent;
 class UStaticMeshComponent;
@@ -97,6 +98,9 @@ private:
 
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<USpotLightComponent> HeadlightR;
+
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<USiltTireSprayComponent> SprayFX;
 
 	UPROPERTY(ReplicatedUsing = OnRep_Identity)
 	int32 TruckIndex = 0;
