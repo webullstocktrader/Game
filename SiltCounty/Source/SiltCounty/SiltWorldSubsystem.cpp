@@ -355,9 +355,8 @@ void USiltWorldSubsystem::BuildWeather(UWorld& World) const
 		if (UDirectionalLightComponent* Light = Cast<UDirectionalLightComponent>(Sun->GetLightComponent()))
 		{
 			Light->SetMobility(EComponentMobility::Movable);
-			// Overcast wet day: dimmer and flatter than the previous blue-grey sun.
-			Light->SetIntensity(7.5f);
-			Light->SetLightColor(FLinearColor(0.66f, 0.68f, 0.70f));
+			Light->SetIntensity(10.f);
+			Light->SetLightColor(FLinearColor(0.72f, 0.78f, 0.88f));
 			Light->SetAtmosphereSunLight(true);
 			Light->SetCastShadows(true);
 			Light->DynamicShadowDistanceMovableLight = 80000.f;
@@ -369,17 +368,6 @@ void USiltWorldSubsystem::BuildWeather(UWorld& World) const
 	if (ASkyAtmosphere* Atmosphere = World.SpawnActor<ASkyAtmosphere>())
 	{
 		TagSilt(Atmosphere);
-		if (USkyAtmosphereComponent* Comp = Atmosphere->FindComponentByClass<USkyAtmosphereComponent>())
-		{
-			// Heavier, lower Mie so far county reads as wet haze instead of a clear sample sky.
-			Comp->SetRayleighScatteringScale(0.026f);
-			Comp->SetMieScatteringScale(0.0075f);
-			Comp->SetMieScattering(FLinearColor(0.88f, 0.84f, 0.78f));
-			Comp->SetMieAnisotropy(0.68f);
-			Comp->SetMieExponentialDistribution(0.9f);
-			Comp->SetAerialPespectiveViewDistanceScale(1.4f);
-			Comp->SetSkyLuminanceFactor(FLinearColor(0.70f, 0.73f, 0.76f));
-		}
 	}
 
 	if (ASkyLight* Sky = World.SpawnActor<ASkyLight>())
@@ -388,12 +376,11 @@ void USiltWorldSubsystem::BuildWeather(UWorld& World) const
 		if (USkyLightComponent* Light = Sky->GetLightComponent())
 		{
 			Light->SetMobility(EComponentMobility::Movable);
-			Light->SetIntensity(1.15f);
-			Light->SetLightColor(FLinearColor(0.74f, 0.76f, 0.78f));
-			Light->bLowerHemisphereIsBlack = false;
-			Light->LowerHemisphereColor = FLinearColor(0.12f, 0.10f, 0.08f);
+			Light->SetIntensity(1.35f);
 			Light->SetRealTimeCapture(true);
 			Light->RecaptureSky();
+			Light->bLowerHemisphereIsBlack = false;
+			Light->LowerHemisphereColor = FLinearColor(0.08f, 0.09f, 0.08f);
 		}
 	}
 
@@ -411,36 +398,20 @@ void USiltWorldSubsystem::BuildWeather(UWorld& World) const
 		}
 	}
 
-	// Fog height is the actor Z. Park it under the floodplain (water is 720) so the
-	// slough stays thicker than the garage bench. Higher falloff tightens that layer;
-	// 0.18 was a tall haze that barely noticed the county's relief.
-	constexpr float FogDensity = 0.026f;
-	constexpr float FogHeightFalloff = 0.48f;
-	constexpr float FogStartDistance = 750.f;
-	constexpr float VolumetricDistance = 15000.f;
-	const FLinearColor MudFog(0.50f, 0.46f, 0.40f);
-	const float FogBaseZ = SiltTerrain::GetWaterLevel() - 240.f;
-	if (AExponentialHeightFog* Fog = World.SpawnActor<AExponentialHeightFog>(FVector(0.f, 0.f, FogBaseZ), FRotator::ZeroRotator))
+	if (AExponentialHeightFog* Fog = World.SpawnActor<AExponentialHeightFog>())
 	{
 		TagSilt(Fog);
 		if (UExponentialHeightFogComponent* Comp = Fog->GetComponent())
 		{
-			Comp->VolumetricFogStartDistance = 700.f;
-			Comp->VolumetricFogNearFadeInDistance = 1400.f;
-			Comp->bOverrideLightColorsWithFogInscatteringColors = true;
-			Comp->SkyAtmosphereAmbientContributionColorScale = FLinearColor(0.85f, 0.80f, 0.72f);
-			Comp->SetFogDensity(FogDensity);
-			Comp->SetFogHeightFalloff(FogHeightFalloff);
-			Comp->SetFogInscatteringColor(MudFog);
-			Comp->SetFogMaxOpacity(0.90f);
-			Comp->SetStartDistance(FogStartDistance);
-			Comp->SetVolumetricFog(true);
-			Comp->SetVolumetricFogScatteringDistribution(0.42f);
-			Comp->SetVolumetricFogDistance(VolumetricDistance);
-			Comp->SetVolumetricFogAlbedo(FColor(187, 181, 170));
-			Comp->SetVolumetricFogExtinctionScale(1.15f);
-			UE_LOG(LogSiltCounty, Display, TEXT("Silt County fog: density %.3f falloff %.2f start %.0f volumetric %.0f baseZ %.0f"),
-				FogDensity, FogHeightFalloff, FogStartDistance, VolumetricDistance, FogBaseZ);
+			Comp->SetFogDensity(0.017f);
+			Comp->SetFogHeightFalloff(0.18f);
+			Comp->SetFogInscatteringColor(FLinearColor(0.50f, 0.46f, 0.40f));
+			Comp->SetFogMaxOpacity(0.92f);
+			Comp->SetStartDistance(800.f);
+			Comp->bEnableVolumetricFog = true;
+			Comp->VolumetricFogScatteringDistribution = 0.35f;
+			Comp->VolumetricFogDistance = 8000.f;
+			Comp->VolumetricFogAlbedo = FColor(187, 181, 170);
 		}
 	}
 
@@ -449,19 +420,17 @@ void USiltWorldSubsystem::BuildWeather(UWorld& World) const
 		TagSilt(Post);
 		Post->bUnbound = true;
 		Post->Settings.bOverride_ColorSaturation = true;
-		Post->Settings.ColorSaturation = FVector4(0.84f, 0.82f, 0.80f, 1.f);
+		Post->Settings.ColorSaturation = FVector4(0.78f, 0.86f, 0.84f, 1.f);
 		Post->Settings.bOverride_ColorContrast = true;
-		Post->Settings.ColorContrast = FVector4(1.04f, 1.03f, 1.02f, 1.f);
+		Post->Settings.ColorContrast = FVector4(1.05f, 1.04f, 1.02f, 1.f);
 		Post->Settings.bOverride_ColorGamma = true;
-		Post->Settings.ColorGamma = FVector4(1.00f, 1.01f, 1.02f, 1.f);
-		Post->Settings.bOverride_ColorOffset = true;
-		Post->Settings.ColorOffset = FVector4(0.004f, 0.006f, 0.010f, 0.f);
+		Post->Settings.ColorGamma = FVector4(0.98f, 1.0f, 1.02f, 1.f);
 		Post->Settings.bOverride_AutoExposureBias = true;
-		Post->Settings.AutoExposureBias = -0.06f;
+		Post->Settings.AutoExposureBias = -0.15f;
 		Post->Settings.bOverride_VignetteIntensity = true;
 		Post->Settings.VignetteIntensity = 0.28f;
 		Post->Settings.bOverride_BloomIntensity = true;
-		Post->Settings.BloomIntensity = 0.40f;
+		Post->Settings.BloomIntensity = 0.35f;
 	}
 
 	FActorSpawnParameters Params;
