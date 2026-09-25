@@ -65,6 +65,7 @@ public:
 
 	virtual void BeginPlay() override;
 
+	// SinkAlpha is fed into SiltWetness::Wetness with each wheel's ESiltSurface.
 	void UpdateWheels(float DeltaSeconds, float SinkAlpha, const FSiltWheelSpray* Wheels, int32 Count);
 
 private:

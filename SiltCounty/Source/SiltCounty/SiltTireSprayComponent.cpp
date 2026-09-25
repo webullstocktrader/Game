@@ -1,6 +1,7 @@
 #include "SiltTireSprayComponent.h"
 
 #include "SiltCounty.h"
+#include "SiltWetness.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
@@ -10,22 +11,11 @@ namespace
 {
 	constexpr int32 SprayPool = 40;
 	constexpr int32 KickPool = 16;
-	// Puffs per second at full wetness and speed. Charge is what makes the rate follow speed × wetness.
+	// Puffs per second at Wetness 1 and full speed. Rate is speed × Wetness, not a second wet scalar.
 	constexpr float SprayPerSecond = 16.f;
 	constexpr float KickPerSecond = 6.f;
-
-	float SurfaceWetness(ESiltSurface Surface)
-	{
-		switch (Surface)
-		{
-		case ESiltSurface::Road: return 0.05f;
-		case ESiltSurface::Dirt: return 0.22f;
-		case ESiltSurface::Mud: return 0.82f;
-		case ESiltSurface::DeepMud: return 1.f;
-		case ESiltSurface::Water: return 0.95f;
-		default: return 0.f;
-		}
-	}
+	// Mud, deep mud, and shallow water. Dirt and road stay under this.
+	constexpr float KickWetness = 0.5f;
 
 	bool IsKickSurface(ESiltSurface Surface)
 	{
@@ -194,13 +184,9 @@ void USiltTireSprayComponent::UpdateWheels(float DeltaSeconds, float SinkAlpha, 
 			continue;
 		}
 
-		float Wet = SurfaceWetness(Wheel.Surface);
-		if (Wheel.Surface == ESiltSurface::Mud || Wheel.Surface == ESiltSurface::DeepMud)
-		{
-			Wet *= 0.75f + 0.25f * FMath::Clamp(SinkAlpha, 0.f, 1.f);
-		}
-		const float Amount = FMath::Clamp(Wet * (Speed / 1200.f), 0.f, 1.f);
-		if (Amount < 0.045f)
+		const float Wetness = SiltWetness::Wetness(Wheel.Surface, SinkAlpha);
+		const float SprayIntensity = FMath::Clamp(Wetness * (Speed / 1200.f), 0.f, 1.f);
+		if (SprayIntensity < 0.045f)
 		{
 			continue;
 		}
@@ -218,26 +204,26 @@ void USiltTireSprayComponent::UpdateWheels(float DeltaSeconds, float SinkAlpha, 
 		}
 
 		const FVector SprayDir = (Back * 0.72f + Wheel.Outward * 0.32f + FVector::UpVector * 0.42f).GetSafeNormal();
-		SprayCharge[Index] = FMath::Min(SprayCharge[Index] + Amount * DeltaSeconds * SprayPerSecond, 2.f);
+		SprayCharge[Index] = FMath::Min(SprayCharge[Index] + SprayIntensity * DeltaSeconds * SprayPerSecond, 2.f);
 		while (SprayCharge[Index] >= 1.f && SprayBurst < 6)
 		{
-			Emit(SprayPuffs, SprayCursor, Wheel.Contact, SprayDir * (180.f + 720.f * Amount), 0.18f + 0.1f * Amount, 0.12f + 0.28f * Amount);
+			Emit(SprayPuffs, SprayCursor, Wheel.Contact, SprayDir * (180.f + 720.f * SprayIntensity), 0.18f + 0.1f * SprayIntensity, 0.12f + 0.28f * SprayIntensity);
 			SprayCharge[Index] -= 1.f;
 			++SprayBurst;
-			if (Amount > 0.55f && SprayBurst < 6)
+			if (Wetness > 0.55f && SprayBurst < 6)
 			{
-				Emit(SprayPuffs, SprayCursor, Wheel.Contact + Wheel.Outward * 18.f, SprayDir * (140.f + 480.f * Amount), 0.16f, 0.1f + 0.16f * Amount);
+				Emit(SprayPuffs, SprayCursor, Wheel.Contact + Wheel.Outward * 18.f, SprayDir * (140.f + 480.f * SprayIntensity), 0.16f, 0.1f + 0.16f * SprayIntensity);
 				++SprayBurst;
 			}
 		}
 
-		if (IsKickSurface(Wheel.Surface) && Amount > 0.28f)
+		if (IsKickSurface(Wheel.Surface) && Wetness >= KickWetness && SprayIntensity > 0.28f)
 		{
 			const FVector KickDir = (Back * 0.55f + Wheel.Outward * 0.5f + FVector::UpVector * 0.62f).GetSafeNormal();
-			KickCharge[Index] = FMath::Min(KickCharge[Index] + Amount * DeltaSeconds * KickPerSecond, 2.f);
+			KickCharge[Index] = FMath::Min(KickCharge[Index] + SprayIntensity * DeltaSeconds * KickPerSecond, 2.f);
 			if (KickCharge[Index] >= 1.f && KickBurst < 3)
 			{
-				Emit(KickPuffs, KickCursor, Wheel.Contact, KickDir * (90.f + 280.f * Amount), 0.28f + 0.12f * Amount, 0.28f + 0.55f * Amount);
+				Emit(KickPuffs, KickCursor, Wheel.Contact, KickDir * (90.f + 280.f * SprayIntensity), 0.28f + 0.12f * SprayIntensity, 0.28f + 0.55f * SprayIntensity);
 				KickCharge[Index] -= 1.f;
 				++KickBurst;
 			}

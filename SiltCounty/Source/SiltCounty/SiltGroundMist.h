@@ -7,7 +7,8 @@
 class UInstancedStaticMeshComponent;
 
 // Low cards over flooded town, the south slough, and the waterline.
-// Separate from the fog volume: a short band, low opacity, trucks stay readable.
+// Card presence and size follow SiltWetness::Wetness. Separate from the fog volume:
+// a short band, opacity capped, trucks stay readable.
 UCLASS()
 class SILTCOUNTY_API ASiltGroundMist : public AActor
 {

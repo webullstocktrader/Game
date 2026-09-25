@@ -171,7 +171,7 @@ What you should see: 280 thin streaks around the first local camera, wrapped abo
 
 Tire spray, mud kick, and low ground mist sit beside the rain. They do not add a second rain sheet, and they do not change fog density. Niagara is enabled in `SiltCounty.uproject`. This environment cannot bake Niagara systems, so Pass A uses local instanced sprites instead of a Marketplace emitter.
 
-Spray uses the truck's existing wheel surface and sink. The puff rate follows speed times that wetness: mud, deep mud, and floodwater throw the most; wet dirt is light; the causeway is almost quiet. Chunks kick up only in mud and water. Mist is a low band over the flooded town, the south slough, and other wet ground. Cards stay under about 1.2 m and use opacity 0.08 so the trucks stay readable.
+Spray and mist share one Wetness scalar, 0–1, from `SiltWetness::Wetness`. Mud Water has not exposed a getter, so Pass A derives that value from `ESiltSurface` plus `SinkAlpha` (ground mist passes sink 0). That function is the swap point when Mud Water's API lands. Do not add a second wetness field. Road stays near 0, dirt is low, and driveable mud plus shallow water are high and rise with sink. Puff rate is speed times Wetness. Chunks kick only on mud, deep mud, and water once Wetness is at least 0.5. Mist cards appear only at that same bar, stay under about 1.2 m, and scale with Wetness. Opacity stays 0.08 so the trucks stay readable. The fog volume is unchanged.
 
 1. Open `SiltCounty/SiltCounty.uproject` in the editor and press Play. Let materials finish. The log should include `Silt County tire spray ready` and `Silt County ground mist`.
 2. Sit still in the garage. The tires should be quiet.

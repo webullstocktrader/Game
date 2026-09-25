@@ -2,6 +2,7 @@
 
 #include "SiltCounty.h"
 #include "SiltTerrain.h"
+#include "SiltWetness.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
@@ -11,10 +12,12 @@ namespace
 {
 	constexpr int32 MaxCards = 42;
 	constexpr float MaxLiftCm = 120.f;
+	// Road and dirt sit under this. Mud, deep mud, and shallow water do not.
+	constexpr float MistWetness = 0.5f;
 
-	bool IsWetGround(ESiltSurface Surface)
+	float CardSpan(float Span, float Wetness)
 	{
-		return Surface == ESiltSurface::Mud || Surface == ESiltSurface::DeepMud || Surface == ESiltSurface::Water;
+		return Wetness >= MistWetness ? Span * Wetness : 0.f;
 	}
 }
 
@@ -39,7 +42,8 @@ bool ASiltGroundMist::TryAddCard(float X, float Y, FRandomStream& Rng)
 	{
 		return false;
 	}
-	if (!IsWetGround(SiltTerrain::SampleSurface(X, Y)))
+	// Ground has no truck sink. Wetness(surface, 0) is still the shared scalar.
+	if (SiltWetness::Wetness(SiltTerrain::SampleSurface(X, Y), 0.f) < MistWetness)
 	{
 		return false;
 	}
@@ -109,8 +113,10 @@ void ASiltGroundMist::BeginPlay()
 	Cards->ClearInstances();
 	for (int32 Index = 0; Index < Anchors.Num(); ++Index)
 	{
+		const float Wetness = SiltWetness::Wetness(SiltTerrain::SampleSurface(Anchors[Index].X, Anchors[Index].Y), 0.f);
+		const float Span = CardSpan(Spans[Index], Wetness);
 		const FVector Pos(Anchors[Index].X, Anchors[Index].Y, Anchors[Index].Z + Lifts[Index]);
-		Cards->AddInstance(FTransform(FRotator::ZeroRotator, Pos, FVector(Spans[Index], Spans[Index] * 0.72f, 1.f)));
+		Cards->AddInstance(FTransform(FRotator::ZeroRotator, Pos, FVector(Span, Span * 0.72f, 1.f)));
 	}
 
 	bReady = Anchors.Num() > 0;
@@ -136,10 +142,12 @@ void ASiltGroundMist::Tick(float DeltaSeconds)
 		const float Base = FMath::Max(Ground, SiltTerrain::GetWaterLevel());
 		const float Bob = FMath::Sin(Time * 0.6f + Phases[Index]) * 8.f;
 		const float Z = Base + FMath::Min(Lifts[Index] + Bob, MaxLiftCm);
+		const float Wetness = SiltWetness::Wetness(SiltTerrain::SampleSurface(X, Y), 0.f);
+		const float Span = CardSpan(Spans[Index], Wetness);
 		const FRotator Yaw(0.f, Index * 23.f + Time * 2.f, 0.f);
 		Cards->UpdateInstanceTransform(
 			Index,
-			FTransform(Yaw, FVector(X, Y, Z), FVector(Spans[Index], Spans[Index] * 0.72f, 1.f)),
+			FTransform(Yaw, FVector(X, Y, Z), FVector(Span, Span * 0.72f, 1.f)),
 			true,
 			Index == Anchors.Num() - 1,
 			true);
