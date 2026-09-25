@@ -22,5 +22,7 @@ private:
 	TObjectPtr<UInstancedStaticMeshComponent> Drops;
 
 	TArray<FVector> Velocities;
-	static constexpr int32 DropCount = 420;
+
+	// Pass A: one continuous light-moderate field. No storm ramp.
+	static constexpr int32 DropCount = 280;
 };

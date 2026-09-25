@@ -155,6 +155,18 @@ The world is not a saved map. On Play, `USiltWorldSubsystem` clears the template
 
 Driving is server-authoritative. Local splitscreen and the listen host simulate directly. A remote client sends throttle, steer, and brake each tick.
 
+## Rain check (coop PIE)
+
+Pass A is steady light-moderate rain on the instanced streak actor. It is not a storm, and it does not add tire spray, mist, or a fog change. Niagara is not required.
+
+What you should see: 280 thin streaks around the first local camera, wrapped about ±20 m, drifting on a light sideways wind and falling the whole session. `M_Rain` stays translucent at opacity 0.3.
+
+1. Open `SiltCounty/SiltCounty.uproject` and press Play. Wait until the log says the Silt County materials are ready, then `Silt County rain Pass A: 280 ISM streaks`.
+2. If an older `Content/SiltCounty/Materials/M_Rain` is still opaque or too solid, restart the editor once. The bootstrap rewrites that material to a translucent streak at opacity 0.3.
+3. Solo: rain keeps the same density from the garage through the slough. It should not thicken over time.
+4. Local co-op: press **F9** (or `silt.AddLocalPlayer`). The streak field follows player 1's camera. Park the trucks together so both halves of the split show the same light rain.
+5. Driving, the tow, and the county fog are unchanged by this pass.
+
 ## Limits of this slice
 
 - Towing is a soft tether, not a cable, winch, or trailer hitch.

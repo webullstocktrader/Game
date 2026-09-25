@@ -1,9 +1,17 @@
 #include "SiltRainActor.h"
 
+#include "SiltCounty.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Kismet/GameplayStatics.h"
 #include "Materials/MaterialInterface.h"
+
+namespace
+{
+	// Thin vertical streaks. A 100 cm engine cube at this scale is about 0.8 cm by 180 cm.
+	const FVector RainStreakScale(0.008f, 0.008f, 1.8f);
+	constexpr float RainWrapHalfCm = 2000.f;
+}
 
 ASiltRainActor::ASiltRainActor()
 {
@@ -34,17 +42,22 @@ void ASiltRainActor::BeginPlay()
 	Drops->SetStaticMesh(Cube);
 	Drops->SetMaterial(0, RainMat);
 
-	const FVector Scale(0.012f, 0.012f, 1.5f);
 	Velocities.SetNum(DropCount);
 	for (int32 Index = 0; Index < DropCount; ++Index)
 	{
 		const FVector Local(
-			FMath::FRandRange(-2000.f, 2000.f),
-			FMath::FRandRange(-2000.f, 2000.f),
+			FMath::FRandRange(-RainWrapHalfCm, RainWrapHalfCm),
+			FMath::FRandRange(-RainWrapHalfCm, RainWrapHalfCm),
 			FMath::FRandRange(0.f, 1800.f));
-		Velocities[Index] = FVector(FMath::FRandRange(-80.f, 180.f), FMath::FRandRange(-40.f, 40.f), FMath::FRandRange(-1600.f, -1100.f));
-		Drops->AddInstance(FTransform(FRotator::ZeroRotator, Local, Scale));
+		// Light sideways drift. Fall speed stays in this range for the whole session.
+		Velocities[Index] = FVector(
+			FMath::FRandRange(40.f, 120.f),
+			FMath::FRandRange(-40.f, 40.f),
+			FMath::FRandRange(-1300.f, -900.f));
+		Drops->AddInstance(FTransform(FRotator::ZeroRotator, Local, RainStreakScale));
 	}
+
+	UE_LOG(LogSiltCounty, Display, TEXT("Silt County rain Pass A: %d ISM streaks, continuous light-moderate."), DropCount);
 }
 
 void ASiltRainActor::Tick(float DeltaSeconds)
@@ -62,7 +75,6 @@ void ASiltRainActor::Tick(float DeltaSeconds)
 	}
 
 	const FVector Origin = Camera->GetCameraLocation();
-	const FVector Scale(0.012f, 0.012f, 1.5f);
 	for (int32 Index = 0; Index < Velocities.Num(); ++Index)
 	{
 		FTransform Xform;
@@ -83,10 +95,10 @@ void ASiltRainActor::Tick(float DeltaSeconds)
 			}
 			return Wrapped - HalfExtent;
 		};
-		Relative.X = Wrap(Relative.X, 2000.f);
-		Relative.Y = Wrap(Relative.Y, 2000.f);
+		Relative.X = Wrap(Relative.X, RainWrapHalfCm);
+		Relative.Y = Wrap(Relative.Y, RainWrapHalfCm);
 		Relative.Z = Wrap(Relative.Z - 800.f, 1000.f) + 800.f;
 		Location = Origin + Relative;
-		Drops->UpdateInstanceTransform(Index, FTransform(FRotator(0.f, 0.f, -8.f), Location, Scale), true, Index == Velocities.Num() - 1, true);
+		Drops->UpdateInstanceTransform(Index, FTransform(FRotator(0.f, 0.f, -8.f), Location, RainStreakScale), true, Index == Velocities.Num() - 1, true);
 	}
 }

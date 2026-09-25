@@ -5,6 +5,7 @@
 #include "HAL/FileManager.h"
 #include "Modules/ModuleManager.h"
 #include "Materials/Material.h"
+#include "Materials/MaterialEditorOnlyData.h"
 #include "Materials/MaterialExpressionConstant.h"
 #include "Materials/MaterialExpressionConstant3Vector.h"
 #include "Materials/MaterialExpressionFresnel.h"
@@ -238,18 +239,54 @@ namespace SiltMaterialBootstrap
 		SaveMaterial(Material);
 	}
 
-	void BuildRain()
+	// Soft translucent streak. Opacity stays near 0.3 so the cubes do not read as sheets.
+	void ApplyRainOpacity(UMaterial* Material)
 	{
-		UMaterial* Material = CreatePackageMaterial(TEXT("M_Rain"));
 		if (!Material)
 		{
 			return;
 		}
+
 		Material->MaterialDomain = MD_Surface;
 		Material->BlendMode = BLEND_Translucent;
 		Material->SetShadingModel(MSM_Unlit);
 		Material->TwoSided = true;
 		Material->bUsedWithInstancedStaticMeshes = true;
+
+		bool bSetOpacity = false;
+		if (UMaterialEditorOnlyData* EditorData = Cast<UMaterialEditorOnlyData>(Material->GetEditorOnlyData()))
+		{
+			for (UMaterialExpression* Expr : EditorData->ExpressionCollection.Expressions)
+			{
+				if (UMaterialExpressionConstant* Opacity = Cast<UMaterialExpressionConstant>(Expr))
+				{
+					Opacity->R = 0.3f;
+					bSetOpacity = true;
+				}
+			}
+		}
+
+		if (!bSetOpacity)
+		{
+			UE_LOG(LogSiltEditor, Warning, TEXT("M_Rain has no opacity constant. Delete Content/SiltCounty/Materials/M_Rain and reopen the editor."));
+		}
+		SaveMaterial(Material);
+	}
+
+	void BuildRain()
+	{
+		if (UMaterial* Existing = LoadObject<UMaterial>(nullptr, TEXT("/Game/SiltCounty/Materials/M_Rain.M_Rain")))
+		{
+			ApplyRainOpacity(Existing);
+			UE_LOG(LogSiltEditor, Display, TEXT("M_Rain kept translucent, opacity 0.3"));
+			return;
+		}
+
+		UMaterial* Material = CreatePackageMaterial(TEXT("M_Rain"));
+		if (!Material)
+		{
+			return;
+		}
 
 		UMaterialExpressionConstant3Vector* Color = Cast<UMaterialExpressionConstant3Vector>(AddExpr(Material, UMaterialExpressionConstant3Vector::StaticClass(), -300, 0));
 		UMaterialExpressionConstant* Opacity = Cast<UMaterialExpressionConstant>(AddExpr(Material, UMaterialExpressionConstant::StaticClass(), -300, 160));
@@ -261,10 +298,11 @@ namespace SiltMaterialBootstrap
 		}
 
 		Color->Constant = FLinearColor(0.75f, 0.8f, 0.82f);
-		Opacity->R = 0.22f;
+		Opacity->R = 0.3f;
 		EditorData->EmissiveColor.Connect(0, Color);
 		EditorData->Opacity.Connect(0, Opacity);
-		SaveMaterial(Material);
+		ApplyRainOpacity(Material);
+		UE_LOG(LogSiltEditor, Display, TEXT("M_Rain built as a translucent streak, opacity 0.3"));
 	}
 
 	void Ensure()
