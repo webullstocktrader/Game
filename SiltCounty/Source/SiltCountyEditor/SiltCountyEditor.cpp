@@ -5,14 +5,22 @@
 #include "HAL/FileManager.h"
 #include "Modules/ModuleManager.h"
 #include "Materials/Material.h"
+#include "Materials/MaterialExpressionActorPositionWS.h"
+#include "Materials/MaterialExpressionAdd.h"
+#include "Materials/MaterialExpressionComponentMask.h"
 #include "Materials/MaterialExpressionConstant.h"
 #include "Materials/MaterialExpressionConstant3Vector.h"
+#include "Materials/MaterialExpressionDivide.h"
 #include "Materials/MaterialExpressionFresnel.h"
 #include "Materials/MaterialExpressionLinearInterpolate.h"
 #include "Materials/MaterialExpressionMultiply.h"
+#include "Materials/MaterialExpressionNoise.h"
+#include "Materials/MaterialExpressionSaturate.h"
 #include "Materials/MaterialExpressionScalarParameter.h"
+#include "Materials/MaterialExpressionSubtract.h"
 #include "Materials/MaterialExpressionVectorParameter.h"
 #include "Materials/MaterialExpressionVertexColor.h"
+#include "Materials/MaterialExpressionWorldPosition.h"
 #include "MaterialEditingLibrary.h"
 #include "Misc/PackageName.h"
 #include "Misc/Paths.h"
@@ -156,9 +164,42 @@ namespace SiltMaterialBootstrap
 		SaveMaterial(Material);
 	}
 
+	bool HasScalarParam(const UMaterial* Material, FName Name)
+	{
+		if (!Material)
+		{
+			return false;
+		}
+		for (UMaterialExpression* Expr : Material->GetExpressions())
+		{
+			const UMaterialExpressionScalarParameter* Scalar = Cast<UMaterialExpressionScalarParameter>(Expr);
+			if (Scalar && Scalar->ParameterName == Name)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	UMaterial* AcquireTruckPaint()
+	{
+		const TCHAR* ObjectPath = TEXT("/Game/SiltCounty/Materials/M_TruckPaint.M_TruckPaint");
+		if (UMaterial* Existing = LoadObject<UMaterial>(nullptr, ObjectPath))
+		{
+			if (HasScalarParam(Existing, TEXT("WetAmount")))
+			{
+				UE_LOG(LogSiltEditor, Display, TEXT("Silt truck paint pass A ready"));
+				return nullptr;
+			}
+			UMaterialEditingLibrary::DeleteAllMaterialExpressions(Existing);
+			return Existing;
+		}
+		return CreatePackageMaterial(TEXT("M_TruckPaint"));
+	}
+
 	void BuildTruckPaint()
 	{
-		UMaterial* Material = CreatePackageMaterial(TEXT("M_TruckPaint"));
+		UMaterial* Material = AcquireTruckPaint();
 		if (!Material)
 		{
 			return;
@@ -167,18 +208,64 @@ namespace SiltMaterialBootstrap
 		Material->BlendMode = BLEND_Opaque;
 		Material->SetShadingModel(MSM_DefaultLit);
 
-		UMaterialExpressionVectorParameter* Paint = Cast<UMaterialExpressionVectorParameter>(AddExpr(Material, UMaterialExpressionVectorParameter::StaticClass(), -520, 0));
-		UMaterialExpressionConstant* Shade = Cast<UMaterialExpressionConstant>(AddExpr(Material, UMaterialExpressionConstant::StaticClass(), -520, 180));
-		UMaterialExpressionMultiply* Dark = Cast<UMaterialExpressionMultiply>(AddExpr(Material, UMaterialExpressionMultiply::StaticClass(), -280, 80));
-		UMaterialExpressionFresnel* Fresnel = Cast<UMaterialExpressionFresnel>(AddExpr(Material, UMaterialExpressionFresnel::StaticClass(), -520, 320));
-		UMaterialExpressionConstant* FresnelScale = Cast<UMaterialExpressionConstant>(AddExpr(Material, UMaterialExpressionConstant::StaticClass(), -520, 460));
-		UMaterialExpressionMultiply* FresnelMask = Cast<UMaterialExpressionMultiply>(AddExpr(Material, UMaterialExpressionMultiply::StaticClass(), -260, 360));
-		UMaterialExpressionLinearInterpolate* Albedo = Cast<UMaterialExpressionLinearInterpolate>(AddExpr(Material, UMaterialExpressionLinearInterpolate::StaticClass(), -20, 40));
-		UMaterialExpressionScalarParameter* Roughness = Cast<UMaterialExpressionScalarParameter>(AddExpr(Material, UMaterialExpressionScalarParameter::StaticClass(), -20, 220));
-		UMaterialExpressionConstant* Metallic = Cast<UMaterialExpressionConstant>(AddExpr(Material, UMaterialExpressionConstant::StaticClass(), -20, 340));
-		UMaterialExpressionConstant* Specular = Cast<UMaterialExpressionConstant>(AddExpr(Material, UMaterialExpressionConstant::StaticClass(), -20, 460));
+		UMaterialExpressionVectorParameter* Paint = Cast<UMaterialExpressionVectorParameter>(AddExpr(Material, UMaterialExpressionVectorParameter::StaticClass(), -980, 0));
+		UMaterialExpressionVectorParameter* DirtColor = Cast<UMaterialExpressionVectorParameter>(AddExpr(Material, UMaterialExpressionVectorParameter::StaticClass(), -980, 180));
+		UMaterialExpressionConstant* Shade = Cast<UMaterialExpressionConstant>(AddExpr(Material, UMaterialExpressionConstant::StaticClass(), -980, 360));
+		UMaterialExpressionMultiply* Dark = Cast<UMaterialExpressionMultiply>(AddExpr(Material, UMaterialExpressionMultiply::StaticClass(), -720, 40));
+		UMaterialExpressionFresnel* Fresnel = Cast<UMaterialExpressionFresnel>(AddExpr(Material, UMaterialExpressionFresnel::StaticClass(), -980, 500));
+		UMaterialExpressionConstant* FresnelScale = Cast<UMaterialExpressionConstant>(AddExpr(Material, UMaterialExpressionConstant::StaticClass(), -980, 660));
+		UMaterialExpressionMultiply* FresnelMask = Cast<UMaterialExpressionMultiply>(AddExpr(Material, UMaterialExpressionMultiply::StaticClass(), -700, 520));
+		UMaterialExpressionLinearInterpolate* WetAlbedo = Cast<UMaterialExpressionLinearInterpolate>(AddExpr(Material, UMaterialExpressionLinearInterpolate::StaticClass(), -460, 40));
+
+		UMaterialExpressionWorldPosition* WorldPos = Cast<UMaterialExpressionWorldPosition>(AddExpr(Material, UMaterialExpressionWorldPosition::StaticClass(), -980, 860));
+		UMaterialExpressionActorPositionWS* ActorPos = Cast<UMaterialExpressionActorPositionWS>(AddExpr(Material, UMaterialExpressionActorPositionWS::StaticClass(), -980, 1020));
+		UMaterialExpressionSubtract* LocalPos = Cast<UMaterialExpressionSubtract>(AddExpr(Material, UMaterialExpressionSubtract::StaticClass(), -740, 900));
+		UMaterialExpressionComponentMask* LocalZ = Cast<UMaterialExpressionComponentMask>(AddExpr(Material, UMaterialExpressionComponentMask::StaticClass(), -540, 900));
+		UMaterialExpressionConstant* HeightLift = Cast<UMaterialExpressionConstant>(AddExpr(Material, UMaterialExpressionConstant::StaticClass(), -540, 1060));
+		UMaterialExpressionAdd* LiftedZ = Cast<UMaterialExpressionAdd>(AddExpr(Material, UMaterialExpressionAdd::StaticClass(), -360, 940));
+		UMaterialExpressionConstant* HeightSpan = Cast<UMaterialExpressionConstant>(AddExpr(Material, UMaterialExpressionConstant::StaticClass(), -360, 1100));
+		UMaterialExpressionDivide* HeightDiv = Cast<UMaterialExpressionDivide>(AddExpr(Material, UMaterialExpressionDivide::StaticClass(), -180, 960));
+		UMaterialExpressionSaturate* Height01 = Cast<UMaterialExpressionSaturate>(AddExpr(Material, UMaterialExpressionSaturate::StaticClass(), 0, 960));
+		UMaterialExpressionScalarParameter* Coverage = Cast<UMaterialExpressionScalarParameter>(AddExpr(Material, UMaterialExpressionScalarParameter::StaticClass(), -180, 1160));
+		UMaterialExpressionSubtract* CoverageGap = Cast<UMaterialExpressionSubtract>(AddExpr(Material, UMaterialExpressionSubtract::StaticClass(), 180, 1040));
+		UMaterialExpressionConstant* CoverageBand = Cast<UMaterialExpressionConstant>(AddExpr(Material, UMaterialExpressionConstant::StaticClass(), 180, 1200));
+		UMaterialExpressionDivide* CoverageDiv = Cast<UMaterialExpressionDivide>(AddExpr(Material, UMaterialExpressionDivide::StaticClass(), 360, 1080));
+		UMaterialExpressionSaturate* Vertical = Cast<UMaterialExpressionSaturate>(AddExpr(Material, UMaterialExpressionSaturate::StaticClass(), 540, 1080));
+		UMaterialExpressionNoise* Breakup = Cast<UMaterialExpressionNoise>(AddExpr(Material, UMaterialExpressionNoise::StaticClass(), 360, 1280));
+		UMaterialExpressionConstant* BreakupMin = Cast<UMaterialExpressionConstant>(AddExpr(Material, UMaterialExpressionConstant::StaticClass(), 360, 1460));
+		UMaterialExpressionConstant* BreakupMax = Cast<UMaterialExpressionConstant>(AddExpr(Material, UMaterialExpressionConstant::StaticClass(), 360, 1580));
+		UMaterialExpressionLinearInterpolate* BreakupScale = Cast<UMaterialExpressionLinearInterpolate>(AddExpr(Material, UMaterialExpressionLinearInterpolate::StaticClass(), 560, 1360));
+		UMaterialExpressionMultiply* BrokenVertical = Cast<UMaterialExpressionMultiply>(AddExpr(Material, UMaterialExpressionMultiply::StaticClass(), 740, 1160));
+		UMaterialExpressionScalarParameter* DirtAmount = Cast<UMaterialExpressionScalarParameter>(AddExpr(Material, UMaterialExpressionScalarParameter::StaticClass(), 740, 1360));
+		UMaterialExpressionMultiply* DirtRaw = Cast<UMaterialExpressionMultiply>(AddExpr(Material, UMaterialExpressionMultiply::StaticClass(), 920, 1220));
+		UMaterialExpressionSaturate* DirtMask = Cast<UMaterialExpressionSaturate>(AddExpr(Material, UMaterialExpressionSaturate::StaticClass(), 1100, 1220));
+		UMaterialExpressionLinearInterpolate* Albedo = Cast<UMaterialExpressionLinearInterpolate>(AddExpr(Material, UMaterialExpressionLinearInterpolate::StaticClass(), 1280, 80));
+
+		UMaterialExpressionScalarParameter* Roughness = Cast<UMaterialExpressionScalarParameter>(AddExpr(Material, UMaterialExpressionScalarParameter::StaticClass(), 740, 200));
+		UMaterialExpressionScalarParameter* WetAmount = Cast<UMaterialExpressionScalarParameter>(AddExpr(Material, UMaterialExpressionScalarParameter::StaticClass(), 740, 340));
+		UMaterialExpressionConstant* WetRoughTarget = Cast<UMaterialExpressionConstant>(AddExpr(Material, UMaterialExpressionConstant::StaticClass(), 740, 480));
+		UMaterialExpressionLinearInterpolate* WetRough = Cast<UMaterialExpressionLinearInterpolate>(AddExpr(Material, UMaterialExpressionLinearInterpolate::StaticClass(), 960, 280));
+		UMaterialExpressionConstant* DirtRoughTarget = Cast<UMaterialExpressionConstant>(AddExpr(Material, UMaterialExpressionConstant::StaticClass(), 960, 460));
+		UMaterialExpressionLinearInterpolate* FinalRough = Cast<UMaterialExpressionLinearInterpolate>(AddExpr(Material, UMaterialExpressionLinearInterpolate::StaticClass(), 1160, 340));
+
+		UMaterialExpressionConstant* SpecDry = Cast<UMaterialExpressionConstant>(AddExpr(Material, UMaterialExpressionConstant::StaticClass(), 740, 640));
+		UMaterialExpressionConstant* SpecWet = Cast<UMaterialExpressionConstant>(AddExpr(Material, UMaterialExpressionConstant::StaticClass(), 740, 760));
+		UMaterialExpressionLinearInterpolate* WetSpec = Cast<UMaterialExpressionLinearInterpolate>(AddExpr(Material, UMaterialExpressionLinearInterpolate::StaticClass(), 960, 680));
+		UMaterialExpressionConstant* SpecDirt = Cast<UMaterialExpressionConstant>(AddExpr(Material, UMaterialExpressionConstant::StaticClass(), 960, 860));
+		UMaterialExpressionLinearInterpolate* FinalSpec = Cast<UMaterialExpressionLinearInterpolate>(AddExpr(Material, UMaterialExpressionLinearInterpolate::StaticClass(), 1160, 740));
+
+		UMaterialExpressionConstant* MetalClean = Cast<UMaterialExpressionConstant>(AddExpr(Material, UMaterialExpressionConstant::StaticClass(), 960, 1020));
+		UMaterialExpressionConstant* MetalDirt = Cast<UMaterialExpressionConstant>(AddExpr(Material, UMaterialExpressionConstant::StaticClass(), 960, 1140));
+		UMaterialExpressionLinearInterpolate* FinalMetal = Cast<UMaterialExpressionLinearInterpolate>(AddExpr(Material, UMaterialExpressionLinearInterpolate::StaticClass(), 1160, 1040));
+
 		UMaterialEditorOnlyData* EditorData = Cast<UMaterialEditorOnlyData>(Material->GetEditorOnlyData());
-		if (!Paint || !Shade || !Dark || !Fresnel || !FresnelScale || !FresnelMask || !Albedo || !Roughness || !Metallic || !Specular || !EditorData)
+		if (!Paint || !DirtColor || !Shade || !Dark || !Fresnel || !FresnelScale || !FresnelMask || !WetAlbedo
+			|| !WorldPos || !ActorPos || !LocalPos || !LocalZ || !HeightLift || !LiftedZ || !HeightSpan || !HeightDiv || !Height01
+			|| !Coverage || !CoverageGap || !CoverageBand || !CoverageDiv || !Vertical || !Breakup || !BreakupMin || !BreakupMax || !BreakupScale || !BrokenVertical
+			|| !DirtAmount || !DirtRaw || !DirtMask || !Albedo
+			|| !Roughness || !WetAmount || !WetRoughTarget || !WetRough || !DirtRoughTarget || !FinalRough
+			|| !SpecDry || !SpecWet || !WetSpec || !SpecDirt || !FinalSpec
+			|| !MetalClean || !MetalDirt || !FinalMetal || !EditorData)
 		{
 			UE_LOG(LogSiltEditor, Error, TEXT("Failed to build M_TruckPaint graph"));
 			return;
@@ -186,25 +273,98 @@ namespace SiltMaterialBootstrap
 
 		Paint->ParameterName = TEXT("PaintColor");
 		Paint->DefaultValue = FLinearColor(0.42f, 0.08f, 0.05f);
+		DirtColor->ParameterName = TEXT("DirtColor");
+		DirtColor->DefaultValue = FLinearColor(0.12f, 0.09f, 0.06f);
 		Shade->R = 0.45f;
 		Fresnel->Exponent = 4.f;
 		FresnelScale->R = 0.4f;
 		Roughness->ParameterName = TEXT("Roughness");
 		Roughness->DefaultValue = 0.38f;
-		Metallic->R = 0.22f;
-		Specular->R = 0.5f;
+		WetAmount->ParameterName = TEXT("WetAmount");
+		WetAmount->DefaultValue = 0.55f;
+		WetRoughTarget->R = 0.12f;
+		DirtRoughTarget->R = 0.86f;
+		SpecDry->R = 0.42f;
+		SpecWet->R = 0.7f;
+		SpecDirt->R = 0.16f;
+		MetalClean->R = 0.22f;
+		MetalDirt->R = 0.02f;
+		DirtAmount->ParameterName = TEXT("DirtAmount");
+		DirtAmount->DefaultValue = 0.35f;
+		Coverage->ParameterName = TEXT("DirtCoverageBias");
+		Coverage->DefaultValue = 0.6f;
+		HeightLift->R = 50.f;
+		HeightSpan->R = 220.f;
+		CoverageBand->R = 0.35f;
+		Breakup->Scale = 0.06f;
+		Breakup->bTurbulence = true;
+		Breakup->Levels = 3;
+		Breakup->OutputMin = 0.f;
+		Breakup->OutputMax = 1.f;
+		BreakupMin->R = 0.82f;
+		BreakupMax->R = 1.f;
+		LocalZ->R = false;
+		LocalZ->G = false;
+		LocalZ->B = true;
+		LocalZ->A = false;
+
 		Dark->A.Connect(0, Paint);
 		Dark->B.Connect(0, Shade);
 		FresnelMask->A.Connect(0, Fresnel);
 		FresnelMask->B.Connect(0, FresnelScale);
-		Albedo->A.Connect(0, Paint);
-		Albedo->B.Connect(0, Dark);
-		Albedo->Alpha.Connect(0, FresnelMask);
+		WetAlbedo->A.Connect(0, Paint);
+		WetAlbedo->B.Connect(0, Dark);
+		WetAlbedo->Alpha.Connect(0, FresnelMask);
+
+		LocalPos->A.Connect(0, WorldPos);
+		LocalPos->B.Connect(0, ActorPos);
+		LocalZ->Input.Connect(0, LocalPos);
+		LiftedZ->A.Connect(0, LocalZ);
+		LiftedZ->B.Connect(0, HeightLift);
+		HeightDiv->A.Connect(0, LiftedZ);
+		HeightDiv->B.Connect(0, HeightSpan);
+		Height01->Input.Connect(0, HeightDiv);
+		CoverageGap->A.Connect(0, Coverage);
+		CoverageGap->B.Connect(0, Height01);
+		CoverageDiv->A.Connect(0, CoverageGap);
+		CoverageDiv->B.Connect(0, CoverageBand);
+		Vertical->Input.Connect(0, CoverageDiv);
+		BreakupScale->A.Connect(0, BreakupMin);
+		BreakupScale->B.Connect(0, BreakupMax);
+		BreakupScale->Alpha.Connect(0, Breakup);
+		BrokenVertical->A.Connect(0, Vertical);
+		BrokenVertical->B.Connect(0, BreakupScale);
+		DirtRaw->A.Connect(0, BrokenVertical);
+		DirtRaw->B.Connect(0, DirtAmount);
+		DirtMask->Input.Connect(0, DirtRaw);
+		Albedo->A.Connect(0, WetAlbedo);
+		Albedo->B.Connect(0, DirtColor);
+		Albedo->Alpha.Connect(0, DirtMask);
+
+		WetRough->A.Connect(0, Roughness);
+		WetRough->B.Connect(0, WetRoughTarget);
+		WetRough->Alpha.Connect(0, WetAmount);
+		FinalRough->A.Connect(0, WetRough);
+		FinalRough->B.Connect(0, DirtRoughTarget);
+		FinalRough->Alpha.Connect(0, DirtMask);
+
+		WetSpec->A.Connect(0, SpecDry);
+		WetSpec->B.Connect(0, SpecWet);
+		WetSpec->Alpha.Connect(0, WetAmount);
+		FinalSpec->A.Connect(0, WetSpec);
+		FinalSpec->B.Connect(0, SpecDirt);
+		FinalSpec->Alpha.Connect(0, DirtMask);
+
+		FinalMetal->A.Connect(0, MetalClean);
+		FinalMetal->B.Connect(0, MetalDirt);
+		FinalMetal->Alpha.Connect(0, DirtMask);
+
 		EditorData->BaseColor.Connect(0, Albedo);
-		EditorData->Roughness.Connect(0, Roughness);
-		EditorData->Metallic.Connect(0, Metallic);
-		EditorData->Specular.Connect(0, Specular);
+		EditorData->Roughness.Connect(0, FinalRough);
+		EditorData->Metallic.Connect(0, FinalMetal);
+		EditorData->Specular.Connect(0, FinalSpec);
 		SaveMaterial(Material);
+		UE_LOG(LogSiltEditor, Display, TEXT("Silt truck paint pass A ready"));
 	}
 
 	void BuildBeacon()
