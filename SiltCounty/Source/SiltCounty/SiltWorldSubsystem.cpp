@@ -456,12 +456,36 @@ void USiltWorldSubsystem::BuildDressing(UWorld& World) const
 	Place(Cube, FVector(School.X - 1580.f, School.Y + 4200.f, SchoolZ + 1360.f), FRotator::ZeroRotator, FVector(0.9f, 0.12f, 0.55f), FLinearColor(0.55f, 0.08f, 0.06f), 0.4f, false);
 	Label(FVector(School.X - 1700.f, School.Y, SchoolZ + 1200.f), TEXT("BOONE-APACHE HIGH SCHOOL"), FColor(245, 236, 210), 190.f, 180.f);
 
-	// Fiction locked lot. No street address and no house mesh.
+	// Chief's corner lot. Low 2009 single-story (~8.5 m x 17 m) and a detached locked bay.
+	// Metal gable is the confirmed roof. Fiction labels only — no street address.
 	const FVector Lot(-6200.f, 70500.f, 0.f);
 	const float LotZ = SiltTerrain::SampleHeight(Lot.X, Lot.Y);
-	constexpr float LotHalfX = 640.f;
-	constexpr float LotHalfY = 440.f;
-	Place(Cube, FVector(Lot.X, Lot.Y, LotZ + 10.f), FRotator::ZeroRotator, FVector(14.f, 10.f, 0.16f), FLinearColor(0.30f, 0.29f, 0.26f), 0.72f, true);
+	constexpr float LotHalfX = 1400.f;
+	constexpr float LotHalfY = 1100.f;
+	const FLinearColor Vinyl(0.78f, 0.72f, 0.60f);
+	const FLinearColor MetalRoof(0.66f, 0.70f, 0.73f);
+	const FLinearColor Skirt(0.32f, 0.30f, 0.27f);
+	const FLinearColor LotPad(0.30f, 0.29f, 0.26f);
+	Place(Cube, FVector(Lot.X, Lot.Y, LotZ + 8.f), FRotator::ZeroRotator, FVector(28.f, 22.f, 0.16f), LotPad, 0.72f, true);
+	Place(Cube, FVector(Lot.X + LotHalfX + 90.f, Lot.Y, LotZ + 4.f), FRotator::ZeroRotator, FVector(1.8f, 24.f, 0.08f), FLinearColor(0.24f, 0.23f, 0.21f), 0.8f, false);
+	Place(Cube, FVector(Lot.X, Lot.Y + LotHalfY + 90.f, LotZ + 4.f), FRotator::ZeroRotator, FVector(30.f, 1.8f, 0.08f), FLinearColor(0.24f, 0.23f, 0.21f), 0.8f, false);
+
+	const FVector House = Lot + FVector(-280.f, -180.f, 0.f);
+	Place(Cube, House + FVector(0.f, 0.f, 140.f), FRotator::ZeroRotator, FVector(8.5f, 17.f, 2.8f), Vinyl, 0.62f, true);
+	Place(Cube, House + FVector(0.f, 0.f, 28.f), FRotator::ZeroRotator, FVector(8.7f, 17.2f, 0.55f), Skirt, 0.75f, true);
+	Place(Cube, House + FVector(-230.f, 0.f, 330.f), FRotator(14.f, 0.f, 0.f), FVector(5.2f, 18.2f, 0.12f), MetalRoof, 0.28f, true);
+	Place(Cube, House + FVector(230.f, 0.f, 330.f), FRotator(-14.f, 0.f, 0.f), FVector(5.2f, 18.2f, 0.12f), MetalRoof, 0.28f, true);
+	Place(Cube, House + FVector(460.f, 180.f, 16.f), FRotator::ZeroRotator, FVector(1.5f, 2.2f, 0.18f), Concrete, 0.7f, true);
+	Place(Cube, House + FVector(432.f, 0.f, 165.f), FRotator::ZeroRotator, FVector(0.08f, 14.f, 0.85f), FLinearColor(0.45f, 0.52f, 0.55f), 0.15f, false);
+	Label(House + FVector(700.f, 0.f, 560.f), TEXT("CHIEF'S HOUSE"), FColor(236, 224, 196), 110.f, 0.f);
+
+	const FVector Bay = Lot + FVector(620.f, 420.f, 0.f);
+	Place(Cube, Bay + FVector(0.f, 0.f, 130.f), FRotator::ZeroRotator, FVector(4.6f, 7.0f, 2.6f), FLinearColor(0.70f, 0.64f, 0.52f), 0.58f, true);
+	Place(Cube, Bay + FVector(-145.f, 0.f, 292.f), FRotator(16.f, 0.f, 0.f), FVector(3.0f, 7.6f, 0.10f), MetalRoof, 0.28f, true);
+	Place(Cube, Bay + FVector(145.f, 0.f, 292.f), FRotator(-16.f, 0.f, 0.f), FVector(3.0f, 7.6f, 0.10f), MetalRoof, 0.28f, true);
+	Place(Cube, Bay + FVector(238.f, 0.f, 115.f), FRotator::ZeroRotator, FVector(0.1f, 2.8f, 2.15f), FLinearColor(0.16f, 0.16f, 0.17f), 0.45f, false);
+	Label(Bay + FVector(420.f, 0.f, 480.f), TEXT("CHIEF'S PERSONAL GARAGE — LOCKED"), FColor(255, 196, 64), 100.f, 0.f);
+
 	const FVector LotCorners[] = {
 		FVector(-LotHalfX, -LotHalfY, 0.f),
 		FVector(LotHalfX, -LotHalfY, 0.f),
@@ -474,14 +498,13 @@ void USiltWorldSubsystem::BuildDressing(UWorld& World) const
 			Cylinder,
 			FVector(Lot.X, Lot.Y, LotZ + 90.f) + Corner,
 			FRotator::ZeroRotator,
-			FVector(0.38f, 0.38f, 1.8f),
+			FVector(0.32f, 0.32f, 1.6f),
 			FLinearColor(0.45f, 0.075f, 0.05f),
 			0.55f,
 			true);
 	}
-	Place(Cube, FVector(Lot.X + LotHalfX, Lot.Y, LotZ + 70.f), FRotator::ZeroRotator, FVector(0.12f, 8.6f, 0.12f), FLinearColor(0.12f, 0.12f, 0.13f), 0.4f, true);
-	Place(Cube, FVector(Lot.X + LotHalfX, Lot.Y, LotZ + 130.f), FRotator::ZeroRotator, FVector(0.12f, 8.6f, 0.12f), FLinearColor(0.12f, 0.12f, 0.13f), 0.4f, true);
-	Label(FVector(Lot.X + LotHalfX + 80.f, Lot.Y, LotZ + 360.f), TEXT("CHIEF'S PERSONAL GARAGE — LOCKED"), FColor(255, 196, 64), 120.f, 0.f);
+	Place(Cube, FVector(Lot.X + LotHalfX, Lot.Y + 420.f, LotZ + 70.f), FRotator::ZeroRotator, FVector(0.12f, 4.2f, 0.12f), FLinearColor(0.12f, 0.12f, 0.13f), 0.4f, true);
+	Place(Cube, FVector(Lot.X + LotHalfX, Lot.Y + 420.f, LotZ + 130.f), FRotator::ZeroRotator, FVector(0.12f, 4.2f, 0.12f), FLinearColor(0.12f, 0.12f, 0.13f), 0.4f, true);
 
 	const FVector Bridge(6000.f, 24000.f, SiltTerrain::SampleHeight(6000.f, 24000.f));
 	Place(Cube, Bridge + FVector(-900.f, 1800.f, 80.f), FRotator(0.f, 70.f, -12.f), FVector(6.f, 1.6f, 0.35f), Concrete, 0.5f, true);
