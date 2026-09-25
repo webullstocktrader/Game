@@ -22,12 +22,23 @@ public:
 	FText GetSubtitle() const;
 	void AuthoritySkipIntro();
 
+	float GetCashCollected() const { return CashCollected; }
+	bool IsChiefGarageUnlocked() const { return bChiefGarageUnlocked; }
+	void AuthorityAwardCash(float Amount);
+	void AuthorityTryUnlockChiefGarage();
+
 private:
 	UPROPERTY(Replicated)
 	ESiltIntroPhase IntroPhase = ESiltIntroPhase::FloodOverlook;
 
 	UPROPERTY(Replicated)
 	float PhaseStartServerTime = -1.f;
+
+	UPROPERTY(Replicated)
+	float CashCollected = 0.f;
+
+	UPROPERTY(Replicated)
+	bool bChiefGarageUnlocked = false;
 
 	float PhaseDuration() const;
 	void AdvancePhase();

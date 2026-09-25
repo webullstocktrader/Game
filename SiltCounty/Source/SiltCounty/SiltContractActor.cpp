@@ -235,6 +235,11 @@ void ASiltContractActor::StepTow(float DeltaSeconds)
 
 void ASiltContractActor::TryComplete()
 {
+	if (!HasAuthority() || State != ESiltContractState::Towing)
+	{
+		return;
+	}
+
 	const FVector Drop = SiltTerrain::GetDropZone();
 	if (FVector::Dist2D(GetActorLocation(), Drop) > 1600.f)
 	{
@@ -254,5 +259,12 @@ void ASiltContractActor::TryComplete()
 		SetActorLocationAndRotation(Drop + FVector(0.f, 0.f, 80.f), FRotator(0.f, 90.f, 0.f), false, nullptr, ETeleportType::TeleportPhysics);
 	}
 	RefreshText();
+
+	if (ASiltCountyGameState* GameState = GetWorld() ? GetWorld()->GetGameState<ASiltCountyGameState>() : nullptr)
+	{
+		GameState->AuthorityAwardCash(SiltGarage::SouthSloughPullAward);
+		GameState->AuthorityTryUnlockChiefGarage();
+	}
+
 	ForceNetUpdate();
 }

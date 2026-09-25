@@ -252,11 +252,11 @@ void USiltWorldSubsystem::BuildDressing(UWorld& World) const
 		return Actor;
 	};
 
-	auto Label = [&](const FVector& Location, const FString& Text, const FColor& Color, float Size)
+	auto Label = [&](const FVector& Location, const FString& Text, const FColor& Color, float Size, float Yaw = 90.f)
 	{
 		FActorSpawnParameters Params;
 		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-		ATextRenderActor* Sign = World.SpawnActor<ATextRenderActor>(Location, FRotator(0.f, 90.f, 0.f), Params);
+		ATextRenderActor* Sign = World.SpawnActor<ATextRenderActor>(Location, FRotator(0.f, Yaw, 0.f), Params);
 		if (!Sign)
 		{
 			return;
@@ -365,6 +365,91 @@ void USiltWorldSubsystem::BuildDressing(UWorld& World) const
 		Label(Hall + FVector(0.f, 340.f, 620.f), TEXT("TOWN HALL"), FColor(236, 228, 206), 84.f);
 	}
 
+	// Town silhouettes. House boxes, County Trust, and Town Hall stay secondary.
+	const FLinearColor Galvanized(0.73f, 0.74f, 0.71f);
+	const FLinearColor Barn(0.34f, 0.13f, 0.07f);
+	const FLinearColor Brick(0.58f, 0.24f, 0.16f);
+	const FLinearColor TankWhite(0.80f, 0.82f, 0.84f);
+	const FLinearColor Steel(0.22f, 0.23f, 0.25f);
+
+	const FVector Coop(9800.f, 58500.f, 0.f);
+	const float CoopZ = SiltTerrain::SampleHeight(Coop.X, Coop.Y);
+	constexpr float SiloHeightCm = 4800.f;
+	constexpr float SiloSpacing = 780.f;
+	Place(Cube, FVector(Coop.X, Coop.Y, CoopZ + 40.f), FRotator::ZeroRotator, FVector(10.f, 34.f, 0.8f), Concrete, 0.62f, true);
+	for (int32 Silo = 0; Silo < 4; ++Silo)
+	{
+		const float SiloY = Coop.Y + (static_cast<float>(Silo) - 1.5f) * SiloSpacing;
+		Place(Cylinder, FVector(Coop.X, SiloY, CoopZ + SiloHeightCm * 0.5f), FRotator::ZeroRotator, FVector(6.2f, 6.2f, SiloHeightCm / 100.f), Galvanized, 0.32f, true);
+		Place(Cylinder, FVector(Coop.X, SiloY, CoopZ + SiloHeightCm - 280.f), FRotator::ZeroRotator, FVector(6.45f, 6.45f, 0.55f), FLinearColor(0.42f, 0.20f, 0.10f), 0.55f, false);
+	}
+	Place(Cube, FVector(Coop.X, Coop.Y, CoopZ + SiloHeightCm + 220.f), FRotator::ZeroRotator, FVector(8.f, 30.f, 5.2f), Barn, 0.58f, true);
+	Place(Cube, FVector(Coop.X + 520.f, Coop.Y, CoopZ + 2700.f), FRotator::ZeroRotator, FVector(2.4f, 2.6f, 54.f), Barn, 0.5f, true);
+	Label(FVector(Coop.X - 900.f, Coop.Y, CoopZ + SiloHeightCm + 980.f), TEXT("APACHE FARMERS COOP"), FColor(230, 210, 140), 210.f, 180.f);
+
+	const FVector TowerBase(-11000.f, 58500.f, 0.f);
+	const float TowerZ = SiltTerrain::SampleHeight(TowerBase.X, TowerBase.Y);
+	constexpr float LegHeight = 2800.f;
+	constexpr float LegSpread = 320.f;
+	const FVector LegOffsets[] = {
+		FVector(-LegSpread, -LegSpread, 0.f),
+		FVector(LegSpread, -LegSpread, 0.f),
+		FVector(-LegSpread, LegSpread, 0.f),
+		FVector(LegSpread, LegSpread, 0.f)
+	};
+	for (const FVector& Leg : LegOffsets)
+	{
+		Place(
+			Cylinder,
+			FVector(TowerBase.X, TowerBase.Y, TowerZ + LegHeight * 0.5f) + Leg,
+			FRotator::ZeroRotator,
+			FVector(0.7f, 0.7f, LegHeight / 100.f),
+			Steel,
+			0.45f,
+			true);
+	}
+	Place(Cylinder, FVector(TowerBase.X, TowerBase.Y, TowerZ + LegHeight), FRotator::ZeroRotator, FVector(8.2f, 8.2f, 0.35f), FLinearColor(0.30f, 0.31f, 0.33f), 0.4f, true);
+	Place(Cylinder, FVector(TowerBase.X, TowerBase.Y, TowerZ + LegHeight + 260.f), FRotator::ZeroRotator, FVector(7.2f, 7.2f, 4.8f), TankWhite, 0.28f, true);
+	Place(Cylinder, FVector(TowerBase.X, TowerBase.Y, TowerZ + LegHeight + 560.f), FRotator::ZeroRotator, FVector(5.4f, 5.4f, 1.4f), FLinearColor(0.55f, 0.57f, 0.60f), 0.35f, true);
+	Label(FVector(TowerBase.X + 700.f, TowerBase.Y, TowerZ + LegHeight + 1100.f), TEXT("WATER TOWER"), FColor(210, 225, 235), 180.f, 0.f);
+
+	const FVector School(15800.f, 49000.f, 0.f);
+	const float SchoolZ = SiltTerrain::SampleHeight(School.X, School.Y);
+	Place(Cube, FVector(School.X, School.Y, SchoolZ + 340.f), FRotator::ZeroRotator, FVector(16.f, 92.f, 6.8f), Brick, 0.62f, true);
+	Place(Cube, FVector(School.X, School.Y, SchoolZ + 710.f), FRotator::ZeroRotator, FVector(18.f, 94.f, 0.45f), Roof, 0.42f, true);
+	Place(Cube, FVector(School.X - 820.f, School.Y, SchoolZ + 520.f), FRotator::ZeroRotator, FVector(0.35f, 90.f, 1.15f), FLinearColor(0.86f, 0.82f, 0.70f), 0.5f, false);
+	Place(Cube, FVector(School.X + 200.f, School.Y - 5200.f, SchoolZ + 420.f), FRotator::ZeroRotator, FVector(22.f, 18.f, 8.4f), FLinearColor(0.48f, 0.20f, 0.14f), 0.55f, true);
+	Place(Cylinder, FVector(School.X - 1400.f, School.Y + 4200.f, SchoolZ + 700.f), FRotator::ZeroRotator, FVector(0.22f, 0.22f, 14.f), FLinearColor(0.75f, 0.76f, 0.74f), 0.3f, false);
+	Place(Cube, FVector(School.X - 1580.f, School.Y + 4200.f, SchoolZ + 1360.f), FRotator::ZeroRotator, FVector(0.9f, 0.12f, 0.55f), FLinearColor(0.55f, 0.08f, 0.06f), 0.4f, false);
+	Label(FVector(School.X - 1700.f, School.Y, SchoolZ + 1200.f), TEXT("BOONE-APACHE HIGH SCHOOL"), FColor(245, 236, 210), 190.f, 180.f);
+
+	// Fiction locked lot. No street address and no house mesh.
+	const FVector Lot(-6200.f, 70500.f, 0.f);
+	const float LotZ = SiltTerrain::SampleHeight(Lot.X, Lot.Y);
+	constexpr float LotHalfX = 640.f;
+	constexpr float LotHalfY = 440.f;
+	Place(Cube, FVector(Lot.X, Lot.Y, LotZ + 10.f), FRotator::ZeroRotator, FVector(14.f, 10.f, 0.16f), FLinearColor(0.30f, 0.29f, 0.26f), 0.72f, true);
+	const FVector LotCorners[] = {
+		FVector(-LotHalfX, -LotHalfY, 0.f),
+		FVector(LotHalfX, -LotHalfY, 0.f),
+		FVector(-LotHalfX, LotHalfY, 0.f),
+		FVector(LotHalfX, LotHalfY, 0.f)
+	};
+	for (const FVector& Corner : LotCorners)
+	{
+		Place(
+			Cylinder,
+			FVector(Lot.X, Lot.Y, LotZ + 90.f) + Corner,
+			FRotator::ZeroRotator,
+			FVector(0.38f, 0.38f, 1.8f),
+			FLinearColor(0.45f, 0.075f, 0.05f),
+			0.55f,
+			true);
+	}
+	Place(Cube, FVector(Lot.X + LotHalfX, Lot.Y, LotZ + 70.f), FRotator::ZeroRotator, FVector(0.12f, 8.6f, 0.12f), FLinearColor(0.12f, 0.12f, 0.13f), 0.4f, true);
+	Place(Cube, FVector(Lot.X + LotHalfX, Lot.Y, LotZ + 130.f), FRotator::ZeroRotator, FVector(0.12f, 8.6f, 0.12f), FLinearColor(0.12f, 0.12f, 0.13f), 0.4f, true);
+	Label(FVector(Lot.X + LotHalfX + 80.f, Lot.Y, LotZ + 360.f), TEXT("CHIEF'S PERSONAL GARAGE — LOCKED"), FColor(255, 196, 64), 120.f, 0.f);
+
 	const FVector Bridge(6000.f, 24000.f, SiltTerrain::SampleHeight(6000.f, 24000.f));
 	Place(Cube, Bridge + FVector(-900.f, 1800.f, 80.f), FRotator(0.f, 70.f, -12.f), FVector(6.f, 1.6f, 0.35f), Concrete, 0.5f, true);
 	Place(Cube, Bridge + FVector(900.f, -1600.f, 40.f), FRotator(0.f, 70.f, 14.f), FVector(5.f, 1.6f, 0.35f), Concrete, 0.5f, true);
@@ -374,10 +459,6 @@ void USiltWorldSubsystem::BuildDressing(UWorld& World) const
 	Place(Cylinder, Culvert + FVector(0.f, 400.f, 40.f), FRotator(90.f, 0.f, 90.f), FVector(1.3f, 1.3f, 2.4f), FLinearColor(0.25f, 0.22f, 0.18f), 0.45f, true);
 	Place(Cylinder, Culvert + FVector(0.f, -400.f, 20.f), FRotator(80.f, 15.f, 90.f), FVector(1.1f, 1.1f, 2.0f), FLinearColor(0.18f, 0.16f, 0.13f), 0.35f, false);
 	Label(Culvert + FVector(0.f, 0.f, 500.f), TEXT("CULVERT"), FColor(190, 190, 170), 120.f);
-
-	const FVector Tower(140000.f, 150000.f, SiltTerrain::SampleHeight(140000.f, 150000.f));
-	Place(Cylinder, Tower + FVector(0.f, 0.f, 900.f), FRotator::ZeroRotator, FVector(1.4f, 1.4f, 18.f), Concrete, 0.6f, true);
-	Place(Cylinder, Tower + FVector(0.f, 0.f, 1900.f), FRotator::ZeroRotator, FVector(4.5f, 4.5f, 2.2f), FLinearColor(0.35f, 0.36f, 0.38f), 0.35f, true);
 
 	const FVector Drop = SiltTerrain::GetDropZone();
 	if (AStaticMeshActor* Marker = Place(Cylinder, Drop + FVector(0.f, 0.f, 1600.f), FRotator::ZeroRotator, FVector(0.35f, 0.35f, 32.f), FLinearColor(1.f, 0.7f, 0.2f), 0.2f, false))
