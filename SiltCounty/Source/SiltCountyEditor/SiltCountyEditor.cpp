@@ -1,4 +1,5 @@
 #include "SiltCountyEditor.h"
+#include "SiltWetMaterials.h"
 
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Containers/Ticker.h"
@@ -68,92 +69,6 @@ namespace SiltMaterialBootstrap
 		const bool bSaved = UPackage::SavePackage(Package, Material, *Filename, Args);
 		UE_LOG(LogSiltEditor, Display, TEXT("Silt material %s %s"), *Material->GetName(), bSaved ? TEXT("saved") : TEXT("created in memory only"));
 		return bSaved;
-	}
-
-	void BuildWetGround()
-	{
-		UMaterial* Material = CreatePackageMaterial(TEXT("M_WetGround"));
-		if (!Material)
-		{
-			return;
-		}
-		Material->MaterialDomain = MD_Surface;
-		Material->BlendMode = BLEND_Opaque;
-		Material->SetShadingModel(MSM_DefaultLit);
-		Material->TwoSided = true;
-
-		UMaterialExpressionVertexColor* VertexColor = Cast<UMaterialExpressionVertexColor>(AddExpr(Material, UMaterialExpressionVertexColor::StaticClass(), -500, 0));
-		UMaterialExpressionConstant* DarkAmount = Cast<UMaterialExpressionConstant>(AddExpr(Material, UMaterialExpressionConstant::StaticClass(), -500, 180));
-		UMaterialExpressionMultiply* Dark = Cast<UMaterialExpressionMultiply>(AddExpr(Material, UMaterialExpressionMultiply::StaticClass(), -260, 80));
-		UMaterialExpressionFresnel* Fresnel = Cast<UMaterialExpressionFresnel>(AddExpr(Material, UMaterialExpressionFresnel::StaticClass(), -500, 320));
-		UMaterialExpressionConstant* FresnelScale = Cast<UMaterialExpressionConstant>(AddExpr(Material, UMaterialExpressionConstant::StaticClass(), -500, 460));
-		UMaterialExpressionMultiply* FresnelMask = Cast<UMaterialExpressionMultiply>(AddExpr(Material, UMaterialExpressionMultiply::StaticClass(), -240, 360));
-		UMaterialExpressionLinearInterpolate* Albedo = Cast<UMaterialExpressionLinearInterpolate>(AddExpr(Material, UMaterialExpressionLinearInterpolate::StaticClass(), 0, 40));
-		UMaterialExpressionConstant* Specular = Cast<UMaterialExpressionConstant>(AddExpr(Material, UMaterialExpressionConstant::StaticClass(), 0, 220));
-		UMaterialExpressionConstant* Metallic = Cast<UMaterialExpressionConstant>(AddExpr(Material, UMaterialExpressionConstant::StaticClass(), 0, 340));
-		UMaterialEditorOnlyData* EditorData = Cast<UMaterialEditorOnlyData>(Material->GetEditorOnlyData());
-		if (!VertexColor || !DarkAmount || !Dark || !Fresnel || !FresnelScale || !FresnelMask || !Albedo || !Specular || !Metallic || !EditorData)
-		{
-			UE_LOG(LogSiltEditor, Error, TEXT("Failed to build M_WetGround graph"));
-			return;
-		}
-
-		DarkAmount->R = 0.4f;
-		Fresnel->Exponent = 4.5f;
-		FresnelScale->R = 0.45f;
-		Specular->R = 0.55f;
-		Metallic->R = 0.f;
-		Dark->A.Connect(0, VertexColor);
-		Dark->B.Connect(0, DarkAmount);
-		FresnelMask->A.Connect(0, Fresnel);
-		FresnelMask->B.Connect(0, FresnelScale);
-		Albedo->A.Connect(0, VertexColor);
-		Albedo->B.Connect(0, Dark);
-		Albedo->Alpha.Connect(0, FresnelMask);
-		EditorData->BaseColor.Connect(0, Albedo);
-		EditorData->Roughness.Connect(4, VertexColor);
-		EditorData->Specular.Connect(0, Specular);
-		EditorData->Metallic.Connect(0, Metallic);
-		SaveMaterial(Material);
-	}
-
-	void BuildFloodWater()
-	{
-		UMaterial* Material = CreatePackageMaterial(TEXT("M_FloodWater"));
-		if (!Material)
-		{
-			return;
-		}
-		Material->MaterialDomain = MD_Surface;
-		Material->BlendMode = BLEND_Opaque;
-		Material->SetShadingModel(MSM_DefaultLit);
-		Material->TwoSided = false;
-
-		UMaterialExpressionConstant3Vector* Deep = Cast<UMaterialExpressionConstant3Vector>(AddExpr(Material, UMaterialExpressionConstant3Vector::StaticClass(), -420, 0));
-		UMaterialExpressionConstant3Vector* Pale = Cast<UMaterialExpressionConstant3Vector>(AddExpr(Material, UMaterialExpressionConstant3Vector::StaticClass(), -420, 160));
-		UMaterialExpressionFresnel* Fresnel = Cast<UMaterialExpressionFresnel>(AddExpr(Material, UMaterialExpressionFresnel::StaticClass(), -420, 320));
-		UMaterialExpressionLinearInterpolate* Albedo = Cast<UMaterialExpressionLinearInterpolate>(AddExpr(Material, UMaterialExpressionLinearInterpolate::StaticClass(), -80, 80));
-		UMaterialExpressionConstant* Roughness = Cast<UMaterialExpressionConstant>(AddExpr(Material, UMaterialExpressionConstant::StaticClass(), -80, 240));
-		UMaterialExpressionConstant* Specular = Cast<UMaterialExpressionConstant>(AddExpr(Material, UMaterialExpressionConstant::StaticClass(), -80, 360));
-		UMaterialEditorOnlyData* EditorData = Cast<UMaterialEditorOnlyData>(Material->GetEditorOnlyData());
-		if (!Deep || !Pale || !Fresnel || !Albedo || !Roughness || !Specular || !EditorData)
-		{
-			UE_LOG(LogSiltEditor, Error, TEXT("Failed to build M_FloodWater graph"));
-			return;
-		}
-
-		Deep->Constant = FLinearColor(0.025f, 0.055f, 0.05f);
-		Pale->Constant = FLinearColor(0.42f, 0.48f, 0.46f);
-		Fresnel->Exponent = 5.f;
-		Roughness->R = 0.04f;
-		Specular->R = 0.7f;
-		Albedo->A.Connect(0, Deep);
-		Albedo->B.Connect(0, Pale);
-		Albedo->Alpha.Connect(0, Fresnel);
-		EditorData->BaseColor.Connect(0, Albedo);
-		EditorData->Roughness.Connect(0, Roughness);
-		EditorData->Specular.Connect(0, Specular);
-		SaveMaterial(Material);
 	}
 
 	void BuildTruckPaint()
@@ -238,9 +153,36 @@ namespace SiltMaterialBootstrap
 		SaveMaterial(Material);
 	}
 
+	bool RainRevisionMatches(UMaterial* Material)
+	{
+		UMaterialEditorOnlyData* Data = Material ? Cast<UMaterialEditorOnlyData>(Material->GetEditorOnlyData()) : nullptr;
+		if (!Data)
+		{
+			return false;
+		}
+		for (UMaterialExpression* Expr : Data->ExpressionCollection.Expressions)
+		{
+			const UMaterialExpressionScalarParameter* Param = Cast<UMaterialExpressionScalarParameter>(Expr);
+			if (Param && Param->ParameterName == TEXT("SiltRevision") && FMath::IsNearlyEqual(Param->DefaultValue, 3.f))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
 	void BuildRain()
 	{
 		UMaterial* Material = CreatePackageMaterial(TEXT("M_Rain"));
+		if (!Material)
+		{
+			Material = LoadObject<UMaterial>(nullptr, TEXT("/Game/SiltCounty/Materials/M_Rain.M_Rain"));
+			if (!Material || RainRevisionMatches(Material))
+			{
+				return;
+			}
+			UMaterialEditingLibrary::DeleteAllMaterialExpressions(Material);
+		}
 		if (!Material)
 		{
 			return;
@@ -260,8 +202,16 @@ namespace SiltMaterialBootstrap
 			return;
 		}
 
-		Color->Constant = FLinearColor(0.75f, 0.8f, 0.82f);
-		Opacity->R = 0.22f;
+		UMaterialExpressionScalarParameter* Revision = Cast<UMaterialExpressionScalarParameter>(AddExpr(Material, UMaterialExpressionScalarParameter::StaticClass(), -300, 280));
+		if (!Revision)
+		{
+			UE_LOG(LogSiltEditor, Error, TEXT("Failed to build M_Rain graph"));
+			return;
+		}
+		Revision->ParameterName = TEXT("SiltRevision");
+		Revision->DefaultValue = 3.f;
+		Color->Constant = FLinearColor(0.58f, 0.66f, 0.72f);
+		Opacity->R = 0.16f;
 		EditorData->EmissiveColor.Connect(0, Color);
 		EditorData->Opacity.Connect(0, Opacity);
 		SaveMaterial(Material);
@@ -275,8 +225,7 @@ namespace SiltMaterialBootstrap
 			return;
 		}
 		bOnce = true;
-		BuildWetGround();
-		BuildFloodWater();
+		SiltWetMaterials::Ensure();
 		BuildTruckPaint();
 		BuildBeacon();
 		BuildRain();

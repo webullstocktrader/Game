@@ -9,7 +9,7 @@ if not "%~1"=="" (
   goto :launch
 )
 
-for %%V in (5.4 5.5 5.6 5.7) do (
+for %%V in (5.4 5.5 5.6 5.7 5.8) do (
   set "TRY=C:\Program Files\Epic Games\UE_%%V\Engine\Binaries\Win64\UnrealEditor.exe"
   if exist "!TRY!" set "EDITOR=!TRY!"
 )

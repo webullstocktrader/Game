@@ -5,41 +5,94 @@
 
 namespace
 {
-	FLinearColor GroundColor(ESiltSurface Surface, float Noise)
+	FLinearColor GroundColor(ESiltSurface Surface, float Grain, float Patch)
 	{
 		FLinearColor Color;
 		float Roughness = 0.55f;
 		switch (Surface)
 		{
 		case ESiltSurface::Road:
-			Color = FLinearColor(0.16f, 0.15f, 0.13f);
-			Roughness = 0.48f;
+			Color = FMath::Lerp(FLinearColor(0.078f, 0.074f, 0.066f), FLinearColor(0.155f, 0.142f, 0.118f), Patch);
+			Roughness = FMath::Lerp(0.30f, 0.56f, Grain);
 			break;
 		case ESiltSurface::Dirt:
-			Color = FLinearColor(0.20f, 0.15f, 0.09f);
-			Roughness = 0.62f;
+			Color = FMath::Lerp(FLinearColor(0.15f, 0.10f, 0.05f), FLinearColor(0.23f, 0.16f, 0.085f), Patch);
+			Roughness = FMath::Lerp(0.62f, 0.84f, Grain);
 			break;
 		case ESiltSurface::Mud:
-			Color = FLinearColor(0.09f, 0.055f, 0.028f);
-			Roughness = 0.24f;
+			Color = FMath::Lerp(FLinearColor(0.040f, 0.024f, 0.013f), FLinearColor(0.086f, 0.048f, 0.024f), Patch);
+			Roughness = FMath::Lerp(0.10f, 0.22f, Grain);
 			break;
 		case ESiltSurface::DeepMud:
-			Color = FLinearColor(0.045f, 0.028f, 0.016f);
-			Roughness = 0.10f;
+			Color = FMath::Lerp(FLinearColor(0.020f, 0.013f, 0.009f), FLinearColor(0.048f, 0.028f, 0.015f), Patch);
+			Roughness = FMath::Lerp(0.05f, 0.12f, Grain);
 			break;
 		case ESiltSurface::Water:
 		default:
-			Color = FLinearColor(0.03f, 0.025f, 0.018f);
-			Roughness = 0.08f;
+			Color = FMath::Lerp(FLinearColor(0.014f, 0.011f, 0.009f), FLinearColor(0.030f, 0.020f, 0.014f), Patch);
+			Roughness = FMath::Lerp(0.04f, 0.10f, Grain);
 			break;
 		}
 
-		Color.R = FMath::Clamp(Color.R + Noise * 0.03f, 0.f, 1.f);
-		Color.G = FMath::Clamp(Color.G + Noise * 0.025f, 0.f, 1.f);
-		Color.B = FMath::Clamp(Color.B + Noise * 0.015f, 0.f, 1.f);
+		const float Speck = (Grain - 0.5f) * 0.018f;
+		Color.R = FMath::Clamp(Color.R + Speck, 0.f, 1.f);
+		Color.G = FMath::Clamp(Color.G + Speck * 0.85f, 0.f, 1.f);
+		Color.B = FMath::Clamp(Color.B + Speck * 0.45f, 0.f, 1.f);
 		Color.A = Roughness;
 		return Color;
 	}
+
+	float Hash01(float X, float Y)
+	{
+		return FMath::Frac(FMath::Sin(X * 0.013f + Y * 0.017f) * 43758.5453f);
+	}
+
+	UMaterialInterface* MaterialFor(ESiltSurface Surface, const FSiltGroundMaterials& Materials)
+	{
+		UMaterialInterface* Chosen = nullptr;
+		switch (Surface)
+		{
+		case ESiltSurface::Road: Chosen = Materials.Road; break;
+		case ESiltSurface::Dirt: Chosen = Materials.Dirt; break;
+		case ESiltSurface::Mud: Chosen = Materials.Mud; break;
+		case ESiltSurface::DeepMud: Chosen = Materials.DeepMud; break;
+		default: Chosen = Materials.SiltBed; break;
+		}
+		return Chosen ? Chosen : Materials.Fallback;
+	}
+
+	struct FGroundSection
+	{
+		TArray<FVector> Vertices;
+		TArray<int32> Triangles;
+		TArray<FVector> Normals;
+		TArray<FVector2D> UVs;
+		TArray<FLinearColor> Colors;
+		TArray<FProcMeshTangent> Tangents;
+		TMap<int32, int32> Remap;
+
+		int32 Use(
+			int32 Source,
+			const TArray<FVector>& SrcVerts,
+			const TArray<FVector>& SrcNormals,
+			const TArray<FVector2D>& SrcUVs,
+			const TArray<FLinearColor>& SrcColors,
+			const TArray<FProcMeshTangent>& SrcTangents)
+		{
+			if (const int32* Found = Remap.Find(Source))
+			{
+				return *Found;
+			}
+			const int32 NewIndex = Vertices.Num();
+			Remap.Add(Source, NewIndex);
+			Vertices.Add(SrcVerts[Source]);
+			Normals.Add(SrcNormals[Source]);
+			UVs.Add(SrcUVs[Source]);
+			Colors.Add(SrcColors[Source]);
+			Tangents.Add(SrcTangents[Source]);
+			return NewIndex;
+		}
+	};
 }
 
 ASiltGroundChunk::ASiltGroundChunk()
@@ -56,16 +109,19 @@ ASiltGroundChunk::ASiltGroundChunk()
 	Ground->SetCollisionProfileName(TEXT("BlockAll"));
 	Ground->SetCanEverAffectNavigation(false);
 	Ground->bCastDynamicShadow = true;
+	Ground->bReceivesDecals = true;
 
 	Water = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("Water"));
 	Water->SetupAttachment(Ground);
 	Water->SetMobility(EComponentMobility::Movable);
 	Water->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	Water->SetCanEverAffectNavigation(false);
+	Water->SetCastShadow(false);
 	Water->bCastDynamicShadow = false;
+	Water->bReceivesDecals = false;
 }
 
-void ASiltGroundChunk::Build(const FVector2D& MinXY, const FVector2D& MaxXY, float Step, UMaterialInterface* GroundMat, UMaterialInterface* WaterMat)
+void ASiltGroundChunk::Build(const FVector2D& MinXY, const FVector2D& MaxXY, float Step, const FSiltGroundMaterials& Materials)
 {
 	const float SpanX = FMath::Max(Step, MaxXY.X - MinXY.X);
 	const float SpanY = FMath::Max(Step, MaxXY.Y - MinXY.Y);
@@ -73,15 +129,14 @@ void ASiltGroundChunk::Build(const FVector2D& MinXY, const FVector2D& MaxXY, flo
 	const int32 NumY = FMath::Clamp(FMath::RoundToInt(SpanY / Step) + 1, 2, 220);
 
 	TArray<FVector> Vertices;
-	TArray<int32> Triangles;
-	TArray<FVector> Normals;
 	TArray<FVector2D> UVs;
 	TArray<FLinearColor> Colors;
-	TArray<FProcMeshTangent> Tangents;
+	TArray<ESiltSurface> Surfaces;
 
 	Vertices.SetNum(NumX * NumY);
 	UVs.SetNum(NumX * NumY);
 	Colors.SetNum(NumX * NumY);
+	Surfaces.SetNum(NumX * NumY);
 
 	for (int32 Y = 0; Y < NumY; ++Y)
 	{
@@ -95,38 +150,43 @@ void ASiltGroundChunk::Build(const FVector2D& MinXY, const FVector2D& MaxXY, flo
 			const float Height = SiltTerrain::SampleHeight(WorldX, WorldY);
 			Vertices[Index] = FVector(WorldX, WorldY, Height);
 			UVs[Index] = FVector2D(WorldX * 0.0004f, WorldY * 0.0004f);
-			const float Noise = FMath::Frac(FMath::Sin(WorldX * 0.013f + WorldY * 0.017f) * 43758.5453f) * 2.f - 1.f;
-			Colors[Index] = GroundColor(SiltTerrain::SampleSurface(WorldX, WorldY), Noise);
+			Surfaces[Index] = SiltTerrain::SampleSurface(WorldX, WorldY);
+			const float Grain = Hash01(WorldX, WorldY);
+			const float Patch = Hash01(WorldX * 0.15f + 19.f, WorldY * 0.15f - 7.f);
+			Colors[Index] = GroundColor(Surfaces[Index], Grain, Patch);
 		}
 	}
 
-	Triangles.Reserve((NumX - 1) * (NumY - 1) * 6);
+	TArray<FVector> Normals;
+	Normals.Init(FVector::ZeroVector, Vertices.Num());
+	TArray<int32> AllTriangles;
+	AllTriangles.Reserve((NumX - 1) * (NumY - 1) * 6);
 	for (int32 Y = 0; Y < NumY - 1; ++Y)
 	{
 		for (int32 X = 0; X < NumX - 1; ++X)
 		{
 			const int32 I = Y * NumX + X;
-			Triangles.Add(I);
-			Triangles.Add(I + 1);
-			Triangles.Add(I + NumX);
-
-			Triangles.Add(I + 1);
-			Triangles.Add(I + NumX + 1);
-			Triangles.Add(I + NumX);
+			AllTriangles.Add(I);
+			AllTriangles.Add(I + 1);
+			AllTriangles.Add(I + NumX);
+			AllTriangles.Add(I + 1);
+			AllTriangles.Add(I + NumX + 1);
+			AllTriangles.Add(I + NumX);
 		}
 	}
 
-	Normals.Init(FVector::ZeroVector, Vertices.Num());
-	for (int32 Tri = 0; Tri + 2 < Triangles.Num(); Tri += 3)
+	for (int32 Tri = 0; Tri + 2 < AllTriangles.Num(); Tri += 3)
 	{
-		const int32 I0 = Triangles[Tri];
-		const int32 I1 = Triangles[Tri + 1];
-		const int32 I2 = Triangles[Tri + 2];
+		const int32 I0 = AllTriangles[Tri];
+		const int32 I1 = AllTriangles[Tri + 1];
+		const int32 I2 = AllTriangles[Tri + 2];
 		const FVector Normal = FVector::CrossProduct(Vertices[I1] - Vertices[I0], Vertices[I2] - Vertices[I0]).GetSafeNormal();
 		Normals[I0] += Normal;
 		Normals[I1] += Normal;
 		Normals[I2] += Normal;
 	}
+
+	TArray<FProcMeshTangent> Tangents;
 	Tangents.Reserve(Vertices.Num());
 	for (int32 Index = 0; Index < Vertices.Num(); ++Index)
 	{
@@ -139,10 +199,62 @@ void ASiltGroundChunk::Build(const FVector2D& MinXY, const FVector2D& MaxXY, flo
 		Tangents.Add(FProcMeshTangent(FVector(1.f, 0.f, 0.f), false));
 	}
 
-	Ground->CreateMeshSection_LinearColor(0, Vertices, Triangles, Normals, UVs, Colors, Tangents, true);
-	if (GroundMat)
+	FGroundSection Sections[5];
+	for (int32 Y = 0; Y < NumY - 1; ++Y)
 	{
-		Ground->SetMaterial(0, GroundMat);
+		for (int32 X = 0; X < NumX - 1; ++X)
+		{
+			const int32 I00 = Y * NumX + X;
+			const int32 I10 = I00 + 1;
+			const int32 I01 = I00 + NumX;
+			const int32 I11 = I01 + 1;
+			const float CenterX = (Vertices[I00].X + Vertices[I11].X) * 0.5f;
+			const float CenterY = (Vertices[I00].Y + Vertices[I11].Y) * 0.5f;
+			const ESiltSurface Surface = SiltTerrain::SampleSurface(CenterX, CenterY);
+			const int32 SectionIndex = FMath::Clamp(static_cast<int32>(Surface), 0, 4);
+			FGroundSection& Section = Sections[SectionIndex];
+			const int32 V0 = Section.Use(I00, Vertices, Normals, UVs, Colors, Tangents);
+			const int32 V1 = Section.Use(I10, Vertices, Normals, UVs, Colors, Tangents);
+			const int32 V2 = Section.Use(I11, Vertices, Normals, UVs, Colors, Tangents);
+			const int32 V3 = Section.Use(I01, Vertices, Normals, UVs, Colors, Tangents);
+			Section.Triangles.Add(V0);
+			Section.Triangles.Add(V1);
+			Section.Triangles.Add(V3);
+			Section.Triangles.Add(V1);
+			Section.Triangles.Add(V2);
+			Section.Triangles.Add(V3);
+		}
+	}
+
+	int32 MeshSection = 0;
+	const ESiltSurface SectionSurfaces[5] = {
+		ESiltSurface::Road,
+		ESiltSurface::Dirt,
+		ESiltSurface::Mud,
+		ESiltSurface::DeepMud,
+		ESiltSurface::Water
+	};
+	for (int32 Index = 0; Index < 5; ++Index)
+	{
+		FGroundSection& Section = Sections[Index];
+		if (Section.Vertices.Num() == 0)
+		{
+			continue;
+		}
+		Ground->CreateMeshSection_LinearColor(
+			MeshSection,
+			Section.Vertices,
+			Section.Triangles,
+			Section.Normals,
+			Section.UVs,
+			Section.Colors,
+			Section.Tangents,
+			true);
+		if (UMaterialInterface* SurfaceMaterial = MaterialFor(SectionSurfaces[Index], Materials))
+		{
+			Ground->SetMaterial(MeshSection, SurfaceMaterial);
+		}
+		++MeshSection;
 	}
 
 	TArray<FVector> WaterVerts;
@@ -151,7 +263,8 @@ void ASiltGroundChunk::Build(const FVector2D& MinXY, const FVector2D& MaxXY, flo
 	TArray<FVector2D> WaterUVs;
 	TArray<FLinearColor> WaterColors;
 	TArray<FProcMeshTangent> WaterTangents;
-	const float WaterZ = SiltTerrain::GetWaterLevel() + 12.f;
+	const float WaterLevel = SiltTerrain::GetWaterLevel();
+	const float WaterZ = WaterLevel + 12.f;
 
 	for (int32 Y = 0; Y < NumY - 1; ++Y)
 	{
@@ -162,7 +275,7 @@ void ASiltGroundChunk::Build(const FVector2D& MinXY, const FVector2D& MaxXY, flo
 			const int32 I01 = I00 + NumX;
 			const int32 I11 = I01 + 1;
 			const float Lowest = FMath::Min3(Vertices[I00].Z, Vertices[I10].Z, FMath::Min(Vertices[I01].Z, Vertices[I11].Z));
-			if (Lowest > SiltTerrain::GetWaterLevel() + 30.f)
+			if (Lowest > WaterLevel + 40.f)
 			{
 				continue;
 			}
@@ -171,12 +284,14 @@ void ASiltGroundChunk::Build(const FVector2D& MinXY, const FVector2D& MaxXY, flo
 			const FVector Corners[4] = { Vertices[I00], Vertices[I10], Vertices[I11], Vertices[I01] };
 			for (const FVector& Corner : Corners)
 			{
-				const float Depth = FMath::Clamp((SiltTerrain::GetWaterLevel() - Corner.Z) / 400.f, 0.f, 1.f);
+				const float Depth = FMath::Clamp((WaterLevel - Corner.Z) / 480.f, 0.f, 1.f);
+				const float Shore = 1.f - FMath::SmoothStep(0.f, 0.22f, Depth);
+				const float Break = Hash01(Corner.X, Corner.Y);
+				const float Foam = Shore * FMath::Lerp(0.35f, 1.f, Break);
 				WaterVerts.Add(FVector(Corner.X, Corner.Y, WaterZ));
 				WaterUVs.Add(FVector2D(Corner.X * 0.0002f, Corner.Y * 0.0002f));
-				FLinearColor Wet = FMath::Lerp(FLinearColor(0.10f, 0.16f, 0.13f), FLinearColor(0.02f, 0.045f, 0.05f), Depth);
-				Wet.A = FMath::Lerp(0.12f, 0.03f, Depth);
-				WaterColors.Add(Wet);
+				// R = depth, G = shoreline foam. The floodwater material reads both.
+				WaterColors.Add(FLinearColor(Depth, Foam, 0.15f, 1.f));
 			}
 			WaterTris.Add(Base);
 			WaterTris.Add(Base + 1);
@@ -197,8 +312,12 @@ void ASiltGroundChunk::Build(const FVector2D& MinXY, const FVector2D& MaxXY, flo
 	WaterTangents.Init(FProcMeshTangent(FVector(1.f, 0.f, 0.f), false), WaterVerts.Num());
 	Water->CreateMeshSection_LinearColor(0, WaterVerts, WaterTris, WaterNormals, WaterUVs, WaterColors, WaterTangents, false);
 	Water->SetVisibility(true);
-	if (WaterMat)
+	if (Materials.Water)
 	{
-		Water->SetMaterial(0, WaterMat);
+		Water->SetMaterial(0, Materials.Water);
+	}
+	else if (Materials.Fallback)
+	{
+		Water->SetMaterial(0, Materials.Fallback);
 	}
 }

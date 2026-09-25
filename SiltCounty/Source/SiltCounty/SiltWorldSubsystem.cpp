@@ -9,6 +9,8 @@
 #include "Components/VolumetricCloudComponent.h"
 #include "Components/PointLightComponent.h"
 #include "Engine/Font.h"
+#include "Components/DecalComponent.h"
+#include "Engine/DecalActor.h"
 #include "Engine/DirectionalLight.h"
 #include "Engine/ExponentialHeightFog.h"
 #include "Engine/PointLight.h"
@@ -144,6 +146,7 @@ void USiltWorldSubsystem::EnsureBuilt()
 	const double Started = FPlatformTime::Seconds();
 	ClearTemplateActors(*World);
 	BuildTerrain(*World);
+	BuildPuddles(*World);
 	BuildDressing(*World);
 	BuildWeather(*World);
 	UE_LOG(LogSiltCounty, Display, TEXT("Silt County world built in %.2fs"), FPlatformTime::Seconds() - Started);
@@ -191,6 +194,117 @@ bool USiltWorldSubsystem::ChunkNeedsDetail(float CenterX, float CenterY) const
 	return FVector2D::Distance(FVector2D(CenterX, CenterY), FVector2D(0.f, 52000.f)) < 70000.f;
 }
 
+void USiltWorldSubsystem::BuildPuddles(UWorld& World) const
+{
+	UMaterialInterface* DecalMat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/SiltCounty/Materials/M_PuddleDecal.M_PuddleDecal"));
+	if (!DecalMat)
+	{
+		UE_LOG(LogSiltCounty, Warning, TEXT("Puddle decals skipped. Open the editor once so M_PuddleDecal can be generated."));
+		return;
+	}
+
+	int32 Count = 0;
+	constexpr int32 MaxPuddles = 150;
+	auto Consider = [&](float X, float Y)
+	{
+		if (Count >= MaxPuddles)
+		{
+			return;
+		}
+
+		const ESiltSurface Surface = SiltTerrain::SampleSurface(X, Y);
+		if (Surface == ESiltSurface::Water)
+		{
+			return;
+		}
+
+		const float Height = SiltTerrain::SampleHeight(X, Y);
+		const float Water = SiltTerrain::GetWaterLevel();
+		float Odds = 0.f;
+		float RadiusMin = 280.f;
+		float RadiusMax = 520.f;
+		if (Surface == ESiltSurface::Road)
+		{
+			Odds = 0.62f;
+			RadiusMin = 340.f;
+			RadiusMax = 780.f;
+		}
+		else if (Surface == ESiltSurface::DeepMud || Surface == ESiltSurface::Mud)
+		{
+			if (Height > Water + 380.f)
+			{
+				return;
+			}
+			Odds = 0.48f;
+			RadiusMin = 420.f;
+			RadiusMax = 980.f;
+		}
+		else if (Height < Water + 180.f)
+		{
+			Odds = 0.22f;
+			RadiusMin = 260.f;
+			RadiusMax = 540.f;
+		}
+		else
+		{
+			return;
+		}
+
+		const int32 Seed = FMath::FloorToInt(X * 0.05f) * 73856093 ^ FMath::FloorToInt(Y * 0.05f) * 19349663;
+		FRandomStream Stream(Seed);
+		if (Stream.FRand() > Odds)
+		{
+			return;
+		}
+
+		FActorSpawnParameters Params;
+		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		const FVector Location(X, Y, Height + 24.f);
+		ADecalActor* DecalActor = World.SpawnActor<ADecalActor>(Location, FRotator::ZeroRotator, Params);
+		if (!DecalActor)
+		{
+			return;
+		}
+		TagSilt(DecalActor);
+		if (UDecalComponent* Decal = DecalActor->GetDecal())
+		{
+			const float Radius = Stream.FRandRange(RadiusMin, RadiusMax);
+			Decal->SetMobility(EComponentMobility::Movable);
+			Decal->SetWorldLocationAndRotation(Location, FRotator(-90.f, Stream.FRandRange(0.f, 360.f), 0.f));
+			Decal->DecalSize = FVector(48.f, Radius, Radius * Stream.FRandRange(0.62f, 0.95f));
+			Decal->SetDecalMaterial(DecalMat);
+			Decal->FadeScreenSize = 0.0015f;
+			Decal->SortOrder = 2;
+		}
+		++Count;
+	};
+
+	// South slough and flooded town first, then the causeway. Same samples on every machine.
+	for (float Y = -36000.f; Y <= -12000.f; Y += 2800.f)
+	{
+		for (float X = -44000.f; X <= -16000.f; X += 2800.f)
+		{
+			Consider(X, Y);
+		}
+	}
+	for (float Y = 44000.f; Y <= 62000.f; Y += 2200.f)
+	{
+		for (float X = -9000.f; X <= 9000.f; X += 2200.f)
+		{
+			Consider(X, Y);
+		}
+	}
+	for (float Y = -16000.f; Y <= 88000.f; Y += 4200.f)
+	{
+		for (float X = -18000.f; X <= 18000.f; X += 4200.f)
+		{
+			Consider(X, Y);
+		}
+	}
+
+	UE_LOG(LogSiltCounty, Display, TEXT("Silt County puddle decals: %d"), Count);
+}
+
 void USiltWorldSubsystem::BuildTerrain(UWorld& World) const
 {
 	UMaterialInterface* GroundMat = LoadMat(
@@ -199,6 +313,26 @@ void USiltWorldSubsystem::BuildTerrain(UWorld& World) const
 	UMaterialInterface* WaterMat = LoadMat(
 		TEXT("/Game/SiltCounty/Materials/M_FloodWater.M_FloodWater"),
 		TEXT("/Engine/EngineMaterials/WorldGridMaterial.WorldGridMaterial"));
+
+	auto SurfaceMat = [&](const TCHAR* AssetName) -> UMaterialInterface*
+	{
+		const FString Path = FString::Printf(TEXT("/Game/SiltCounty/Materials/%s.%s"), AssetName, AssetName);
+		if (UMaterialInterface* Material = LoadObject<UMaterialInterface>(nullptr, *Path))
+		{
+			return Material;
+		}
+		UE_LOG(LogSiltCounty, Warning, TEXT("Missing %s — using M_WetGround. Open the editor once so surface instances can be generated."), *Path);
+		return GroundMat;
+	};
+
+	FSiltGroundMaterials Materials;
+	Materials.Fallback = GroundMat;
+	Materials.Road = SurfaceMat(TEXT("MI_WetRoad"));
+	Materials.Dirt = SurfaceMat(TEXT("MI_WetSoil"));
+	Materials.Mud = SurfaceMat(TEXT("MI_Mud"));
+	Materials.DeepMud = SurfaceMat(TEXT("MI_DeepMud"));
+	Materials.SiltBed = SurfaceMat(TEXT("MI_SiltBed"));
+	Materials.Water = WaterMat;
 
 	constexpr float Chunk = 100000.f;
 	int32 Count = 0;
@@ -217,7 +351,7 @@ void USiltWorldSubsystem::BuildTerrain(UWorld& World) const
 			{
 				continue;
 			}
-			GroundChunk->Build(FVector2D(X, Y), FVector2D(X + Chunk, Y + Chunk), Step, GroundMat, WaterMat);
+			GroundChunk->Build(FVector2D(X, Y), FVector2D(X + Chunk, Y + Chunk), Step, Materials);
 			++Count;
 			if (Count % 16 == 0)
 			{
