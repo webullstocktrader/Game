@@ -14,7 +14,7 @@ The county is **8 km × 8 km**. The garage, flooded town, causeway, and south sl
 
 Quixel / Megascans / Fab kits are not bundled. The first time the editor opens, it generates the mud, water, and wet-ground materials under `Content/SiltCounty/Materials`. Lumen and Nanite are turned on in the project. DBuffer decals are on so standing puddles can darken and gloss the ground. The runtime terrain is a procedural mesh, so it is not Nanite; Lumen still lights the wet surfaces, water, and rain.
 
-If you already opened an older build, restart the editor after pulling this change. The wet materials rebuild themselves when their revision does not match. The Output Log should include `Silt wet-ground, floodwater, puddle, and physical materials are revision 3`.
+If you already opened an older build, restart the editor after pulling this change. The wet materials rebuild themselves when their revision does not match. The Output Log should include `Silt wet-ground, floodwater, puddle, and physical materials are revision 4`.
 
 ## Open the project
 
@@ -165,8 +165,9 @@ What you should see:
 
 - **Wet asphalt crown** — black (`RoadDist` under 700), vertex roughness 0.22, clear-coat sheen and mirror puddles. HUD: `WET ASPHALT`.
 - **Wet gravel shoulder** — crushed stone (`RoadDist` under 1100). HUD: `WET GRAVEL`. Same grip as a leftover `Road` sample.
-- **Wet soil** — olive upland, the default above the mud band. HUD: `WET SOIL`.
+- **Wet soil** — olive upland, the default above the mud band. HUD: `WET SOIL`. Dirt and mud near the garage (Y about 80000), the first contract, or within 20 m of the road get a +0.15 wetness boost.
 - **Mud tracks and deep mud** — olive silt. Tracks are `RoadDist` under 1600 where `ValueNoise` exceeds 0.35, and only on ground above the deep-mud line. The basin and slough still go to `DEEP MUD` and `FLOODWATER`. HUD on the ruts: `MUD TRACK`.
+- **Wetness** — one 0–1 value from `SiltTerrain::SampleWetness`. Asphalt and gravel use the road curve (0.55). It darkens vertex color and lowers roughness, and each ground chunk writes that average into `M_WetGround` `Wetness` and `WetnessBias`. Puddle decals stay.
 - **Floodwater** — opaque tea-brown sheet with a slow ripple normal, sharper reflections in the middle, and a broken dirty foam edge where the bank meets the water.
 - **Rain** — cooler, thinner streaks. They do not change the ground; the ground is already built wet.
 
@@ -174,7 +175,7 @@ Generated assets, all under `Content/SiltCounty/Materials`:
 
 | Asset | Role |
 | --- | --- |
-| `M_WetGround` | Clear-coat master. Parameters: `PuddleAmount`, `NormalStrength`, `WpoAmplitude`, `ClearCoatBias`, `PuddleRoughness`, `WaterZ` (keep at 720), `ShoreBand` |
+| `M_WetGround` | Clear-coat master. Parameters: `PuddleAmount`, `NormalStrength`, `WpoAmplitude`, `ClearCoatBias`, `PuddleRoughness`, `WaterZ` (keep at 720), `ShoreBand`, `Wetness`, `WetnessBias` (both 0–1, set per chunk at play) |
 | `MI_WetRoad`, `MI_WetSoil`, `MI_Mud`, `MI_DeepMud`, `MI_SiltBed` | Per-surface instances and physical materials |
 | `PM_WetRoad`, `PM_WetSoil`, `PM_Mud`, `PM_DeepMud`, `PM_StandingWater` | Density and restitution. Friction is intentionally not slippery |
 | `M_FloodWater` | Standing flood sheet. `RippleSpeed`, `FoamStrength`, `WaterRoughness` |
@@ -184,12 +185,14 @@ Generated assets, all under `Content/SiltCounty/Materials`:
 
 ### Verify in editor / PIE
 
-1. Open `SiltCounty.uproject` in Unreal 5.4 or newer (5.8 is fine). Let shaders finish. Confirm the revision log line above.
-2. In the Content Browser, open `M_WetGround` and `M_FloodWater`. You should see the parameters listed above, not a single fresnel lerp.
-3. Press Play and skip the intro (Enter). You spawn in the garage yard.
+On the Desktop machine, rebuild with `PLAY.bat` (it compiles C++ and opens the editor). Let shaders finish. The Output Log should include `Silt wet-ground, floodwater, puddle, and physical materials are revision 4`. Then press Play.
+
+1. Open `SiltCounty.uproject` in Unreal 5.4 or newer (5.8 is fine) if you are not using `PLAY.bat`. Confirm the revision log line above. `M_WetGround` must list `Wetness` and `WetnessBias` in addition to the puddle parameters.
+2. In the Content Browser, open `M_WetGround` and `M_FloodWater`. You should see the parameters listed above, not a single fresnel lerp. `M_PuddleDecal` should still be there.
+3. Press Play and skip the intro (Enter). You spawn in the garage yard. Soil around the garage should read darker and glossier than open upland.
 4. Look at the gravel around the trucks: damp sheen and a few dark puddles. The garage and the flooded town blocks should still be there.
 5. Drive south through **SOUTH TOWN — FLOODED**. Water should ripple, shores should foam, and the houses should still stand in the basin.
-6. Leave the causeway into the slough. The HUD should step from `WET ASPHALT` (crown) to `WET GRAVEL` (shoulder), then broken `MUD TRACK` patches and `WET SOIL`, and into `DEEP MUD` / `FLOODWATER`. Vertex color is the palette; gloss still comes from `M_WetGround` (vertex roughness in alpha, plus `PuddleAmount` and the shore film). Shallow puddle decals stay on asphalt and gravel.
+6. Leave the causeway into the slough. The HUD should step from `WET ASPHALT` (crown, under 700 cm) to `WET GRAVEL` (shoulder, under 1100 cm), then broken `MUD TRACK` patches and `WET SOIL`, and into `DEEP MUD` / `FLOODWATER`. Shallow puddle decals stay on asphalt and gravel.
 7. Optional: on `MI_WetRoad`, raise `PuddleAmount` toward 1 and play again. The causeway should get more mirror patches without moving the town.
 
 ## Limits of this slice

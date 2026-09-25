@@ -1,11 +1,12 @@
 #include "SiltGroundChunk.h"
 
+#include "Materials/MaterialInstanceDynamic.h"
 #include "ProceduralMeshComponent.h"
 #include "SiltTerrain.h"
 
 namespace
 {
-	FLinearColor GroundColor(ESiltSurface Surface, float Noise)
+	FLinearColor GroundColor(ESiltSurface Surface, float Noise, float Wetness)
 	{
 		// Map-bible palette: olive mud, black wet asphalt, wet gravel, saturated soil.
 		// Vertex color RGB = albedo tint; A = roughness for M_WetGround.
@@ -47,6 +48,14 @@ namespace
 		Color.R = FMath::Clamp(Color.R + Noise * Mottling, 0.f, 1.f);
 		Color.G = FMath::Clamp(Color.G + Noise * Mottling * 0.9f, 0.f, 1.f);
 		Color.B = FMath::Clamp(Color.B + Noise * Mottling * 0.7f, 0.f, 1.f);
+
+		// Wetness 0-1 (Mud Water language): darken albedo + drop roughness for wet film.
+		const float Wet = FMath::Clamp(Wetness, 0.f, 1.f);
+		const float Darken = FMath::Lerp(1.f, 0.62f, Wet);
+		Color.R *= Darken;
+		Color.G *= Darken;
+		Color.B *= FMath::Lerp(1.f, 0.70f, Wet);
+		Roughness = FMath::Lerp(Roughness, FMath::Min(Roughness, 0.12f), Wet * 0.85f);
 		Color.A = Roughness;
 		return Color;
 	}
@@ -165,7 +174,8 @@ void ASiltGroundChunk::Build(const FVector2D& MinXY, const FVector2D& MaxXY, flo
 			UVs[Index] = FVector2D(WorldX * 0.0004f, WorldY * 0.0004f);
 			Surfaces[Index] = SiltTerrain::SampleSurface(WorldX, WorldY);
 			const float Noise = FMath::Frac(FMath::Sin(WorldX * 0.013f + WorldY * 0.017f) * 43758.5453f) * 2.f - 1.f;
-			Colors[Index] = GroundColor(Surfaces[Index], Noise);
+			const float Wetness = SiltTerrain::SampleWetness(WorldX, WorldY);
+			Colors[Index] = GroundColor(Surfaces[Index], Noise, Wetness);
 		}
 	}
 
@@ -238,6 +248,24 @@ void ASiltGroundChunk::Build(const FVector2D& MinXY, const FVector2D& MaxXY, flo
 		}
 	}
 
+	// One Wetness / WetnessBias pair per chunk, shared by every section MID.
+	// Gravel and asphalt stay on the road curve inside SampleWetness.
+	float WetSum = 0.f;
+	int32 WetCount = 0;
+	for (int32 Y = 0; Y < NumY; Y += FMath::Max(1, NumY / 8))
+	{
+		for (int32 X = 0; X < NumX; X += FMath::Max(1, NumX / 8))
+		{
+			const float AlphaX = static_cast<float>(X) / static_cast<float>(NumX - 1);
+			const float AlphaY = static_cast<float>(Y) / static_cast<float>(NumY - 1);
+			const float WorldX = FMath::Lerp(MinXY.X, MaxXY.X, AlphaX);
+			const float WorldY = FMath::Lerp(MinXY.Y, MaxXY.Y, AlphaY);
+			WetSum += SiltTerrain::SampleWetness(WorldX, WorldY);
+			++WetCount;
+		}
+	}
+	const float ChunkWetness = WetCount > 0 ? WetSum / static_cast<float>(WetCount) : 0.55f;
+
 	int32 MeshSection = 0;
 	const ESiltSurface SectionSurfaces[7] = {
 		ESiltSurface::Road,
@@ -266,7 +294,18 @@ void ASiltGroundChunk::Build(const FVector2D& MinXY, const FVector2D& MaxXY, flo
 			true);
 		if (UMaterialInterface* SurfaceMaterial = MaterialFor(SectionSurfaces[Index], Materials))
 		{
-			Ground->SetMaterial(MeshSection, SurfaceMaterial);
+			// Wire Mud Water Wetness into M_WetGround (scalar only; puddle decals stay).
+			UMaterialInstanceDynamic* GroundMid = UMaterialInstanceDynamic::Create(SurfaceMaterial, this);
+			if (GroundMid)
+			{
+				GroundMid->SetScalarParameterValue(TEXT("Wetness"), ChunkWetness);
+				GroundMid->SetScalarParameterValue(TEXT("WetnessBias"), ChunkWetness);
+				Ground->SetMaterial(MeshSection, GroundMid);
+			}
+			else
+			{
+				Ground->SetMaterial(MeshSection, SurfaceMaterial);
+			}
 		}
 		++MeshSection;
 	}

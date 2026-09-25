@@ -195,6 +195,45 @@ namespace SiltTerrain
 		return ESiltSurface::Dirt;
 	}
 
+	float SampleWetness(float X, float Y)
+	{
+		// Mud Water owns Wetness 0-1 language. Gravel/Asphalt use Road's wetness curve.
+		const ESiltSurface Surface = SampleSurface(X, Y);
+		float Wetness;
+		switch (Surface)
+		{
+		case ESiltSurface::Asphalt:
+		case ESiltSurface::Gravel:
+		case ESiltSurface::Road:
+			Wetness = 0.55f;
+			break;
+		case ESiltSurface::Dirt:
+			Wetness = 0.45f; // wet packed dirt baseline (Pass A)
+			break;
+		case ESiltSurface::Mud:
+			Wetness = 0.85f;
+			break;
+		case ESiltSurface::DeepMud:
+		case ESiltSurface::Water:
+		default:
+			Wetness = 1.0f;
+			break;
+		}
+
+		// Pass A focus: boost Dirt/Mud on driveable paths near garage + first contract.
+		if (Surface == ESiltSurface::Dirt || Surface == ESiltSurface::Mud)
+		{
+			const float GarageDist = FVector2D(X, Y - 80000.f).Size();
+			const float ContractDist = FVector2D::Distance(FVector2D(X, Y), GetContractXY());
+			const float RoadDist = DistanceToRoad(X, Y);
+			if (GarageDist < 12000.f || ContractDist < 15000.f || RoadDist < 2000.f)
+			{
+				Wetness = FMath::Min(1.f, Wetness + 0.15f);
+			}
+		}
+		return Wetness;
+	}
+
 	const TCHAR* SurfaceLabel(ESiltSurface Surface)
 	{
 		switch (Surface)

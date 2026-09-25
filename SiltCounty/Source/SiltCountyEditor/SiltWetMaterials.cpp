@@ -39,7 +39,7 @@ DEFINE_LOG_CATEGORY_STATIC(LogSiltWet, Log, All);
 
 namespace SiltWetMaterials
 {
-	constexpr float Revision = 3.f;
+	constexpr float Revision = 4.f;
 	const TCHAR* RevisionKey = TEXT("SiltRevision");
 
 	FAssetRegistryModule& AssetRegistry()
@@ -445,6 +445,10 @@ namespace SiltWetMaterials
 		UMaterialExpression* PuddleRoughness = Graph.Scalar(TEXT("PuddleRoughness"), 0.045f, -1700, 1120, 0.02f, 0.2f);
 		UMaterialExpression* WaterZ = Graph.Scalar(TEXT("WaterZ"), 720.f, -1700, 1240, 0.f, 5000.f);
 		UMaterialExpression* ShoreBand = Graph.Scalar(TEXT("ShoreBand"), 900.f, -1700, 1360, 100.f, 4000.f);
+		// Same 0-1 Wetness language as SiltTerrain::SampleWetness. Chunk MIDs set both scalars.
+		UMaterialExpression* Wetness = Graph.Scalar(TEXT("Wetness"), 0.55f, -1700, 1480, 0.f, 1.f);
+		UMaterialExpression* WetnessBias = Graph.Scalar(TEXT("WetnessBias"), 0.55f, -1700, 1600, 0.f, 1.f);
+		UMaterialExpression* WetDrive = Graph.Sat(Graph.Mul(Graph.AddExpr(Wetness, WetnessBias, 300, 1480), Graph.Const1(0.5f, 480, 1600), 660, 1480), 840, 1480);
 
 		UMaterialExpression* MacroPos = ScaledWorldXY(Graph, WorldXY, 0.00028f, -1240, 0);
 		UMaterialExpression* MesoPos = ScaledWorldXY(Graph, WorldXY, 0.0016f, -1240, 180);
@@ -460,13 +464,17 @@ namespace SiltWetMaterials
 
 		UMaterialExpression* ShoreWeight = Graph.AddExpr(Graph.Mul(Shore, Graph.Const1(0.65f, 120, 980), 300, 980), Graph.Const1(0.35f, 300, 1100), 480, 980);
 		UMaterialExpression* Film = Graph.Mul(ClearCoatBias, ShoreWeight, 660, 980);
-		UMaterialExpression* ClearCoat = Graph.Sat(Graph.AddExpr(Film, Patch, 840, 180), 1020, 180);
+		UMaterialExpression* CoatFromWet = Graph.Mul(WetDrive, Graph.Const1(0.22f, 840, 300), 1020, 280);
+		UMaterialExpression* ClearCoat = Graph.Sat(Graph.AddExpr(Graph.AddExpr(Film, Patch, 840, 180), CoatFromWet, 1200, 180), 1380, 180);
 
 		UMaterialExpression* Variation = Graph.Lerp(Graph.Const1(0.80f, -420, -80), Graph.Const1(1.14f, -240, -80), Macro, -60, -40);
 		UMaterialExpression* BaseColor = Graph.Mul(VertexColor, Variation, 120, -40);
 		UMaterialExpression* Darken = Graph.Const3(FLinearColor(0.42f, 0.38f, 0.34f), 120, 80);
 		UMaterialExpression* DarkColor = Graph.Mul(VertexColor, Darken, 320, 40);
-		UMaterialExpression* WetMix = Graph.Sat(Graph.AddExpr(Graph.Mul(Patch, Graph.Const1(0.90f, 320, 200), 500, 160), Graph.Mul(Film, Graph.Const1(0.22f, 320, 280), 500, 260), 680, 200), 860, 80);
+		UMaterialExpression* PuddleDark = Graph.Mul(Patch, Graph.Const1(0.90f, 320, 200), 500, 160);
+		UMaterialExpression* FilmDark = Graph.Mul(Film, Graph.Const1(0.22f, 320, 280), 500, 260);
+		UMaterialExpression* ScalarDark = Graph.Mul(WetDrive, Graph.Const1(0.45f, 500, 340), 680, 320);
+		UMaterialExpression* WetMix = Graph.Sat(Graph.AddExpr(Graph.AddExpr(PuddleDark, FilmDark, 680, 200), ScalarDark, 860, 240), 1040, 80);
 		UMaterialExpression* Albedo = Graph.Sat(Graph.Lerp(BaseColor, DarkColor, WetMix, 1040, 0));
 
 		UMaterialExpression* Grain = Graph.Lerp(Graph.Const1(0.85f, 320, 420), Graph.Const1(1.15f, 500, 420), Micro.Height, 680, 420);
@@ -477,7 +485,8 @@ namespace SiltWetMaterials
 			Link(BrokenRough->A, VertexColor, 4);
 		}
 		UMaterialExpression* Satin = Graph.Lerp(BrokenRough, Graph.Const1(0.40f, 860, 560), Graph.Mul(Film, Graph.Const1(0.70f, 680, 560), 860, 620), 1040, 480);
-		UMaterialExpression* Roughness = Graph.Lerp(Satin, PuddleRoughness, Graph.Sat(Patch, 1040, 640), 1240, 480);
+		UMaterialExpression* PuddleRough = Graph.Lerp(Satin, PuddleRoughness, Graph.Sat(Patch, 1040, 640), 1240, 480);
+		UMaterialExpression* Roughness = Graph.Lerp(PuddleRough, Graph.Const1(0.12f, 1240, 760), Graph.Mul(WetDrive, Graph.Const1(0.35f, 1420, 760), 1600, 700), 1780, 560);
 
 		UMaterialExpression* FlatNormal = Graph.Const3(FLinearColor(0.f, 0.f, 1.f), 1240, 700);
 		UMaterialExpression* Normal = Graph.Norm(Graph.Lerp(Micro.Normal, FlatNormal, Graph.Sat(Patch, 1240, 860), 1420, 700), 1600, 700);
