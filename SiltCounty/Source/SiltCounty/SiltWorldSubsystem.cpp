@@ -7,12 +7,12 @@
 #include "Components/SpotLightComponent.h"
 #include "Components/TextRenderComponent.h"
 #include "Components/VolumetricCloudComponent.h"
-#include "Components/PointLightComponent.h"
 #include "Engine/Font.h"
 #include "Engine/DirectionalLight.h"
 #include "Engine/ExponentialHeightFog.h"
 #include "Engine/PointLight.h"
 #include "Engine/PostProcessVolume.h"
+#include "Engine/SpotLight.h"
 #include "Engine/SkyAtmosphere.h"
 #include "Engine/SkyLight.h"
 #include "Engine/SphereReflectionCapture.h"
@@ -108,6 +108,43 @@ namespace
 		}
 		return Mid;
 	}
+
+	// Temperature carries warm or cool. A wide source radius keeps the pool soft when shadows are on.
+	void SpawnShopSpot(UWorld& World, const FVector& Location, const FRotator& Rotation, const TCHAR* Tag, float Lumens, float RadiusCm, float TemperatureK, float InnerConeDeg, float OuterConeDeg, float SourceRadiusCm, bool bCastShadows, float Specular, float Scatter, float Indirect)
+	{
+		ASpotLight* Spot = World.SpawnActor<ASpotLight>(Location, Rotation);
+		if (!Spot)
+		{
+			return;
+		}
+
+		TagSilt(Spot);
+		Spot->Tags.AddUnique(TEXT("SiltShop"));
+		Spot->Tags.AddUnique(Tag);
+
+		USpotLightComponent* Light = Cast<USpotLightComponent>(Spot->GetLightComponent());
+		if (!Light)
+		{
+			return;
+		}
+
+		Light->SetMobility(EComponentMobility::Movable);
+		Light->SetIntensityUnits(ELightUnits::Lumens);
+		Light->SetIntensity(Lumens);
+		Light->SetAttenuationRadius(RadiusCm);
+		Light->SetUseTemperature(true);
+		Light->SetTemperature(TemperatureK);
+		Light->SetLightColor(FLinearColor::White);
+		Light->SetInnerConeAngle(InnerConeDeg);
+		Light->SetOuterConeAngle(OuterConeDeg);
+		Light->SetSourceRadius(SourceRadiusCm);
+		Light->SetSoftSourceRadius(SourceRadiusCm);
+		Light->SetCastShadows(bCastShadows);
+		Light->SetSpecularScale(Specular);
+		Light->SetVolumetricScatteringIntensity(Scatter);
+		Light->SetIndirectLightingIntensity(Indirect);
+		Light->bUseInverseSquaredFalloff = true;
+	}
 }
 
 void USiltWorldSubsystem::OnWorldBeginPlay(UWorld& InWorld)
@@ -161,6 +198,7 @@ void USiltWorldSubsystem::ClearTemplateActors(UWorld& World) const
 	DestroyUntagged<APlayerStart>(World);
 	DestroyUntagged<ASphereReflectionCapture>(World);
 	DestroyUntagged<APointLight>(World);
+	DestroyUntagged<ASpotLight>(World);
 }
 
 UMaterialInterface* USiltWorldSubsystem::LoadMat(const TCHAR* ProjectPath, const TCHAR* Fallback) const
@@ -333,17 +371,23 @@ void USiltWorldSubsystem::BuildDressing(UWorld& World) const
 	}
 	Label(Drop + FVector(0.f, 0.f, 360.f), TEXT("DROP ZONE"), FColor(255, 210, 90), 140.f);
 
-	if (APointLight* Bay = World.SpawnActor<APointLight>(FVector(0.f, 84000.f, GarageZ + 480.f), FRotator::ZeroRotator))
-	{
-		TagSilt(Bay);
-		if (UPointLightComponent* Light = Cast<UPointLightComponent>(Bay->GetLightComponent()))
-		{
-			Light->SetMobility(EComponentMobility::Movable);
-			Light->SetIntensity(8000.f);
-			Light->SetAttenuationRadius(2800.f);
-			Light->SetLightColor(FLinearColor(1.f, 0.85f, 0.65f));
-		}
-	}
+	// Roof slab sits at (0, 86000), scale (24, 9, 0.35): about 24m wide, 9m deep, underside near GarageZ+602.
+	// It opens south, toward the apron. Chief and Gooch park on X, so the two bay keys hang on those lanes.
+	const float RoofY = 86000.f;
+	const float HangZ = GarageZ + 540.f;
+	const FRotator Down(-90.f, 0.f, 0.f);
+	SpawnShopSpot(World, FVector(-620.f, RoofY - 80.f, HangZ), Down, TEXT("SiltShopSouth"), 2600.f, 900.f, 3300.f, 36.f, 58.f, 42.f, true, 0.42f, 0.08f, 1.1f);
+	SpawnShopSpot(World, FVector(620.f, RoofY - 80.f, HangZ), Down, TEXT("SiltShopNorth"), 2600.f, 900.f, 3300.f, 36.f, 58.f, 42.f, true, 0.42f, 0.08f, 1.1f);
+	SpawnShopSpot(World, FVector(0.f, RoofY + 280.f, HangZ), Down, TEXT("SiltShopBack"), 1800.f, 850.f, 3200.f, 40.f, 62.f, 50.f, true, 0.38f, 0.06f, 1.05f);
+
+	const FVector BenchFrom(-780.f, RoofY + 160.f, HangZ - 40.f);
+	const FVector BenchTarget(-1080.f, RoofY + 40.f, GarageZ + 120.f);
+	SpawnShopSpot(World, BenchFrom, (BenchTarget - BenchFrom).Rotation(), TEXT("SiltShopWorkbench"), 1400.f, 700.f, 3000.f, 22.f, 40.f, 22.f, true, 0.4f, 0.06f, 1.f);
+
+	// Cool pool on the step-out only. About 35% of a bay key, shadows off so it does not blob on the apron.
+	SpawnShopSpot(World, FVector(0.f, RoofY - 730.f, GarageZ + 220.f), FRotator(-75.f, 90.f, 0.f), TEXT("SiltShopDoorRain"), 900.f, 650.f, 8500.f, 28.f, 46.f, 30.f, false, 0.25f, 0.35f, 0.7f);
+
+	UE_LOG(LogSiltCounty, Display, TEXT("Shop lights: south/north 2600 lm 3300K, back 1800 lm 3200K, bench 1400 lm 3000K, DoorRain 900 lm 8500K. No point light. Sun 4.6, skylight 0.88, exposure bias 0.05."));
 }
 
 void USiltWorldSubsystem::BuildWeather(UWorld& World) const
@@ -355,7 +399,7 @@ void USiltWorldSubsystem::BuildWeather(UWorld& World) const
 		if (UDirectionalLightComponent* Light = Cast<UDirectionalLightComponent>(Sun->GetLightComponent()))
 		{
 			Light->SetMobility(EComponentMobility::Movable);
-			Light->SetIntensity(10.f);
+			Light->SetIntensity(4.6f);
 			Light->SetLightColor(FLinearColor(0.72f, 0.78f, 0.88f));
 			Light->SetAtmosphereSunLight(true);
 			Light->SetCastShadows(true);
@@ -376,7 +420,7 @@ void USiltWorldSubsystem::BuildWeather(UWorld& World) const
 		if (USkyLightComponent* Light = Sky->GetLightComponent())
 		{
 			Light->SetMobility(EComponentMobility::Movable);
-			Light->SetIntensity(1.35f);
+			Light->SetIntensity(0.88f);
 			Light->SetRealTimeCapture(true);
 			Light->RecaptureSky();
 			Light->bLowerHemisphereIsBlack = false;
@@ -426,7 +470,7 @@ void USiltWorldSubsystem::BuildWeather(UWorld& World) const
 		Post->Settings.bOverride_ColorGamma = true;
 		Post->Settings.ColorGamma = FVector4(0.98f, 1.0f, 1.02f, 1.f);
 		Post->Settings.bOverride_AutoExposureBias = true;
-		Post->Settings.AutoExposureBias = -0.15f;
+		Post->Settings.AutoExposureBias = 0.05f;
 		Post->Settings.bOverride_VignetteIntensity = true;
 		Post->Settings.VignetteIntensity = 0.28f;
 		Post->Settings.bOverride_BloomIntensity = true;
